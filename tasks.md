@@ -3,11 +3,11 @@
 `plan.md`를 기준으로 Phase별 세부 작업을 체크리스트로 정리한다.
 
 ## Phase 0 — 공통 준비
-- [ ] `frontend/` 하위에 Next.js 프로젝트 생성 (`create-next-app`, TypeScript, App Router, Tailwind)
-- [ ] shadcn/ui 초기 설정 (`npx shadcn@latest init`)
-- [ ] TanStack Query Provider 설정 (`QueryClientProvider`)
-- [ ] 백엔드에 CORS 설정 추가 (`WebMvcConfigurer` — `http://localhost:3000` 허용)
-- [ ] `spring-boot-starter-validation` 의존성 추가
+- [x] `frontend/` 하위에 Next.js 프로젝트 생성 (`create-next-app`, TypeScript, App Router, Tailwind)
+- [x] shadcn/ui 초기 설정 (`npx shadcn@latest init`)
+- [x] TanStack Query Provider 설정 (`QueryClientProvider`)
+- [x] 백엔드에 CORS 설정 추가 (`WebMvcConfigurer` — `http://localhost:3000` 허용)
+- [x] `spring-boot-starter-validation` 의존성 추가
 
 ## Phase 1 — 최소 기능: 단일 리마인더 목록
 ### 백엔드
