@@ -6,7 +6,7 @@
 ## 기술 스택
 
 ### 공통 / 개발 환경
-- 백엔드: `C:\project\demo-reminder` (기존 Spring Boot 4 프로젝트 재사용)
+- 백엔드: `C:\project\demo-reminder\backend` (기존 Spring Boot 4 프로젝트 재사용)
 - 프론트엔드: `C:\project\demo-reminder\frontend` 하위에 신규 Next.js 프로젝트 생성 (모노레포 구조)
 - 로컬 포트: 백엔드 `:8080`, 프론트엔드 `:3000`
 - 인증 없음 (spec.md 기준)
