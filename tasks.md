@@ -11,14 +11,14 @@
 
 ## Phase 1 — 최소 기능: 단일 리마인더 목록
 ### 백엔드
-- [ ] `Reminder` 엔티티 작성 (id, title, memo, completed, createdAt)
-- [ ] `ReminderRepository` (JpaRepository) 작성
-- [ ] `ReminderController` 작성
-  - [ ] `GET /api/reminders`
-  - [ ] `POST /api/reminders`
-  - [ ] `PATCH /api/reminders/{id}/complete`
-  - [ ] `DELETE /api/reminders/{id}`
-- [ ] 요청/응답 DTO 정의 및 유효성 검증 (`title` 필수)
+- [x] `Reminder` 엔티티 작성 (id, title, memo, completed, createdAt)
+- [x] `ReminderRepository` (JpaRepository) 작성
+- [x] `ReminderController` 작성
+  - [x] `GET /api/reminders`
+  - [x] `POST /api/reminders`
+  - [x] `PATCH /api/reminders/{id}/complete`
+  - [x] `DELETE /api/reminders/{id}`
+- [x] 요청/응답 DTO 정의 및 유효성 검증 (`title` 필수)
 
 ### 프론트엔드
 - [ ] 리마인더 API 클라이언트 함수 작성 (`fetch` 기반)
