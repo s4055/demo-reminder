@@ -1,0 +1,146 @@
+openapi: 3.0.3
+info:
+  title: demoreminder API
+  description: Apple Reminders 웹 클론 (demoreminder) 백엔드 API. 현재는 Phase 1(단일 리마인더 목록) 범위만 포함한다.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8080
+    description: 로컬 개발 서버
+
+tags:
+  - name: Reminders
+    description: 리마인더 조회/생성/완료 토글/삭제
+
+paths:
+  /api/reminders:
+    get:
+      tags: [Reminders]
+      summary: 리마인더 전체 조회
+      operationId: getReminders
+      responses:
+        "200":
+          description: 리마인더 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReminderResponse"
+    post:
+      tags: [Reminders]
+      summary: 리마인더 생성
+      operationId: createReminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderRequest"
+      responses:
+        "201":
+          description: 생성된 리마인더
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderResponse"
+        "400":
+          description: 유효성 검증 실패 (title 누락 등)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/reminders/{id}/complete:
+    patch:
+      tags: [Reminders]
+      summary: 리마인더 완료 상태 토글
+      operationId: toggleReminderComplete
+      parameters:
+        - $ref: "#/components/parameters/ReminderId"
+      responses:
+        "200":
+          description: 완료 상태가 토글된 리마인더
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderResponse"
+        "404":
+          description: 리마인더를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/reminders/{id}:
+    delete:
+      tags: [Reminders]
+      summary: 리마인더 삭제
+      operationId: deleteReminder
+      parameters:
+        - $ref: "#/components/parameters/ReminderId"
+      responses:
+        "204":
+          description: 삭제 성공
+        "404":
+          description: 리마인더를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  parameters:
+    ReminderId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  schemas:
+    ReminderRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          example: 우유 사기
+        memo:
+          type: string
+          nullable: true
+          example: 저지방
+
+    ReminderResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        memo:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        path:
+          type: string
