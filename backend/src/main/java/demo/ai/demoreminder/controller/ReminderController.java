@@ -2,8 +2,7 @@ package demo.ai.demoreminder.controller;
 
 import demo.ai.demoreminder.dto.ReminderRequest;
 import demo.ai.demoreminder.dto.ReminderResponse;
-import demo.ai.demoreminder.domain.Reminder;
-import demo.ai.demoreminder.repository.ReminderRepository;
+import demo.ai.demoreminder.service.ReminderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -25,11 +23,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReminderController {
 
-    private final ReminderRepository reminderRepository;
+    private final ReminderService reminderService;
 
     @GetMapping
     public List<ReminderResponse> getReminders() {
-        return reminderRepository.findAll().stream()
+        return reminderService.getReminders().stream()
                 .map(ReminderResponse::from)
                 .toList();
     }
@@ -37,28 +35,17 @@ public class ReminderController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ReminderResponse createReminder(@Valid @RequestBody ReminderRequest request) {
-        Reminder reminder = new Reminder(request.title(), request.memo());
-        return ReminderResponse.from(reminderRepository.save(reminder));
+        return ReminderResponse.from(reminderService.createReminder(request));
     }
 
     @PatchMapping("/{id}/complete")
     public ReminderResponse toggleComplete(@PathVariable Long id) {
-        Reminder reminder = findReminderOrThrow(id);
-        reminder.toggleComplete();
-        return ReminderResponse.from(reminderRepository.save(reminder));
+        return ReminderResponse.from(reminderService.toggleComplete(id));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteReminder(@PathVariable Long id) {
-        if (!reminderRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reminder not found: " + id);
-        }
-        reminderRepository.deleteById(id);
-    }
-
-    private Reminder findReminderOrThrow(Long id) {
-        return reminderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reminder not found: " + id));
+        reminderService.deleteReminder(id);
     }
 }

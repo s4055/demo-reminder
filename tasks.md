@@ -13,6 +13,7 @@
 ### 백엔드
 - [x] `Reminder` 엔티티 작성 (id, title, memo, completed, createdAt)
 - [x] `ReminderRepository` (JpaRepository) 작성
+- [x] `ReminderService` 작성
 - [x] `ReminderController` 작성
   - [x] `GET /api/reminders`
   - [x] `POST /api/reminders`
@@ -38,6 +39,7 @@
 - [ ] `List` 엔티티 작성 (id, name, color, createdAt)
 - [ ] `Reminder`에 `listId` FK(연관관계) 추가 + 마이그레이션 확인(H2 `ddl-auto: update`)
 - [ ] `ListRepository` 작성
+- [ ] `ListService` 작성
 - [ ] `ListController` 작성
   - [ ] `GET /api/lists` (리마인더 개수 포함)
   - [ ] `POST /api/lists`
@@ -59,6 +61,7 @@
 ## Phase 3 — 마감일/플래그 + 스마트 리스트
 ### 백엔드
 - [ ] `Reminder`에 `dueAt`(LocalDateTime, nullable), `flagged`(boolean) 필드 추가
+- [ ] `ReminderService`에 스마트 뷰 조회/플래그 토글 로직 추가
 - [ ] `GET /api/reminders/smart/{view}` 구현
   - [ ] `today` — 마감일이 오늘인 미완료
   - [ ] `scheduled` — 마감일이 설정된 모든 미완료
@@ -81,7 +84,9 @@
 
 ## Phase 4 — 리마인더 상세 편집 + 리스트 관리 고도화
 ### 백엔드
+- [ ] `ReminderService`에 전체 수정 로직 추가
 - [ ] `PUT /api/reminders/{id}` 전체 수정(제목/메모/마감일/플래그) 완성
+- [ ] `ListService`에 이름/색상 수정 로직 추가
 - [ ] `PUT /api/lists/{id}` 이름/색상 수정 완성
 
 ### 프론트엔드
