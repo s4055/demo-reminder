@@ -6,7 +6,9 @@ import {
   getSmartReminders,
   toggleReminderComplete,
   toggleReminderFlag,
+  updateReminder,
   type CreateReminderInput,
+  type UpdateReminderInput,
 } from "@/lib/reminders-api"
 import { listsQueryKey } from "@/hooks/use-lists"
 import type { Selection } from "@/lib/selection"
@@ -36,6 +38,15 @@ export function useCreateReminder() {
   const invalidate = useInvalidateReminderQueries()
   return useMutation({
     mutationFn: (input: CreateReminderInput) => createReminder(input),
+    onSuccess: invalidate,
+  })
+}
+
+export function useUpdateReminder() {
+  const invalidate = useInvalidateReminderQueries()
+  return useMutation({
+    mutationFn: ({ id, input }: { id: number; input: UpdateReminderInput }) =>
+      updateReminder(id, input),
     onSuccess: invalidate,
   })
 }

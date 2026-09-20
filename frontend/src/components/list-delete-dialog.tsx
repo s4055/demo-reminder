@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,9 @@ export function ListDeleteDialog({
   onDeleted?: (list: ReminderList) => void
 }) {
   const deleteList = useDeleteList()
+  // 닫힘 애니메이션 동안 제목이 비지 않도록 마지막으로 열었던 리스트를 유지한다.
+  const [shownList, setShownList] = useState(list)
+  if (list && list !== shownList) setShownList(list)
 
   function handleDelete() {
     if (!list) return
@@ -38,7 +42,9 @@ export function ListDeleteDialog({
     <AlertDialog open={list !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>&ldquo;{list?.name}&rdquo; 리스트를 삭제할까요?</AlertDialogTitle>
+          <AlertDialogTitle>
+            &ldquo;{shownList?.name}&rdquo; 리스트를 삭제할까요?
+          </AlertDialogTitle>
           <AlertDialogDescription>
             리스트에 속한 모든 리마인더도 함께 삭제되며 되돌릴 수 없습니다.
           </AlertDialogDescription>

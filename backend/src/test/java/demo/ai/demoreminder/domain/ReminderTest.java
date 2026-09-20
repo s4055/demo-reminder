@@ -66,6 +66,33 @@ class ReminderTest {
     }
 
     @Test
+    @DisplayName("update를 호출하면 제목, 메모, 마감일시, 플래그가 변경되고 완료 상태는 유지된다")
+    void update_changesEditableFields_andKeepsCompletedState() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+        reminder.toggleComplete();
+        LocalDateTime dueAt = LocalDateTime.of(2026, 9, 21, 9, 0);
+
+        reminder.update("계란 사기", "12구", dueAt, true);
+
+        assertThat(reminder.getTitle()).isEqualTo("계란 사기");
+        assertThat(reminder.getMemo()).isEqualTo("12구");
+        assertThat(reminder.getDueAt()).isEqualTo(dueAt);
+        assertThat(reminder.isFlagged()).isTrue();
+        assertThat(reminder.isCompleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("update로 메모와 마감일시를 null로 비울 수 있다")
+    void update_allowsClearingMemoAndDueAt() {
+        Reminder reminder = new Reminder("우유 사기", "저지방", null, LocalDateTime.of(2026, 9, 21, 9, 0));
+
+        reminder.update("우유 사기", null, null, false);
+
+        assertThat(reminder.getMemo()).isNull();
+        assertThat(reminder.getDueAt()).isNull();
+    }
+
+    @Test
     @DisplayName("toggleFlag를 호출하면 플래그 상태가 반전된다")
     void toggleFlag_flipsFlaggedState() {
         Reminder reminder = new Reminder("우유 사기", null, null, null);

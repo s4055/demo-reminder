@@ -3,6 +3,7 @@ package demo.ai.demoreminder.service;
 import demo.ai.demoreminder.domain.Reminder;
 import demo.ai.demoreminder.domain.ReminderList;
 import demo.ai.demoreminder.dto.ReminderRequest;
+import demo.ai.demoreminder.dto.ReminderUpdateRequest;
 import demo.ai.demoreminder.repository.ReminderListRepository;
 import demo.ai.demoreminder.repository.ReminderRepository;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,13 @@ public class ReminderService {
         ReminderList list = request.listId() == null ? null : findListOrThrow(request.listId());
         Reminder reminder = new Reminder(request.title(), request.memo(), list, request.dueAt());
         return reminderRepository.save(reminder);
+    }
+
+    @Transactional
+    public Reminder updateReminder(Long id, ReminderUpdateRequest request) {
+        Reminder reminder = findReminderOrThrow(id);
+        reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged());
+        return reminder;
     }
 
     @Transactional

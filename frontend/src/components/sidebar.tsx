@@ -7,13 +7,14 @@ import {
   CheckCircle2Icon,
   FlagIcon,
   InboxIcon,
+  PencilIcon,
   PlusIcon,
   Trash2Icon,
   type LucideIcon,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ListCreateDialog } from "@/components/list-create-dialog"
+import { ListFormDialog } from "@/components/list-form-dialog"
 import { ListDeleteDialog } from "@/components/list-delete-dialog"
 import { useLists } from "@/hooks/use-lists"
 import type { ReminderList } from "@/lib/lists-api"
@@ -42,7 +43,11 @@ export function Sidebar({
   onSelect: (selection: Selection) => void
 }) {
   const { data: lists, isLoading, isError } = useLists()
-  const [createOpen, setCreateOpen] = useState(false)
+  // 닫힘 애니메이션 동안 폼 내용이 유지되도록 open 과 대상 리스트를 함께 보관한다.
+  const [listForm, setListForm] = useState<{
+    open: boolean
+    list?: ReminderList
+  }>({ open: false })
   const [listToDelete, setListToDelete] = useState<ReminderList | null>(null)
 
   return (
@@ -94,15 +99,24 @@ export function Sidebar({
                     {list.reminderCount}
                   </Badge>
                 </SidebarItem>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="absolute top-1/2 right-1.5 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100"
-                  onClick={() => setListToDelete(list)}
-                  aria-label={`${list.name} 리스트 삭제`}
-                >
-                  <Trash2Icon />
-                </Button>
+                <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 opacity-0 group-hover/item:opacity-100 focus-within:opacity-100">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => setListForm({ open: true, list })}
+                    aria-label={`${list.name} 리스트 편집`}
+                  >
+                    <PencilIcon />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => setListToDelete(list)}
+                    aria-label={`${list.name} 리스트 삭제`}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </div>
               </li>
             )
           })}
@@ -112,16 +126,19 @@ export function Sidebar({
       <Button
         variant="ghost"
         className="mt-auto justify-start"
-        onClick={() => setCreateOpen(true)}
+        onClick={() => setListForm({ open: true })}
       >
         <PlusIcon />
         리스트 추가
       </Button>
 
-      <ListCreateDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreated={(list) => onSelect({ type: "list", listId: list.id })}
+      <ListFormDialog
+        open={listForm.open}
+        onOpenChange={(open) => setListForm((prev) => ({ ...prev, open }))}
+        list={listForm.list}
+        onSaved={(list) => {
+          if (!listForm.list) onSelect({ type: "list", listId: list.id })
+        }}
       />
       <ListDeleteDialog
         list={listToDelete}

@@ -2,6 +2,7 @@ package demo.ai.demoreminder.controller;
 
 import demo.ai.demoreminder.dto.ReminderRequest;
 import demo.ai.demoreminder.dto.ReminderResponse;
+import demo.ai.demoreminder.dto.ReminderUpdateRequest;
 import demo.ai.demoreminder.service.ReminderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -44,6 +46,11 @@ public class ReminderController {
     @ResponseStatus(HttpStatus.CREATED)
     public ReminderResponse createReminder(@Valid @RequestBody ReminderRequest request) {
         return ReminderResponse.from(reminderService.createReminder(request));
+    }
+
+    @PutMapping("/{id}")
+    public ReminderResponse updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
+        return ReminderResponse.from(reminderService.updateReminder(id, request));
     }
 
     @PatchMapping("/{id}/complete")

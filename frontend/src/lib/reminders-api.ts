@@ -20,6 +20,13 @@ export type CreateReminderInput = {
   dueAt?: string | null
 }
 
+export type UpdateReminderInput = {
+  title: string
+  memo: string | null
+  dueAt: string | null
+  flagged: boolean
+}
+
 export function getReminders(listId?: number): Promise<Reminder[]> {
   const query = listId === undefined ? "" : `?listId=${listId}`
   return apiRequest<Reminder[]>(`/api/reminders${query}`)
@@ -31,6 +38,13 @@ export function getSmartReminders(view: SmartView): Promise<Reminder[]> {
 
 export function createReminder(input: CreateReminderInput): Promise<Reminder> {
   return apiRequest<Reminder>("/api/reminders", jsonBody("POST", input))
+}
+
+export function updateReminder(
+  id: number,
+  input: UpdateReminderInput
+): Promise<Reminder> {
+  return apiRequest<Reminder>(`/api/reminders/${id}`, jsonBody("PUT", input))
 }
 
 export function toggleReminderComplete(id: number): Promise<Reminder> {

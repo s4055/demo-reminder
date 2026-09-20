@@ -3,6 +3,7 @@ package demo.ai.demoreminder.service;
 import demo.ai.demoreminder.domain.Reminder;
 import demo.ai.demoreminder.domain.ReminderList;
 import demo.ai.demoreminder.dto.ReminderRequest;
+import demo.ai.demoreminder.dto.ReminderUpdateRequest;
 import demo.ai.demoreminder.repository.ReminderListRepository;
 import demo.ai.demoreminder.repository.ReminderRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -126,6 +127,44 @@ class ReminderServiceTest {
 
         assertThat(result.getDueAt()).isEqualTo(dueAt);
         assertThat(result.isFlagged()).isFalse();
+    }
+
+    @Test
+    @DisplayName("존재하는 리마인더의 제목, 메모, 마감일시, 플래그를 수정한다")
+    void updateReminder_changesEditableFields_whenReminderExists() {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, shopping, null));
+        LocalDateTime dueAt = LocalDate.now().atTime(18, 30);
+
+        Reminder result = reminderService.updateReminder(
+                saved.getId(), new ReminderUpdateRequest("계란 사기", "12구", dueAt, true));
+
+        assertThat(result.getTitle()).isEqualTo("계란 사기");
+        assertThat(result.getMemo()).isEqualTo("12구");
+        assertThat(result.getDueAt()).isEqualTo(dueAt);
+        assertThat(result.isFlagged()).isTrue();
+        assertThat(result.getList().getId()).isEqualTo(shopping.getId());
+        assertThat(reminderRepository.findById(saved.getId()).orElseThrow().getTitle()).isEqualTo("계란 사기");
+    }
+
+    @Test
+    @DisplayName("수정한 마감일시와 플래그는 스마트 뷰 조회에 반영된다")
+    void updateReminder_isReflectedInSmartViews() {
+        Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null));
+
+        reminderService.updateReminder(
+                saved.getId(), new ReminderUpdateRequest("우유 사기", null, LocalDate.now().atTime(9, 0), true));
+
+        assertThat(reminderService.getSmartReminders("today")).extracting(Reminder::getTitle).containsExactly("우유 사기");
+        assertThat(reminderService.getSmartReminders("flagged")).extracting(Reminder::getTitle).containsExactly("우유 사기");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 리마인더를 수정하면 404 예외가 발생한다")
+    void updateReminder_throwsNotFound_whenReminderDoesNotExist() {
+        assertThatThrownBy(() -> reminderService.updateReminder(-1L, new ReminderUpdateRequest("우유 사기", null, null, false)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("404");
     }
 
     @Test

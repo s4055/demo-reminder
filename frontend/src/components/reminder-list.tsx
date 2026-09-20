@@ -1,8 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { FlagIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ReminderEditDialog } from "@/components/reminder-edit-dialog"
 import { cn } from "@/lib/utils"
 import { formatDueAt, isOverdue } from "@/lib/due-date"
 import type { ReminderList as ReminderListType } from "@/lib/lists-api"
@@ -22,6 +24,11 @@ export function ReminderList({ selection }: { selection: Selection }) {
   const toggleComplete = useToggleReminderComplete()
   const toggleFlag = useToggleReminderFlag()
   const deleteReminder = useDeleteReminder()
+  // 닫힘 애니메이션 동안 폼 내용이 유지되도록 open 과 대상 리마인더를 함께 보관한다.
+  const [editing, setEditing] = useState<{
+    reminder: Reminder
+    open: boolean
+  } | null>(null)
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">불러오는 중...</p>
@@ -43,34 +50,48 @@ export function ReminderList({ selection }: { selection: Selection }) {
   const showList = selection.type === "smart"
 
   return (
-    <ul className="flex w-full flex-col gap-1">
-      {reminders.map((reminder) => (
-        <ReminderItem
-          key={reminder.id}
-          reminder={reminder}
-          list={
-            showList
-              ? lists?.find((list) => list.id === reminder.listId)
-              : undefined
+    <>
+      <ul className="flex w-full flex-col gap-1">
+        {reminders.map((reminder) => (
+          <ReminderItem
+            key={reminder.id}
+            reminder={reminder}
+            list={
+              showList
+                ? lists?.find((list) => list.id === reminder.listId)
+                : undefined
+            }
+            onEdit={() => setEditing({ reminder, open: true })}
+            onToggleComplete={() => toggleComplete.mutate(reminder.id)}
+            onToggleFlag={() => toggleFlag.mutate(reminder.id)}
+            onDelete={() => deleteReminder.mutate(reminder.id)}
+          />
+        ))}
+      </ul>
+      {editing && (
+        <ReminderEditDialog
+          open={editing.open}
+          onOpenChange={(open) =>
+            setEditing((prev) => prev && { ...prev, open })
           }
-          onToggleComplete={() => toggleComplete.mutate(reminder.id)}
-          onToggleFlag={() => toggleFlag.mutate(reminder.id)}
-          onDelete={() => deleteReminder.mutate(reminder.id)}
+          reminder={editing.reminder}
         />
-      ))}
-    </ul>
+      )}
+    </>
   )
 }
 
 function ReminderItem({
   reminder,
   list,
+  onEdit,
   onToggleComplete,
   onToggleFlag,
   onDelete,
 }: {
   reminder: Reminder
   list?: ReminderListType
+  onEdit: () => void
   onToggleComplete: () => void
   onToggleFlag: () => void
   onDelete: () => void
@@ -85,7 +106,12 @@ function ReminderItem({
         onCheckedChange={onToggleComplete}
         aria-label={`${reminder.title} 완료 처리`}
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`${reminder.title} 편집`}
+        className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 rounded-sm text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
         <span
           className={cn(
             "text-sm",
@@ -112,7 +138,12 @@ function ReminderItem({
             )}
           </span>
         )}
-      </div>
+        {reminder.memo && (
+          <span className="truncate text-xs text-muted-foreground">
+            {reminder.memo}
+          </span>
+        )}
+      </button>
       <Button
         variant="ghost"
         size="icon-sm"

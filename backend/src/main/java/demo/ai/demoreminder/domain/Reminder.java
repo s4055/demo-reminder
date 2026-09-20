@@ -56,6 +56,13 @@ public class Reminder {
         this.flagged = false;
     }
 
+    public void update(String title, String memo, LocalDateTime dueAt, boolean flagged) {
+        this.title = title;
+        this.memo = memo;
+        this.dueAt = dueAt;
+        this.flagged = flagged;
+    }
+
     public void toggleFlag() {
         this.flagged = !this.flagged;
     }

@@ -3,6 +3,7 @@ import {
   createList,
   deleteList,
   getLists,
+  updateList,
   type ReminderListInput,
 } from "@/lib/lists-api"
 
@@ -19,6 +20,17 @@ export function useCreateList() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: ReminderListInput) => createList(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listsQueryKey })
+    },
+  })
+}
+
+export function useUpdateList() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, input }: { id: number; input: ReminderListInput }) =>
+      updateList(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: listsQueryKey })
     },
