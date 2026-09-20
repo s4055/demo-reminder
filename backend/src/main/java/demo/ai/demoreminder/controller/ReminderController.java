@@ -33,6 +33,13 @@ public class ReminderController {
                 .toList();
     }
 
+    @GetMapping("/smart/{view}")
+    public List<ReminderResponse> getSmartReminders(@PathVariable String view) {
+        return reminderService.getSmartReminders(view).stream()
+                .map(ReminderResponse::from)
+                .toList();
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ReminderResponse createReminder(@Valid @RequestBody ReminderRequest request) {
@@ -42,6 +49,11 @@ public class ReminderController {
     @PatchMapping("/{id}/complete")
     public ReminderResponse toggleComplete(@PathVariable Long id) {
         return ReminderResponse.from(reminderService.toggleComplete(id));
+    }
+
+    @PatchMapping("/{id}/flag")
+    public ReminderResponse toggleFlag(@PathVariable Long id) {
+        return ReminderResponse.from(reminderService.toggleFlag(id));
     }
 
     @DeleteMapping("/{id}")

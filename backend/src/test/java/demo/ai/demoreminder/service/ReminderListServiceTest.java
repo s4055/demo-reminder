@@ -36,9 +36,9 @@ class ReminderListServiceTest {
     void getLists_includesIncompleteReminderCountPerList() {
         ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
         ReminderList work = reminderListRepository.save(new ReminderList("업무", null));
-        reminderRepository.save(new Reminder("우유 사기", null, shopping));
-        reminderRepository.save(new Reminder("계란 사기", null, shopping));
-        Reminder done = reminderRepository.save(new Reminder("빵 사기", null, shopping));
+        reminderRepository.save(new Reminder("우유 사기", null, shopping, null));
+        reminderRepository.save(new Reminder("계란 사기", null, shopping, null));
+        Reminder done = reminderRepository.save(new Reminder("빵 사기", null, shopping, null));
         done.toggleComplete();
 
         List<ReminderListSummary> result = reminderListService.getLists();
@@ -69,7 +69,7 @@ class ReminderListServiceTest {
     @DisplayName("리스트의 이름과 색상을 수정한다")
     void updateList_changesNameAndColor() {
         ReminderList saved = reminderListRepository.save(new ReminderList("장보기", "#FF9500"));
-        reminderRepository.save(new Reminder("우유 사기", null, saved));
+        reminderRepository.save(new Reminder("우유 사기", null, saved, null));
 
         ReminderListSummary result = reminderListService.updateList(saved.getId(), new ReminderListRequest("업무", "#007AFF"));
 
@@ -91,8 +91,8 @@ class ReminderListServiceTest {
     void deleteList_deletesRemindersOfListOnly() {
         ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
         ReminderList work = reminderListRepository.save(new ReminderList("업무", null));
-        Reminder milk = reminderRepository.save(new Reminder("우유 사기", null, shopping));
-        Reminder report = reminderRepository.save(new Reminder("보고서 작성", null, work));
+        Reminder milk = reminderRepository.save(new Reminder("우유 사기", null, shopping, null));
+        Reminder report = reminderRepository.save(new Reminder("보고서 작성", null, work, null));
 
         reminderListService.deleteList(shopping.getId());
 

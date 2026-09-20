@@ -32,6 +32,10 @@ public class Reminder {
 
     private boolean completed;
 
+    private boolean flagged;
+
+    private LocalDateTime dueAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "list_id")
     private ReminderList list;
@@ -43,11 +47,17 @@ public class Reminder {
     @UpdateTimestamp(source = SourceType.DB)
     private LocalDateTime updatedAt;
 
-    public Reminder(String title, String memo, ReminderList list) {
+    public Reminder(String title, String memo, ReminderList list, LocalDateTime dueAt) {
         this.title = title;
         this.memo = memo;
         this.list = list;
+        this.dueAt = dueAt;
         this.completed = false;
+        this.flagged = false;
+    }
+
+    public void toggleFlag() {
+        this.flagged = !this.flagged;
     }
 
     public void toggleComplete() {

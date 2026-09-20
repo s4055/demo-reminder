@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -20,6 +21,7 @@ import java.util.List;
 public class ReminderService {
 
     private static final Sort DEFAULT_SORT = Sort.by("id");
+    private static final Sort DUE_DATE_SORT = Sort.by("dueAt", "id");
 
     private final ReminderRepository reminderRepository;
     private final ReminderListRepository reminderListRepository;
@@ -31,10 +33,24 @@ public class ReminderService {
         return reminderRepository.findByListId(listId, DEFAULT_SORT);
     }
 
+    public List<Reminder> getSmartReminders(String view) {
+        return switch (SmartView.from(view)) {
+            case TODAY -> {
+                LocalDate today = LocalDate.now();
+                yield reminderRepository.findByCompletedFalseAndDueAtGreaterThanEqualAndDueAtLessThan(
+                        today.atStartOfDay(), today.plusDays(1).atStartOfDay(), DUE_DATE_SORT);
+            }
+            case SCHEDULED -> reminderRepository.findByCompletedFalseAndDueAtIsNotNull(DUE_DATE_SORT);
+            case ALL -> reminderRepository.findByCompletedFalse(DEFAULT_SORT);
+            case FLAGGED -> reminderRepository.findByCompletedFalseAndFlaggedTrue(DEFAULT_SORT);
+            case COMPLETED -> reminderRepository.findByCompletedTrue(DEFAULT_SORT);
+        };
+    }
+
     @Transactional
     public Reminder createReminder(ReminderRequest request) {
         ReminderList list = request.listId() == null ? null : findListOrThrow(request.listId());
-        Reminder reminder = new Reminder(request.title(), request.memo(), list);
+        Reminder reminder = new Reminder(request.title(), request.memo(), list, request.dueAt());
         return reminderRepository.save(reminder);
     }
 
@@ -42,6 +58,13 @@ public class ReminderService {
     public Reminder toggleComplete(Long id) {
         Reminder reminder = findReminderOrThrow(id);
         reminder.toggleComplete();
+        return reminder;
+    }
+
+    @Transactional
+    public Reminder toggleFlag(Long id) {
+        Reminder reminder = findReminderOrThrow(id);
+        reminder.toggleFlag();
         return reminder;
     }
 

@@ -9,6 +9,8 @@ public record ReminderResponse(
         String title,
         String memo,
         boolean completed,
+        boolean flagged,
+        LocalDateTime dueAt,
         Long listId,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -20,6 +22,8 @@ public record ReminderResponse(
                 reminder.getTitle(),
                 reminder.getMemo(),
                 reminder.isCompleted(),
+                reminder.isFlagged(),
+                reminder.getDueAt(),
                 reminder.getList() != null ? reminder.getList().getId() : null,
                 reminder.getCreatedAt(),
                 reminder.getUpdatedAt()

@@ -1,7 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { InboxIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import {
+  CalendarCheckIcon,
+  CalendarClockIcon,
+  CheckCircle2Icon,
+  FlagIcon,
+  InboxIcon,
+  PlusIcon,
+  Trash2Icon,
+  type LucideIcon,
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ListCreateDialog } from "@/components/list-create-dialog"
@@ -9,11 +18,21 @@ import { ListDeleteDialog } from "@/components/list-delete-dialog"
 import { useLists } from "@/hooks/use-lists"
 import type { ReminderList } from "@/lib/lists-api"
 import {
-  ALL_SELECTION,
+  DEFAULT_SELECTION,
+  SMART_VIEWS,
   isSameSelection,
   type Selection,
+  type SmartView,
 } from "@/lib/selection"
 import { cn } from "@/lib/utils"
+
+const SMART_VIEW_ICONS: Record<SmartView, LucideIcon> = {
+  today: CalendarCheckIcon,
+  scheduled: CalendarClockIcon,
+  all: InboxIcon,
+  flagged: FlagIcon,
+  completed: CheckCircle2Icon,
+}
 
 export function Sidebar({
   selection,
@@ -29,13 +48,20 @@ export function Sidebar({
   return (
     <aside className="flex w-64 shrink-0 flex-col gap-4 border-r border-border bg-muted/30 p-3">
       <nav className="flex flex-col gap-0.5">
-        <SidebarItem
-          active={isSameSelection(selection, ALL_SELECTION)}
-          onClick={() => onSelect(ALL_SELECTION)}
-        >
-          <InboxIcon className="size-4 text-muted-foreground" />
-          <span className="flex-1 truncate">전체</span>
-        </SidebarItem>
+        {SMART_VIEWS.map(({ view, label }) => {
+          const Icon = SMART_VIEW_ICONS[view]
+          const smartSelection: Selection = { type: "smart", view }
+          return (
+            <SidebarItem
+              key={view}
+              active={isSameSelection(selection, smartSelection)}
+              onClick={() => onSelect(smartSelection)}
+            >
+              <Icon className="size-4 text-muted-foreground" />
+              <span className="flex-1 truncate">{label}</span>
+            </SidebarItem>
+          )
+        })}
       </nav>
 
       <section className="flex flex-col gap-1">
@@ -104,7 +130,7 @@ export function Sidebar({
         }}
         onDeleted={(list) => {
           if (selection.type === "list" && selection.listId === list.id) {
-            onSelect(ALL_SELECTION)
+            onSelect(DEFAULT_SELECTION)
           }
         }}
       />

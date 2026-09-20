@@ -60,27 +60,27 @@
 
 ## Phase 3 — 마감일/플래그 + 스마트 리스트
 ### 백엔드
-- [ ] `Reminder`에 `dueAt`(LocalDateTime, nullable), `flagged`(boolean) 필드 추가
-- [ ] `ReminderService`에 스마트 뷰 조회/플래그 토글 로직 추가
-- [ ] `GET /api/reminders/smart/{view}` 구현
-  - [ ] `today` — 마감일이 오늘인 미완료
-  - [ ] `scheduled` — 마감일이 설정된 모든 미완료
-  - [ ] `all` — 모든 미완료
-  - [ ] `flagged` — flagged=true 인 미완료
-  - [ ] `completed` — completed=true
-- [ ] `PATCH /api/reminders/{id}/flag` 추가
-- [ ] 생성/수정 API에 `dueAt` 필드 반영
+- [x] `Reminder`에 `dueAt`(LocalDateTime, nullable), `flagged`(boolean) 필드 추가
+- [x] `ReminderService`에 스마트 뷰 조회/플래그 토글 로직 추가
+- [x] `GET /api/reminders/smart/{view}` 구현
+  - [x] `today` — 마감일이 오늘인 미완료
+  - [x] `scheduled` — 마감일이 설정된 모든 미완료
+  - [x] `all` — 모든 미완료
+  - [x] `flagged` — flagged=true 인 미완료
+  - [x] `completed` — completed=true
+- [x] `PATCH /api/reminders/{id}/flag` 추가
+- [x] 생성/수정 API에 `dueAt` 필드 반영
 
 ### 프론트엔드
-- [ ] 사이드바 상단 스마트 리스트 메뉴 추가 (오늘/예정됨/전체/플래그 지정됨/완료됨)
-- [ ] 리마인더 항목에 마감일 표시 (date-fns 포맷)
-- [ ] 리마인더 항목에 플래그 아이콘 + 토글 인터랙션
-- [ ] 생성 폼에 날짜/시간 선택 UI 추가 (shadcn `Popover` + `Calendar`)
-- [ ] 스마트 뷰 선택 상태 관리 및 API 연동
+- [x] 사이드바 상단 스마트 리스트 메뉴 추가 (오늘/예정됨/전체/플래그 지정됨/완료됨)
+- [x] 리마인더 항목에 마감일 표시 (date-fns 포맷)
+- [x] 리마인더 항목에 플래그 아이콘 + 토글 인터랙션
+- [x] 생성 폼에 날짜/시간 선택 UI 추가 (shadcn `Popover` + `Calendar`)
+- [x] 스마트 뷰 선택 상태 관리 및 API 연동
 
 ### 완료 기준 검증
-- [ ] 오늘 날짜로 마감일 설정 시 "오늘" 뷰에 노출 확인
-- [ ] 플래그 토글 시 "플래그 지정됨" 뷰에 즉시 반영 확인
+- [x] 오늘 날짜로 마감일 설정 시 "오늘" 뷰에 노출 확인
+- [x] 플래그 토글 시 "플래그 지정됨" 뷰에 즉시 반영 확인
 
 ## Phase 4 — 리마인더 상세 편집 + 리스트 관리 고도화
 ### 백엔드

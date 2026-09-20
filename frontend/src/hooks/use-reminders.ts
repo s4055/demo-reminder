@@ -3,7 +3,9 @@ import {
   createReminder,
   deleteReminder,
   getReminders,
+  getSmartReminders,
   toggleReminderComplete,
+  toggleReminderFlag,
   type CreateReminderInput,
 } from "@/lib/reminders-api"
 import { listsQueryKey } from "@/hooks/use-lists"
@@ -15,7 +17,9 @@ export function useReminders(selection: Selection) {
   return useQuery({
     queryKey: [...remindersQueryKey, selection],
     queryFn: () =>
-      getReminders(selection.type === "list" ? selection.listId : undefined),
+      selection.type === "list"
+        ? getReminders(selection.listId)
+        : getSmartReminders(selection.view),
   })
 }
 
@@ -40,6 +44,14 @@ export function useToggleReminderComplete() {
   const invalidate = useInvalidateReminderQueries()
   return useMutation({
     mutationFn: (id: number) => toggleReminderComplete(id),
+    onSuccess: invalidate,
+  })
+}
+
+export function useToggleReminderFlag() {
+  const invalidate = useInvalidateReminderQueries()
+  return useMutation({
+    mutationFn: (id: number) => toggleReminderFlag(id),
     onSuccess: invalidate,
   })
 }
