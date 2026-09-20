@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import { format, set } from "date-fns"
 import { CalendarIcon, XIcon } from "lucide-react"
 import { ko } from "react-day-picker/locale"
@@ -22,6 +23,8 @@ export function DueDatePicker({
   value: Date | undefined
   onChange: (value: Date | undefined) => void
 }) {
+  const timeInputId = useId()
+
   function handleDaySelect(day: Date | undefined) {
     if (!day) {
       onChange(undefined)
@@ -61,11 +64,14 @@ export function DueDatePicker({
             autoFocus
           />
           <div className="flex items-center gap-2 border-t border-border px-3 py-2">
-            <label htmlFor="due-time" className="text-xs text-muted-foreground">
+            <label
+              htmlFor={timeInputId}
+              className="text-xs text-muted-foreground"
+            >
               시간
             </label>
             <Input
-              id="due-time"
+              id={timeInputId}
               type="time"
               disabled={!value}
               value={value ? format(value, "HH:mm") : ""}

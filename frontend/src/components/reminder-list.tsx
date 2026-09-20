@@ -1,15 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { FlagIcon } from "lucide-react"
+import { ClipboardListIcon, FlagIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ReminderEditDialog } from "@/components/reminder-edit-dialog"
 import { cn } from "@/lib/utils"
 import { formatDueAt, isOverdue } from "@/lib/due-date"
 import type { ReminderList as ReminderListType } from "@/lib/lists-api"
 import type { Reminder } from "@/lib/reminders-api"
-import type { Selection } from "@/lib/selection"
+import { emptyMessage, type Selection } from "@/lib/selection"
 import { useLists } from "@/hooks/use-lists"
 import {
   useDeleteReminder,
@@ -18,8 +19,23 @@ import {
   useToggleReminderFlag,
 } from "@/hooks/use-reminders"
 
+// 미완료 항목은 서버가 준 순서(생성순)를 유지하고, 완료 항목은 아래에 완료(수정) 시각 최신순으로 둔다.
+function sortForDisplay(reminders: Reminder[]): Reminder[] {
+  const byRecentUpdate = (a: Reminder, b: Reminder) =>
+    Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
+  return [
+    ...reminders.filter((reminder) => !reminder.completed),
+    ...reminders.filter((reminder) => reminder.completed).sort(byRecentUpdate),
+  ]
+}
+
 export function ReminderList({ selection }: { selection: Selection }) {
-  const { data: reminders, isLoading, isError } = useReminders(selection)
+  const {
+    data: reminders,
+    isLoading,
+    isError,
+    refetch,
+  } = useReminders(selection)
   const { data: lists } = useLists()
   const toggleComplete = useToggleReminderComplete()
   const toggleFlag = useToggleReminderFlag()
@@ -31,19 +47,40 @@ export function ReminderList({ selection }: { selection: Selection }) {
   } | null>(null)
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">불러오는 중...</p>
+    return (
+      <div
+        className="flex w-full flex-col gap-1"
+        aria-label="리마인더 불러오는 중"
+      >
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    )
   }
 
   if (isError) {
     return (
-      <p className="text-sm text-destructive">
-        리마인더 목록을 불러오지 못했습니다.
-      </p>
+      <div className="flex flex-col items-start gap-2">
+        <p className="text-sm text-destructive">
+          리마인더 목록을 불러오지 못했습니다.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          다시 시도
+        </Button>
+      </div>
     )
   }
 
   if (!reminders || reminders.length === 0) {
-    return <p className="text-sm text-muted-foreground">리마인더가 없습니다.</p>
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-12 text-center">
+        <ClipboardListIcon className="size-8 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          {emptyMessage(selection)}
+        </p>
+      </div>
+    )
   }
 
   // 스마트 뷰에서는 여러 리스트의 항목이 섞이므로 소속 리스트를 함께 보여준다.
@@ -52,7 +89,7 @@ export function ReminderList({ selection }: { selection: Selection }) {
   return (
     <>
       <ul className="flex w-full flex-col gap-1">
-        {reminders.map((reminder) => (
+        {sortForDisplay(reminders).map((reminder) => (
           <ReminderItem
             key={reminder.id}
             reminder={reminder}

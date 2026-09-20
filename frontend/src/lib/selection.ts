@@ -18,6 +18,22 @@ export function smartViewLabel(view: SmartView): string {
   return SMART_VIEWS.find((item) => item.view === view)?.label ?? view
 }
 
+export function emptyMessage(selection: Selection): string {
+  if (selection.type === "list") return "이 리스트에 리마인더가 없습니다."
+  switch (selection.view) {
+    case "today":
+      return "오늘 마감인 리마인더가 없습니다."
+    case "scheduled":
+      return "마감일이 설정된 리마인더가 없습니다."
+    case "flagged":
+      return "플래그 지정된 리마인더가 없습니다."
+    case "completed":
+      return "완료된 리마인더가 없습니다."
+    default:
+      return "리마인더가 없습니다."
+  }
+}
+
 export function isSameSelection(a: Selection, b: Selection): boolean {
   if (a.type === "list" && b.type === "list") return a.listId === b.listId
   if (a.type === "smart" && b.type === "smart") return a.view === b.view

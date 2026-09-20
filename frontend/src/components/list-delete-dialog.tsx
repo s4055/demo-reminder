@@ -49,9 +49,6 @@ export function ListDeleteDialog({
             리스트에 속한 모든 리마인더도 함께 삭제되며 되돌릴 수 없습니다.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {deleteList.isError && (
-          <p className="text-sm text-destructive">리스트를 삭제하지 못했습니다.</p>
-        )}
         <AlertDialogFooter>
           <AlertDialogCancel>취소</AlertDialogCancel>
           <AlertDialogAction

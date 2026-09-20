@@ -133,11 +133,6 @@ function ReminderEditForm({
         />
         <Label htmlFor="reminder-flagged">플래그 지정</Label>
       </div>
-      {updateReminder.isError && (
-        <p className="text-sm text-destructive">
-          리마인더를 저장하지 못했습니다.
-        </p>
-      )}
       <DialogFooter>
         <Button type="submit" disabled={updateReminder.isPending}>
           저장
