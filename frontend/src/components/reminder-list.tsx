@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import type { Reminder } from "@/lib/reminders-api"
+import type { Selection } from "@/lib/selection"
 import {
   useDeleteReminder,
   useReminders,
   useToggleReminderComplete,
 } from "@/hooks/use-reminders"
 
-export function ReminderList() {
-  const { data: reminders, isLoading, isError } = useReminders()
+export function ReminderList({ selection }: { selection: Selection }) {
+  const { data: reminders, isLoading, isError } = useReminders(selection)
   const toggleComplete = useToggleReminderComplete()
   const deleteReminder = useDeleteReminder()
 

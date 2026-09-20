@@ -1,22 +1,118 @@
 openapi: 3.0.3
 info:
   title: demoreminder API
-  description: Apple Reminders 웹 클론 (demoreminder) 백엔드 API. 현재는 Phase 1(단일 리마인더 목록) 범위만 포함한다.
+  description: Apple Reminders 웹 클론 (demoreminder) 백엔드 API. 현재는 Phase 2(리스트 기능)까지의 범위를 포함한다.
   version: "1.0.0"
 servers:
   - url: http://localhost:8080
     description: 로컬 개발 서버
 
 tags:
+  - name: Lists
+    description: 리스트 조회/생성/수정/삭제
   - name: Reminders
     description: 리마인더 조회/생성/완료 토글/삭제
 
 paths:
+  /api/lists:
+    get:
+      tags: [Lists]
+      summary: 리스트 전체 조회 (미완료 리마인더 개수 포함)
+      operationId: getLists
+      responses:
+        "200":
+          description: 리스트 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReminderListResponse"
+    post:
+      tags: [Lists]
+      summary: 리스트 생성
+      operationId: createList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderListRequest"
+      responses:
+        "201":
+          description: 생성된 리스트
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderListResponse"
+        "400":
+          description: 유효성 검증 실패 (name 누락, color 형식 오류 등)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/lists/{id}:
+    put:
+      tags: [Lists]
+      summary: 리스트 이름/색상 수정
+      operationId: updateList
+      parameters:
+        - $ref: "#/components/parameters/ListId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderListRequest"
+      responses:
+        "200":
+          description: 수정된 리스트
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderListResponse"
+        "400":
+          description: 유효성 검증 실패
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 리스트를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Lists]
+      summary: 리스트 삭제 (소속 리마인더도 함께 삭제)
+      operationId: deleteList
+      parameters:
+        - $ref: "#/components/parameters/ListId"
+      responses:
+        "204":
+          description: 삭제 성공
+        "404":
+          description: 리스트를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/reminders:
     get:
       tags: [Reminders]
       summary: 리마인더 전체 조회
       operationId: getReminders
+      parameters:
+        - name: listId
+          in: query
+          required: false
+          description: 지정하면 해당 리스트에 소속된 리마인더만 조회한다. 생략하면 전체를 조회한다.
+          schema:
+            type: integer
+            format: int64
       responses:
         "200":
           description: 리마인더 목록
@@ -45,6 +141,12 @@ paths:
                 $ref: "#/components/schemas/ReminderResponse"
         "400":
           description: 유효성 검증 실패 (title 누락 등)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: listId에 해당하는 리스트를 찾을 수 없음
           content:
             application/json:
               schema:
@@ -90,6 +192,14 @@ paths:
 
 components:
   parameters:
+    ListId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
     ReminderId:
       name: id
       in: path
@@ -111,6 +221,11 @@ components:
           type: string
           nullable: true
           example: 저지방
+        listId:
+          type: integer
+          format: int64
+          nullable: true
+          description: 소속 리스트 ID. 생략하면 리스트 없이 생성된다.
 
     ReminderResponse:
       type: object
@@ -125,10 +240,47 @@ components:
           nullable: true
         completed:
           type: boolean
+        listId:
+          type: integer
+          format: int64
+          nullable: true
         createdAt:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+
+    ReminderListRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: 장보기
+        color:
+          type: string
+          nullable: true
+          pattern: "^#[0-9a-fA-F]{6}$"
+          example: "#FF9500"
+
+    ReminderListResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        color:
+          type: string
+          nullable: true
+        reminderCount:
+          type: integer
+          format: int64
+          description: 리스트에 속한 미완료 리마인더 개수
+        createdAt:
           type: string
           format: date-time
 

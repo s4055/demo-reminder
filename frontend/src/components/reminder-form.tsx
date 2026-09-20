@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCreateReminder } from "@/hooks/use-reminders"
 
-export function ReminderForm() {
+export function ReminderForm({ listId }: { listId?: number }) {
   const [title, setTitle] = useState("")
   const createReminder = useCreateReminder()
 
@@ -16,7 +16,7 @@ export function ReminderForm() {
     if (!trimmedTitle) return
 
     createReminder.mutate(
-      { title: trimmedTitle },
+      { title: trimmedTitle, listId },
       { onSuccess: () => setTitle("") }
     )
   }

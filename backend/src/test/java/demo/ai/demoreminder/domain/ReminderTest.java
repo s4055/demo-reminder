@@ -10,7 +10,7 @@ class ReminderTest {
     @Test
     @DisplayName("생성자로 만들면 제목과 메모가 설정되고 미완료 상태다")
     void constructor_setsTitleAndMemo_andDefaultsToIncomplete() {
-        Reminder reminder = new Reminder("우유 사기", "저지방");
+        Reminder reminder = new Reminder("우유 사기", "저지방", null);
 
         assertThat(reminder.getTitle()).isEqualTo("우유 사기");
         assertThat(reminder.getMemo()).isEqualTo("저지방");
@@ -20,7 +20,7 @@ class ReminderTest {
     @Test
     @DisplayName("메모 없이도 생성할 수 있다")
     void constructor_allowsNullMemo() {
-        Reminder reminder = new Reminder("우유 사기", null);
+        Reminder reminder = new Reminder("우유 사기", null, null);
 
         assertThat(reminder.getMemo()).isNull();
     }
@@ -28,7 +28,7 @@ class ReminderTest {
     @Test
     @DisplayName("생성 직후에는 생성일과 수정일이 비어있다")
     void constructor_leavesTimestampsNullUntilPersisted() {
-        Reminder reminder = new Reminder("우유 사기", null);
+        Reminder reminder = new Reminder("우유 사기", null, null);
 
         assertThat(reminder.getCreatedAt()).isNull();
         assertThat(reminder.getUpdatedAt()).isNull();
@@ -37,7 +37,7 @@ class ReminderTest {
     @Test
     @DisplayName("toggleComplete를 호출하면 완료 상태가 반전된다")
     void toggleComplete_flipsCompletedState() {
-        Reminder reminder = new Reminder("우유 사기", null);
+        Reminder reminder = new Reminder("우유 사기", null, null);
 
         reminder.toggleComplete();
 
@@ -47,7 +47,7 @@ class ReminderTest {
     @Test
     @DisplayName("toggleComplete를 두 번 호출하면 원래 상태로 돌아온다")
     void toggleComplete_calledTwice_restoresOriginalState() {
-        Reminder reminder = new Reminder("우유 사기", null);
+        Reminder reminder = new Reminder("우유 사기", null, null);
 
         reminder.toggleComplete();
         reminder.toggleComplete();

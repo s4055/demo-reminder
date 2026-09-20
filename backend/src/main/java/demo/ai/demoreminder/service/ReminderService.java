@@ -1,9 +1,12 @@
 package demo.ai.demoreminder.service;
 
 import demo.ai.demoreminder.domain.Reminder;
+import demo.ai.demoreminder.domain.ReminderList;
 import demo.ai.demoreminder.dto.ReminderRequest;
+import demo.ai.demoreminder.repository.ReminderListRepository;
 import demo.ai.demoreminder.repository.ReminderRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,15 +19,22 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ReminderService {
 
-    private final ReminderRepository reminderRepository;
+    private static final Sort DEFAULT_SORT = Sort.by("id");
 
-    public List<Reminder> getReminders() {
-        return reminderRepository.findAll();
+    private final ReminderRepository reminderRepository;
+    private final ReminderListRepository reminderListRepository;
+
+    public List<Reminder> getReminders(Long listId) {
+        if (listId == null) {
+            return reminderRepository.findAll(DEFAULT_SORT);
+        }
+        return reminderRepository.findByListId(listId, DEFAULT_SORT);
     }
 
     @Transactional
     public Reminder createReminder(ReminderRequest request) {
-        Reminder reminder = new Reminder(request.title(), request.memo());
+        ReminderList list = request.listId() == null ? null : findListOrThrow(request.listId());
+        Reminder reminder = new Reminder(request.title(), request.memo(), list);
         return reminderRepository.save(reminder);
     }
 
@@ -41,6 +51,11 @@ public class ReminderService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reminder not found: " + id);
         }
         reminderRepository.deleteById(id);
+    }
+
+    private ReminderList findListOrThrow(Long listId) {
+        return reminderListRepository.findById(listId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "List not found: " + listId));
     }
 
     private Reminder findReminderOrThrow(Long id) {

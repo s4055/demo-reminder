@@ -36,27 +36,27 @@
 
 ## Phase 2 — 리스트(List) 기능 추가
 ### 백엔드
-- [ ] `List` 엔티티 작성 (id, name, color, createdAt)
-- [ ] `Reminder`에 `listId` FK(연관관계) 추가 + 마이그레이션 확인(H2 `ddl-auto: update`)
-- [ ] `ListRepository` 작성
-- [ ] `ListService` 작성
-- [ ] `ListController` 작성
-  - [ ] `GET /api/lists` (리마인더 개수 포함)
-  - [ ] `POST /api/lists`
-  - [ ] `PUT /api/lists/{id}`
-  - [ ] `DELETE /api/lists/{id}` (cascade로 소속 리마인더 삭제)
-- [ ] `GET /api/reminders?listId=` 쿼리 파라미터 지원
+- [x] `List` 엔티티 작성 (id, name, color, createdAt)
+- [x] `Reminder`에 `listId` FK(연관관계) 추가 + 마이그레이션 확인(H2 `ddl-auto: update`)
+- [x] `ListRepository` 작성
+- [x] `ListService` 작성
+- [x] `ListController` 작성
+  - [x] `GET /api/lists` (리마인더 개수 포함)
+  - [x] `POST /api/lists`
+  - [x] `PUT /api/lists/{id}`
+  - [x] `DELETE /api/lists/{id}` (cascade로 소속 리마인더 삭제)
+- [x] `GET /api/reminders?listId=` 쿼리 파라미터 지원
 
 ### 프론트엔드
-- [ ] 좌측 사이드바 레이아웃 컴포넌트 추가
-- [ ] 리스트 생성 UI (다이얼로그/인풋)
-- [ ] 리스트 삭제 UI (확인 포함)
-- [ ] 사이드바 리스트 클릭 시 해당 리마인더만 조회하도록 상태 관리(선택된 listId)
-- [ ] 사이드바에 리스트별 리마인더 개수 뱃지 표시
+- [x] 좌측 사이드바 레이아웃 컴포넌트 추가
+- [x] 리스트 생성 UI (다이얼로그/인풋)
+- [x] 리스트 삭제 UI (확인 포함)
+- [x] 사이드바 리스트 클릭 시 해당 리마인더만 조회하도록 상태 관리(선택된 listId)
+- [x] 사이드바에 리스트별 리마인더 개수 뱃지 표시
 
 ### 완료 기준 검증
-- [ ] 리스트 생성 후 리마인더를 해당 리스트에 추가
-- [ ] 사이드바에서 리스트 선택 시 해당 리마인더만 노출되는지 확인
+- [x] 리스트 생성 후 리마인더를 해당 리스트에 추가
+- [x] 사이드바에서 리스트 선택 시 해당 리마인더만 노출되는지 확인
 
 ## Phase 3 — 마감일/플래그 + 스마트 리스트
 ### 백엔드
