@@ -1,3 +1,10 @@
+/**
+ * API 연동을 useMutation, useQuery, useQueryClient 감싼 파일
+ * - useMutation: 서버 데이터를 변경(생성/수정/삭제)하는 훅
+ * - useQuery: 서버 데이터를 조회(읽기)하고, 그 결과를 자동으로 캐싱-재사용하는 훅
+ * - useQueryClient: 현재 앱 전역의 QueryClient 인스턴스(모든 쿼리 캐시를 관리하는 중앙 저장소)에 접근하기 위한 훅
+ */
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   createReminder,
@@ -10,10 +17,8 @@ import {
   type CreateReminderInput,
   type UpdateReminderInput,
 } from "@/lib/reminders-api"
-import { listsQueryKey } from "@/hooks/use-lists"
+import { listsQueryKey, remindersQueryKey } from "@/hooks/query-keys"
 import type { Selection } from "@/lib/selection"
-
-const remindersQueryKey = ["reminders"] as const
 
 export function useReminders(selection: Selection) {
   return useQuery({
@@ -29,8 +34,8 @@ export function useReminders(selection: Selection) {
 function useInvalidateReminderQueries() {
   const queryClient = useQueryClient()
   return () => {
-    queryClient.invalidateQueries({ queryKey: remindersQueryKey })
-    queryClient.invalidateQueries({ queryKey: listsQueryKey })
+    queryClient.invalidateQueries({ queryKey: remindersQueryKey }) // 쿼리 캐시 무효화
+    queryClient.invalidateQueries({ queryKey: listsQueryKey }) // 쿼리 캐시 무효화
   }
 }
 
