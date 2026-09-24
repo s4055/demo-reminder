@@ -15,6 +15,7 @@ export async function apiRequest<T>(
   return response.json() as Promise<T>
 }
 
+// POST, PUT 요청 시 Request Boby 생성
 export function jsonBody(method: "POST" | "PUT", body: unknown): RequestInit {
   return {
     method,
