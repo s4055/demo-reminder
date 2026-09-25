@@ -1,5 +1,6 @@
 package demo.ai.reminder.controller;
 
+import demo.ai.reminder.common.ApiResponse;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderResponse;
 import demo.ai.reminder.dto.ReminderUpdateRequest;
@@ -29,43 +30,43 @@ public class ReminderController {
     private final ReminderService reminderService;
 
     @GetMapping
-    public List<ReminderResponse> getReminders(@RequestParam(required = false) Long listId) {
-        return reminderService.getReminders(listId).stream()
+    public ApiResponse<List<ReminderResponse>> getReminders(@RequestParam(required = false) Long listId) {
+        return ApiResponse.success(reminderService.getReminders(listId).stream()
                 .map(ReminderResponse::from)
-                .toList();
+                .toList());
     }
 
     @GetMapping("/smart/{view}")
-    public List<ReminderResponse> getSmartReminders(@PathVariable String view) {
-        return reminderService.getSmartReminders(view).stream()
+    public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable String view) {
+        return ApiResponse.success(reminderService.getSmartReminders(view).stream()
                 .map(ReminderResponse::from)
-                .toList();
+                .toList());
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ReminderResponse createReminder(@Valid @RequestBody ReminderRequest request) {
-        return ReminderResponse.from(reminderService.createReminder(request));
+    public ApiResponse<ReminderResponse> createReminder(@Valid @RequestBody ReminderRequest request) {
+        return ApiResponse.success(ReminderResponse.from(reminderService.createReminder(request)));
     }
 
     @PutMapping("/{id}")
-    public ReminderResponse updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
-        return ReminderResponse.from(reminderService.updateReminder(id, request));
+    public ApiResponse<ReminderResponse> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
+        return ApiResponse.success(ReminderResponse.from(reminderService.updateReminder(id, request)));
     }
 
     @PatchMapping("/{id}/complete")
-    public ReminderResponse toggleComplete(@PathVariable Long id) {
-        return ReminderResponse.from(reminderService.toggleComplete(id));
+    public ApiResponse<ReminderResponse> toggleComplete(@PathVariable Long id) {
+        return ApiResponse.success(ReminderResponse.from(reminderService.toggleComplete(id)));
     }
 
     @PatchMapping("/{id}/flag")
-    public ReminderResponse toggleFlag(@PathVariable Long id) {
-        return ReminderResponse.from(reminderService.toggleFlag(id));
+    public ApiResponse<ReminderResponse> toggleFlag(@PathVariable Long id) {
+        return ApiResponse.success(ReminderResponse.from(reminderService.toggleFlag(id)));
     }
 
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteReminder(@PathVariable Long id) {
+    public ApiResponse<Void> deleteReminder(@PathVariable Long id) {
         reminderService.deleteReminder(id);
+        return ApiResponse.success();
     }
 }
