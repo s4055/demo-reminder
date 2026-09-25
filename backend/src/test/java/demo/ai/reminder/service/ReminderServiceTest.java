@@ -130,6 +130,32 @@ class ReminderServiceTest {
     }
 
     @Test
+    @DisplayName("리마인더를 생성하면 JPA Auditing이 생성일과 수정일을 채운다")
+    void createReminder_fillsCreatedAtAndUpdatedAt() {
+        LocalDateTime before = LocalDateTime.now();
+
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null));
+
+        assertThat(result.getCreatedAt()).isNotNull().isAfterOrEqualTo(before);
+        assertThat(result.getUpdatedAt()).isNotNull().isAfterOrEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("리마인더를 수정하면 수정일은 갱신되고 생성일은 유지된다")
+    void updateReminder_refreshesUpdatedAt_andKeepsCreatedAt() {
+        Reminder saved = reminderRepository.saveAndFlush(new Reminder("우유 사기", null, null, null));
+        LocalDateTime createdAt = saved.getCreatedAt();
+        LocalDateTime updatedAt = saved.getUpdatedAt();
+
+        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("계란 사기", null, null, false));
+        reminderRepository.flush();
+
+        Reminder result = reminderRepository.findById(saved.getId()).orElseThrow();
+        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(result.getUpdatedAt()).isAfter(updatedAt);
+    }
+
+    @Test
     @DisplayName("존재하는 리마인더의 제목, 메모, 마감일시, 플래그를 수정한다")
     void updateReminder_changesEditableFields_whenReminderExists() {
         ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));

@@ -6,6 +6,7 @@ export type ReminderList = {
   color: string | null
   reminderCount: number
   createdAt: string
+  updatedAt: string
 }
 
 export type ReminderListInput = {

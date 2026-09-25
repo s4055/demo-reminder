@@ -8,15 +8,11 @@ import jakarta.persistence.Id;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.SourceType;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ReminderList {
+public class ReminderList extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,10 +22,6 @@ public class ReminderList {
     private String name;
 
     private String color;
-
-    @CreationTimestamp(source = SourceType.DB)
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
 
     public ReminderList(String name, String color) {
         this.name = name;
