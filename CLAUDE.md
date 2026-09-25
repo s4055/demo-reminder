@@ -18,6 +18,7 @@
 ### 요청/응답 DTO
 
 - 컨트롤러의 요청/응답 객체는 순수 DTO여야 한다. Lombok getter/setter 클래스가 아니라 불변 Java `record`로 작성한다.
+- 모든 API 응답은 `common.ApiResponse`(`resultCode`, `resultMsg`, `data`)로 감싼다. 컨트롤러는 `ApiResponse.success(...)`를 반환하고(본문 없는 경우 `ApiResponse.success()`, 204 대신 200), 오류는 예외를 던져 `GlobalExceptionHandler`가 `ResultCode`로 변환하게 한다.
 
 ### API 명세
 

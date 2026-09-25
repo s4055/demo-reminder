@@ -1,7 +1,11 @@
 openapi: 3.0.3
 info:
   title: demoreminder API
-  description: Apple Reminders 웹 클론 (demoreminder) 백엔드 API. 현재는 Phase 4(리마인더 상세 편집, 리스트 수정)까지의 범위를 포함한다.
+  description: |
+    Apple Reminders 웹 클론 (demoreminder) 백엔드 API. 현재는 Phase 4(리마인더 상세 편집, 리스트 수정)까지의 범위를 포함한다.
+
+    모든 응답(성공/실패)은 `{ resultCode, resultMsg, data }` 형태다. 성공 시 `resultCode`는 `SUCCESS`이고 결과는 `data`에 담긴다.
+    실패 시 HTTP 상태 코드와 함께 `resultCode`에 오류 종류, `resultMsg`에 원인이 담기며 `data`는 null이다.
   version: "1.0.0"
 servers:
   - url: http://localhost:8080
@@ -25,9 +29,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ReminderListResponse"
+                $ref: "#/components/schemas/ReminderListArrayApiResponse"
     post:
       tags: [Lists]
       summary: 리스트 생성
@@ -44,7 +46,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderListResponse"
+                $ref: "#/components/schemas/ReminderListApiResponse"
         "400":
           description: 유효성 검증 실패 (name 누락, color 형식 오류 등)
           content:
@@ -71,7 +73,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderListResponse"
+                $ref: "#/components/schemas/ReminderListApiResponse"
         "400":
           description: 유효성 검증 실패
           content:
@@ -91,8 +93,12 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ListId"
       responses:
-        "204":
-          description: 삭제 성공
+        "200":
+          description: 삭제 성공 (data는 null)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyApiResponse"
         "404":
           description: 리스트를 찾을 수 없음
           content:
@@ -119,9 +125,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ReminderResponse"
+                $ref: "#/components/schemas/ReminderArrayApiResponse"
     post:
       tags: [Reminders]
       summary: 리마인더 생성
@@ -138,7 +142,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderResponse"
+                $ref: "#/components/schemas/ReminderApiResponse"
         "400":
           description: 유효성 검증 실패 (title 누락 등)
           content:
@@ -177,9 +181,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ReminderResponse"
+                $ref: "#/components/schemas/ReminderArrayApiResponse"
         "400":
           description: 지원하지 않는 뷰 이름
           content:
@@ -200,7 +202,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderResponse"
+                $ref: "#/components/schemas/ReminderApiResponse"
         "404":
           description: 리마인더를 찾을 수 없음
           content:
@@ -221,7 +223,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderResponse"
+                $ref: "#/components/schemas/ReminderApiResponse"
         "404":
           description: 리마인더를 찾을 수 없음
           content:
@@ -249,7 +251,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderResponse"
+                $ref: "#/components/schemas/ReminderApiResponse"
         "400":
           description: 유효성 검증 실패 (title 누락 등)
           content:
@@ -269,8 +271,12 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ReminderId"
       responses:
-        "204":
-          description: 삭제 성공
+        "200":
+          description: 삭제 성공 (data는 null)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyApiResponse"
         "404":
           description: 리마인더를 찾을 수 없음
           content:
@@ -407,15 +413,84 @@ components:
           type: string
           format: date-time
 
-    ErrorResponse:
+    ApiResult:
       type: object
+      description: 모든 API 응답에 공통으로 포함되는 결과 코드와 메시지
+      required: [resultCode, resultMsg]
       properties:
-        timestamp:
+        resultCode:
           type: string
-          format: date-time
-        status:
-          type: integer
-        error:
+          enum: [SUCCESS, BAD_REQUEST, NOT_FOUND, METHOD_NOT_ALLOWED, INTERNAL_SERVER_ERROR]
+          description: |
+            - `SUCCESS`: 성공
+            - `BAD_REQUEST`: 유효성 검증 실패, 본문 형식 오류, 지원하지 않는 값 등 4xx 요청 오류
+            - `NOT_FOUND`: 대상을 찾을 수 없음
+            - `METHOD_NOT_ALLOWED`: 지원하지 않는 HTTP 메서드
+            - `INTERNAL_SERVER_ERROR`: 서버 오류
+          example: SUCCESS
+        resultMsg:
           type: string
-        path:
-          type: string
+          description: '결과 메시지. 성공 시 "성공", 실패 시 원인 (유효성 검증 실패는 "필드: 메시지"를 쉼표로 연결)'
+          example: 성공
+
+    ReminderApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ReminderResponse"
+
+    ReminderArrayApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ReminderResponse"
+
+    ReminderListApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ReminderListResponse"
+
+    ReminderListArrayApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ReminderListResponse"
+
+    EmptyApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              type: object
+              nullable: true
+              description: 항상 null
+              example: null
+
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              type: object
+              nullable: true
+              description: 항상 null
+              example: null
+      example:
+        resultCode: NOT_FOUND
+        resultMsg: "Reminder not found: 1"
+        data: null
