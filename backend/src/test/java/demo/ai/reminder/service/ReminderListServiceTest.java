@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,6 +64,32 @@ class ReminderListServiceTest {
         assertThat(result.list().getColor()).isEqualTo("#FF9500");
         assertThat(result.reminderCount()).isZero();
         assertThat(reminderListRepository.findById(result.list().getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("리스트를 생성하면 JPA Auditing이 생성일과 수정일을 채운다")
+    void createList_fillsCreatedAtAndUpdatedAt() {
+        LocalDateTime before = LocalDateTime.now();
+
+        ReminderListSummary result = reminderListService.createList(new ReminderListRequest("장보기", null));
+
+        assertThat(result.list().getCreatedAt()).isNotNull().isAfterOrEqualTo(before);
+        assertThat(result.list().getUpdatedAt()).isNotNull().isAfterOrEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("리스트를 수정하면 수정일은 갱신되고 생성일은 유지된다")
+    void updateList_refreshesUpdatedAt_andKeepsCreatedAt() {
+        ReminderList saved = reminderListRepository.saveAndFlush(new ReminderList("장보기", null));
+        LocalDateTime createdAt = saved.getCreatedAt();
+        LocalDateTime updatedAt = saved.getUpdatedAt();
+
+        reminderListService.updateList(saved.getId(), new ReminderListRequest("업무", null));
+        reminderListRepository.flush();
+
+        ReminderList result = reminderListRepository.findById(saved.getId()).orElseThrow();
+        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(result.getUpdatedAt()).isAfter(updatedAt);
     }
 
     @Test

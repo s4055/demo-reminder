@@ -1,6 +1,5 @@
 package demo.ai.reminder.domain;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -11,16 +10,13 @@ import jakarta.persistence.ManyToOne;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.SourceType;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Reminder {
+public class Reminder extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,13 +35,6 @@ public class Reminder {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "list_id")
     private ReminderList list;
-
-    @CreationTimestamp(source = SourceType.DB)
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp(source = SourceType.DB)
-    private LocalDateTime updatedAt;
 
     public Reminder(String title, String memo, ReminderList list, LocalDateTime dueAt) {
         this.title = title;

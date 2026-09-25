@@ -9,7 +9,8 @@ public record ReminderListResponse(
         String name,
         String color,
         long reminderCount,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 
     public static ReminderListResponse from(ReminderListSummary summary) {
@@ -18,7 +19,8 @@ public record ReminderListResponse(
                 summary.list().getName(),
                 summary.list().getColor(),
                 summary.reminderCount(),
-                summary.list().getCreatedAt()
+                summary.list().getCreatedAt(),
+                summary.list().getUpdatedAt()
         );
     }
 }

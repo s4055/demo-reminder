@@ -13,7 +13,7 @@
 
 - 필드는 생성자 또는 의도가 드러나는 도메인 메서드를 통해서만 변경한다.
 - JPA용 기본 생성자는 `@NoArgsConstructor(access = AccessLevel.PROTECTED)`로 제한해 외부에서 빈 객체를 생성하지 못하게 한다.
-- `createdAt`/`updatedAt`은 자바 코드(`LocalDateTime.now()`)가 아니라 DB가 계산하도록 위임한다. Hibernate의 `@CreationTimestamp(source = SourceType.DB)`, `@UpdateTimestamp(source = SourceType.DB)`를 사용하고, `createdAt`은 `@Column(updatable = false)`로 수정 불가 처리한다.
+- `createdAt`/`updatedAt`은 도메인 코드에서 직접 넣지 않고 Spring Data JPA Auditing이 관리하도록 한다. 엔티티는 공통 상위 클래스 `BaseTimeEntity`(`@MappedSuperclass`, `@EntityListeners(AuditingEntityListener.class)`, `@CreatedDate`/`@LastModifiedDate`)를 상속하고 필드를 개별 선언하지 않으며(`@EnableJpaAuditing`은 `JpaAuditingConfig`에 선언), `createdAt`은 `@Column(updatable = false)`로 수정 불가 처리한다.
 
 ### 요청/응답 DTO
 
