@@ -111,3 +111,6 @@
 
 ### 완료 기준 검증
 - [x] `spec.md` "9. 성공 기준(Acceptance Criteria)" 항목 전체 수동 테스트 통과
+
+## 추가 작업
+- [x] 필터로 요청/응답 전문 로깅 (`HttpLoggingFilter`: [Request]/[Header]/[Session]/[Response] 로그, 요청 로그 → 비즈니스 로직 → 응답 로그 순서, UUID request_id를 MDC에 넣어 요청 처리 중 모든 로그에 출력)
