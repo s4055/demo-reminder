@@ -42,6 +42,34 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("BusinessException(NOT_FOUND)은 404와 NOT_FOUND, 예외 메시지를 담은 응답으로 변환된다")
+    void businessException_notFound_isConvertedToNotFound() throws Exception {
+        mockMvc.perform(get("/test/business/NOT_FOUND"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.resultCode").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.resultMsg").value("business-NOT_FOUND"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("BusinessException(BAD_REQUEST)은 400과 BAD_REQUEST 응답으로 변환된다")
+    void businessException_badRequest_isConvertedToBadRequest() throws Exception {
+        mockMvc.perform(get("/test/business/BAD_REQUEST"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value("business-BAD_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("메시지 없이 만든 BusinessException은 ResultCode의 기본 메시지를 사용한다")
+    void businessException_withoutMessage_usesDefaultMessage() throws Exception {
+        mockMvc.perform(get("/test/business-without-message"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.resultCode").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.resultMsg").value("대상을 찾을 수 없습니다."));
+    }
+
+    @Test
     @DisplayName("ResponseStatusException(404)은 404와 NOT_FOUND, 예외 사유를 담은 응답으로 변환된다")
     void responseStatusException_notFound_isConvertedToNotFound() throws Exception {
         mockMvc.perform(get("/test/status/404"))
@@ -164,6 +192,16 @@ class GlobalExceptionHandlerTest {
 
     @RestController
     static class ThrowingController {
+
+        @GetMapping("/test/business/{code}")
+        void throwBusiness(@PathVariable ResultCode code) {
+            throw new BusinessException(code, "business-" + code);
+        }
+
+        @GetMapping("/test/business-without-message")
+        void throwBusinessWithoutMessage() {
+            throw new BusinessException(ResultCode.NOT_FOUND);
+        }
 
         @GetMapping("/test/status/{code}")
         void throwResponseStatus(@PathVariable int code) {

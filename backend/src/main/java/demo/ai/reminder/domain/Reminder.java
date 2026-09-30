@@ -32,6 +32,9 @@ public class Reminder extends BaseTimeEntity {
 
     private LocalDateTime dueAt;
 
+    // 완료 처리한 시각. 미완료 상태에서는 null이다.
+    private LocalDateTime completedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "list_id")
     private ReminderList list;
@@ -56,7 +59,8 @@ public class Reminder extends BaseTimeEntity {
         this.flagged = !this.flagged;
     }
 
-    public void toggleComplete() {
+    public void toggleComplete(LocalDateTime now) {
         this.completed = !this.completed;
+        this.completedAt = this.completed ? now : null;
     }
 }

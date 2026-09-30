@@ -1,5 +1,7 @@
 package demo.ai.reminder.service;
 
+import demo.ai.reminder.common.BusinessException;
+import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.ReminderListRequest;
@@ -11,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,7 +41,7 @@ class ReminderListServiceTest {
         reminderRepository.save(new Reminder("우유 사기", null, shopping, null));
         reminderRepository.save(new Reminder("계란 사기", null, shopping, null));
         Reminder done = reminderRepository.save(new Reminder("빵 사기", null, shopping, null));
-        done.toggleComplete();
+        done.toggleComplete(LocalDateTime.now());
 
         List<ReminderListSummary> result = reminderListService.getLists();
 
@@ -109,8 +110,8 @@ class ReminderListServiceTest {
     @DisplayName("존재하지 않는 리스트를 수정하면 404 예외가 발생한다")
     void updateList_throwsNotFound_whenListDoesNotExist() {
         assertThatThrownBy(() -> reminderListService.updateList(-1L, new ReminderListRequest("업무", null)))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 
     @Test
@@ -132,7 +133,7 @@ class ReminderListServiceTest {
     @DisplayName("존재하지 않는 리스트를 삭제하면 404 예외가 발생한다")
     void deleteList_throwsNotFound_whenListDoesNotExist() {
         assertThatThrownBy(() -> reminderListService.deleteList(-1L))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 }

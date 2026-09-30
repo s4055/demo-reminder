@@ -56,14 +56,15 @@ class ReminderControllerTest {
     }
 
     @Test
-    @DisplayName("완료 토글 응답은 토글된 리마인더를 data에 담는다")
+    @DisplayName("완료 토글 응답은 토글된 리마인더와 완료일시를 data에 담는다")
     void toggleComplete_returnsToggledReminderInData() throws Exception {
         Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null));
 
         mockMvc.perform(patch("/api/reminders/{id}/complete", saved.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.completed").value(true));
+                .andExpect(jsonPath("$.data.completed").value(true))
+                .andExpect(jsonPath("$.data.completedAt").isString());
     }
 
     @Test

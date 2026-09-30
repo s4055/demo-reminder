@@ -1,15 +1,15 @@
 package demo.ai.reminder.service;
 
+import demo.ai.reminder.common.BusinessException;
+import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderListSummary;
 import demo.ai.reminder.repository.ReminderRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -47,6 +47,6 @@ public class ReminderListService {
 
     private ReminderList findListOrThrow(Long id) {
         return reminderListRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "List not found: " + id));
+                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List not found: " + id));
     }
 }

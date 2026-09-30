@@ -1,5 +1,7 @@
 package demo.ai.reminder.service;
 
+import demo.ai.reminder.common.BusinessException;
+import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.ReminderRequest;
@@ -8,12 +10,11 @@ import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -23,6 +24,7 @@ public class ReminderService {
 
     private static final Sort DEFAULT_SORT = Sort.by("id");
     private static final Sort DUE_DATE_SORT = Sort.by("dueAt", "id");
+    private static final Sort COMPLETED_SORT = Sort.by(Sort.Order.desc("completedAt"), Sort.Order.desc("id"));
 
     private final ReminderRepository reminderRepository;
     private final ReminderListRepository reminderListRepository;
@@ -44,7 +46,7 @@ public class ReminderService {
             case SCHEDULED -> reminderRepository.findByCompletedFalseAndDueAtIsNotNull(DUE_DATE_SORT);
             case ALL -> reminderRepository.findByCompletedFalse(DEFAULT_SORT);
             case FLAGGED -> reminderRepository.findByCompletedFalseAndFlaggedTrue(DEFAULT_SORT);
-            case COMPLETED -> reminderRepository.findByCompletedTrue(DEFAULT_SORT);
+            case COMPLETED -> reminderRepository.findByCompletedTrue(COMPLETED_SORT);
         };
     }
 
@@ -65,7 +67,7 @@ public class ReminderService {
     @Transactional
     public Reminder toggleComplete(Long id) {
         Reminder reminder = findReminderOrThrow(id);
-        reminder.toggleComplete();
+        reminder.toggleComplete(LocalDateTime.now());
         return reminder;
     }
 
@@ -79,18 +81,18 @@ public class ReminderService {
     @Transactional
     public void deleteReminder(Long id) {
         if (!reminderRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reminder not found: " + id);
+            throw new BusinessException(ResultCode.NOT_FOUND, "Reminder not found: " + id);
         }
         reminderRepository.deleteById(id);
     }
 
     private ReminderList findListOrThrow(Long listId) {
         return reminderListRepository.findById(listId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "List not found: " + listId));
+                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List not found: " + listId));
     }
 
     private Reminder findReminderOrThrow(Long id) {
         return reminderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reminder not found: " + id));
+                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "Reminder not found: " + id));
     }
 }

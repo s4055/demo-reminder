@@ -11,6 +11,7 @@ public record ReminderResponse(
         boolean completed,
         boolean flagged,
         LocalDateTime dueAt,
+        LocalDateTime completedAt,
         Long listId,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -24,6 +25,7 @@ public record ReminderResponse(
                 reminder.isCompleted(),
                 reminder.isFlagged(),
                 reminder.getDueAt(),
+                reminder.getCompletedAt(),
                 reminder.getList() != null ? reminder.getList().getId() : null,
                 reminder.getCreatedAt(),
                 reminder.getUpdatedAt()

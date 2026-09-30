@@ -27,11 +27,20 @@ import java.util.stream.Collectors;
  *       같은 예외에 {@code @ExceptionHandler}를 선언하면 매핑이 모호해져 기동에 실패한다.</li>
  *   <li>상위 클래스 목록에 없는 예외는 기존처럼 {@code @ExceptionHandler}로 처리하며,
  *       별도 핸들러가 없으면 {@link #handleUnexpected}에서 500으로 응답한다.</li>
+ *   <li>서비스 계층은 {@link BusinessException}을 던지고, {@link #handleBusiness}가
+ *       예외에 담긴 ResultCode의 상태 코드와 예외 메시지로 응답한다.</li>
  * </ul>
  */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
+        ResultCode resultCode = ex.getResultCode();
+        return ResponseEntity.status(resultCode.getStatus())
+                .body(ApiResponse.error(resultCode, ex.getMessage()));
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception ex) {

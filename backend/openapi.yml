@@ -166,7 +166,7 @@ paths:
         - `scheduled`: 마감일이 설정된 모든 미완료 (마감일 순)
         - `all`: 모든 미완료
         - `flagged`: flagged=true 인 미완료
-        - `completed`: completed=true 인 리마인더
+        - `completed`: completed=true 인 리마인더 (완료일시 최신순)
       operationId: getSmartReminders
       parameters:
         - name: view
@@ -366,6 +366,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 완료 처리한 일시. 미완료 상태이면 null
         listId:
           type: integer
           format: int64
