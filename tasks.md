@@ -116,3 +116,171 @@
 - [x] 필터로 요청/응답 전문 로깅 (`HttpLoggingFilter`: [Request]/[Header]/[Session]/[Response] 로그, 요청 로그 → 비즈니스 로직 → 응답 로그 순서, UUID request_id를 MDC에 넣어 요청 처리 중 모든 로그에 출력)
 - [x] 서비스 계층 예외를 `BusinessException(ResultCode)`로 통일 (`ResponseStatusException` 직접 사용 제거, `ResultCode`에 HTTP 상태 추가, `GlobalExceptionHandler`에서 변환)
 - [x] 완료일시(`completedAt`) 도입: 완료 시 기록/완료 취소 시 null, `completed` 스마트 뷰와 프론트 완료 항목을 `updatedAt` 대신 완료일시 최신순으로 정렬
+
+---
+
+# v2 — 향후 고려 사항 (spec.md 10번)
+
+`plan.md`의 Phase 6~13을 기준으로 한다. 각 Phase에서 API를 바꾸면 `backend/openapi.yml`을 함께 갱신하고, 기능마다 테스트를 함께 작성한다.
+
+## Phase 6 — 우선순위
+### 백엔드
+- [ ] `Priority` enum 추가 (`NONE`, `LOW`, `MEDIUM`, `HIGH`)
+- [ ] `Reminder`에 `priority` 필드 추가 (기본값 `NONE`), `update(...)`에 우선순위 변경 포함
+- [ ] 생성/수정 요청 DTO와 응답 DTO에 `priority` 반영 (생략 시 `NONE`)
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 도메인(기본값, 수정), 서비스(생성/수정 시 저장), 컨트롤러(응답 필드)
+
+### 프론트엔드
+- [ ] `Reminder` 타입과 API 클라이언트에 `priority` 추가
+- [ ] 상세 편집 모달에 우선순위 선택 UI (`Select`)
+- [ ] 리마인더 항목 제목 앞에 `!` / `!!` / `!!!` 표시
+
+### 완료 기준 검증
+- [ ] 우선순위 지정/변경 시 목록 표시가 즉시 바뀌고 새로고침 후에도 유지되는지 확인
+
+## Phase 7 — 드래그앤드롭 순서 변경
+### 백엔드
+- [ ] `ReminderList`, `Reminder`에 `sortOrder` 필드 추가
+- [ ] 새 리스트/리마인더 생성 시 같은 범위의 마지막 순서로 지정
+- [ ] `PATCH /api/lists/order` — `ids` 순서대로 리스트 순서 일괄 갱신
+- [ ] `PATCH /api/reminders/order` — `listId` + `ids` 순서대로 리마인더 순서 일괄 갱신
+- [ ] `ids`가 대상 범위의 항목과 일치하지 않으면 400 (`BusinessException`)
+- [ ] `GET /api/lists`, `GET /api/reminders?listId=` 정렬 기준을 `sortOrder`로 변경 (스마트 뷰 정렬 유지)
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 생성 시 순서 부여, 순서 변경 반영, 잘못된 `ids` 400, 스마트 뷰 정렬 유지
+
+### 프론트엔드
+- [ ] `@dnd-kit/core`, `@dnd-kit/sortable` 도입
+- [ ] 사이드바 리스트 드래그 정렬
+- [ ] 사용자 리스트 화면의 미완료 리마인더 드래그 정렬
+- [ ] 드롭 시 optimistic update, 실패 시 원래 순서 복구 + 토스트
+- [ ] 스마트 뷰에서 드래그 비활성화
+
+### 완료 기준 검증
+- [ ] 리스트/리마인더 순서 변경 후 새로고침해도 순서가 유지되는지 확인
+
+## Phase 8 — 태그
+### 백엔드
+- [ ] `Tag` 엔티티(id, name 고유, createdAt)와 `TagRepository` 작성
+- [ ] `Reminder` ↔ `Tag` 다대다 연관관계 추가 (조인 테이블 `reminder_tag`)
+- [ ] 리마인더 생성/수정 요청에 `tagNames` 추가 (없는 태그 자동 생성), 응답에 태그 이름 목록 포함
+- [ ] `GET /api/tags` — 태그 목록 (미완료 리마인더 개수 포함, 사용되지 않는 태그 제외)
+- [ ] `DELETE /api/tags/{id}` — 태그 삭제 (리마인더는 유지)
+- [ ] `GET /api/reminders?tag=` — 태그별 리마인더 조회
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 태그 자동 생성/재사용, 태그 교체, 태그별 조회, 태그 삭제 시 리마인더 유지
+
+### 프론트엔드
+- [ ] 태그 API 클라이언트와 TanStack Query 훅 작성
+- [ ] 상세 편집 모달에 태그 칩 입력 UI (Enter로 추가, X로 제거)
+- [ ] 리마인더 항목에 `#태그` 표시
+- [ ] 사이드바 "태그" 섹션 추가, 태그 선택 시 해당 리마인더 표시 (선택 상태에 태그 추가)
+
+### 완료 기준 검증
+- [ ] 태그를 붙이면 사이드바 태그 목록에 나타나고, 태그 선택 시 해당 리마인더만 보이는지 확인
+
+## Phase 9 — 하위 작업(subtask)
+### 백엔드
+- [ ] `Reminder`에 `parent` 자기 참조 연관관계 추가 (1단계 깊이, 부모와 같은 리스트)
+- [ ] 생성 요청에 `parentId` 추가 — 부모 없음 404, 부모가 하위 작업이면 400
+- [ ] 리스트별 조회는 최상위 리마인더만 반환하고 응답에 `subtasks` 포함
+- [ ] 스마트 뷰에 하위 작업도 개별 항목으로 포함
+- [ ] 부모 완료 시 하위 작업 모두 완료, 부모 삭제 시 하위 작업 함께 삭제
+- [ ] 리스트 리마인더 개수는 최상위 리마인더만 집계
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 깊이 제한, 완료/삭제 전파, 조회 구조, 개수 집계
+
+### 프론트엔드
+- [ ] 리마인더 항목 아래 하위 작업 들여쓰기 표시 + 펼치기/접기
+- [ ] 상세 편집 모달에서 하위 작업 추가
+- [ ] 하위 작업 완료 체크/삭제/편집 연동
+
+### 완료 기준 검증
+- [ ] 하위 작업이 부모 아래에 표시되고, 부모 완료 시 하위 작업도 완료되는지 확인
+
+## Phase 10 — 반복 리마인더
+### 백엔드
+- [ ] `RepeatRule` enum 추가 (`NONE`, `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`)
+- [ ] `Reminder`에 `repeatRule` 필드 추가 (기본값 `NONE`), 마감일시 없이 반복 설정 시 400
+- [ ] 다음 마감일시 계산 도메인 로직 (월말 처리 포함)
+- [ ] 반복 리마인더 완료 시 다음 회차 리마인더 생성 (제목/메모/플래그/우선순위/태그/리스트 복사)
+- [ ] 완료 취소 시 이미 생성된 다음 회차는 유지
+- [ ] 생성/수정 요청과 응답에 `repeatRule` 반영, `openapi.yml` 갱신
+- [ ] 테스트: 주기별 다음 날짜 계산(월말/윤년 포함), 완료 시 다음 회차 생성, 마감일 없는 반복 400
+
+### 프론트엔드
+- [ ] 생성 폼과 상세 편집 모달에 반복 선택 UI
+- [ ] 리마인더 항목에 반복 아이콘과 주기 표시
+- [ ] 완료 시 다음 회차가 목록에 나타나도록 캐시 무효화
+
+### 완료 기준 검증
+- [ ] 매주 반복 리마인더 완료 시 "완료됨"에 현재 항목, "예정됨"에 7일 뒤 새 항목이 나타나는지 확인
+
+## Phase 11 — 알림(브라우저 알림)
+### 백엔드
+- [ ] `GET /api/reminders/upcoming?from=&to=` — 기간 내 마감 미완료 리마인더 조회
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 기간 경계, 완료 항목 제외
+
+### 프론트엔드
+- [ ] 알림 권한 요청 UI (알림 켜기 버튼, 거부 상태 안내)
+- [ ] 주기적으로 다가오는 리마인더를 조회해 마감 시각에 브라우저 알림 표시
+- [ ] 알린 리마인더(id + dueAt)를 `localStorage`에 기록해 중복 알림 방지
+- [ ] 알림 클릭 시 해당 리마인더 상세 편집 열기
+
+### 완료 기준 검증
+- [ ] 1~2분 뒤로 마감일시를 설정하면 그 시각에 알림이 한 번만 뜨는지 확인
+
+## Phase 12 — 사용자 인증/멀티 유저 + PostgreSQL 전환
+### 백엔드 — 인증
+- [ ] `spring-boot-starter-security` 의존성 추가
+- [ ] `User` 엔티티(id, email 고유, password BCrypt, name, createdAt)와 `UserRepository` 작성
+- [ ] 세션(쿠키) 기반 로그인 `SecurityConfig` 작성
+- [ ] `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- [ ] 미인증 요청 401을 `ApiResponse` 형식으로 응답 (`ResultCode.UNAUTHORIZED` 추가)
+- [ ] CORS `allowCredentials` 설정 (또는 Next.js rewrites 프록시)
+
+### 백엔드 — 멀티 유저
+- [ ] `ReminderList`, `Reminder`, `Tag`에 소유자 `user` FK 추가
+- [ ] 태그 이름 고유 조건을 사용자별 고유로 변경
+- [ ] 모든 조회/수정/삭제를 현재 사용자 데이터로 제한 (다른 사용자 리소스는 404)
+- [ ] `openapi.yml` 갱신 (인증 API, 보안 스키마)
+- [ ] 테스트: 회원가입/로그인/로그아웃, 미인증 401, 사용자 간 데이터 격리
+
+### 백엔드 — PostgreSQL
+- [ ] `docker-compose.yml`로 로컬 PostgreSQL 구성
+- [ ] 프로필 분리 (`local`: H2, `postgres`: PostgreSQL)
+- [ ] Flyway 도입 및 초기 스키마 마이그레이션 작성 (`ddl-auto` 대체)
+
+### 프론트엔드
+- [ ] `/login`, `/signup` 페이지 (React Hook Form + 검증)
+- [ ] 비로그인 상태 접근 시 `/login`으로 이동
+- [ ] API 클라이언트 `credentials: "include"` 적용, 401 시 로그인 페이지로 이동
+- [ ] 사용자 이름 표시 + 로그아웃 버튼
+
+### 완료 기준 검증
+- [ ] 두 계정이 서로의 리스트/리마인더를 볼 수 없는지 확인
+- [ ] `postgres` 프로필로 재시작 후 데이터가 유지되는지 확인
+- [ ] README에 PostgreSQL 실행 방법 추가
+
+## Phase 13 — 리스트 공유/협업
+### 백엔드
+- [ ] `ListMember` 엔티티(id, list, user, role `OWNER`/`EDITOR`, createdAt) 작성, 리스트 생성 시 소유자를 `OWNER`로 저장
+- [ ] `GET /api/lists/{id}/members`
+- [ ] `POST /api/lists/{id}/members` — 이메일로 초대 (소유자만, 없는 사용자 404, 이미 멤버 400)
+- [ ] `DELETE /api/lists/{id}/members/{userId}` — 멤버 제거(소유자) / 본인 나가기
+- [ ] 접근 제어: 멤버는 리마인더 CRUD 가능, 리스트 수정/삭제·멤버 관리는 소유자만
+- [ ] `GET /api/lists`와 스마트 뷰에 공유받은 리스트/리마인더 포함
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 초대/제거/나가기, 권한별 허용·거부, 비멤버 접근 차단, 스마트 뷰 포함
+
+### 프론트엔드
+- [ ] 리스트 공유 다이얼로그 (이메일 초대, 멤버 목록, 제거)
+- [ ] 사이드바의 공유 리스트에 공유 아이콘 표시
+- [ ] 소유자가 아닌 경우 리스트 편집/삭제 메뉴 숨김
+- [ ] TanStack Query `refetchInterval`/창 포커스 재조회로 다른 사용자 변경 반영
+
+### 완료 기준 검증
+- [ ] A가 B를 초대하면 B 사이드바에 리스트가 나타나고, B가 추가한 리마인더가 A 화면에 반영되는지 확인
+- [ ] 멤버가 아닌 사용자가 리스트에 접근할 수 없는지 확인
