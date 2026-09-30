@@ -8,6 +8,7 @@ export type Reminder = {
   completed: boolean
   flagged: boolean
   dueAt: string | null
+  completedAt: string | null
   listId: number | null
   createdAt: string
   updatedAt: string

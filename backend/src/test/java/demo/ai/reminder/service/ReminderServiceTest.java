@@ -1,5 +1,7 @@
 package demo.ai.reminder.service;
 
+import demo.ai.reminder.common.BusinessException;
+import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.ReminderRequest;
@@ -11,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -82,8 +83,8 @@ class ReminderServiceTest {
     @DisplayName("존재하지 않는 리스트로 리마인더를 생성하면 404 예외가 발생한다")
     void createReminder_throwsNotFound_whenListDoesNotExist() {
         assertThatThrownBy(() -> reminderService.createReminder(new ReminderRequest("우유 사기", null, -1L, null)))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 
     @Test
@@ -111,11 +112,26 @@ class ReminderServiceTest {
     }
 
     @Test
+    @DisplayName("완료 토글 시 완료일시가 기록되고, 다시 토글하면 비워진다")
+    void toggleComplete_recordsAndClearsCompletedAt() {
+        Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null));
+        LocalDateTime before = LocalDateTime.now();
+
+        Reminder completed = reminderService.toggleComplete(saved.getId());
+
+        assertThat(completed.getCompletedAt()).isAfterOrEqualTo(before);
+
+        Reminder uncompleted = reminderService.toggleComplete(saved.getId());
+
+        assertThat(uncompleted.getCompletedAt()).isNull();
+    }
+
+    @Test
     @DisplayName("존재하지 않는 리마인더를 토글하면 404 예외가 발생한다")
     void toggleComplete_throwsNotFound_whenReminderDoesNotExist() {
         assertThatThrownBy(() -> reminderService.toggleComplete(-1L))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 
     @Test
@@ -189,8 +205,8 @@ class ReminderServiceTest {
     @DisplayName("존재하지 않는 리마인더를 수정하면 404 예외가 발생한다")
     void updateReminder_throwsNotFound_whenReminderDoesNotExist() {
         assertThatThrownBy(() -> reminderService.updateReminder(-1L, new ReminderUpdateRequest("우유 사기", null, null, false)))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 
     @Test
@@ -207,8 +223,8 @@ class ReminderServiceTest {
     @DisplayName("존재하지 않는 리마인더의 플래그를 토글하면 404 예외가 발생한다")
     void toggleFlag_throwsNotFound_whenReminderDoesNotExist() {
         assertThatThrownBy(() -> reminderService.toggleFlag(-1L))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 
     @Test
@@ -221,7 +237,7 @@ class ReminderServiceTest {
         reminderRepository.save(new Reminder("내일", null, null, today.plusDays(1).atStartOfDay()));
         reminderRepository.save(new Reminder("마감 없음", null, null, null));
         Reminder done = reminderRepository.save(new Reminder("오늘 완료", null, null, today.atTime(12, 0)));
-        done.toggleComplete();
+        done.toggleComplete(LocalDateTime.now());
 
         List<Reminder> result = reminderService.getSmartReminders("today");
 
@@ -236,7 +252,7 @@ class ReminderServiceTest {
         reminderRepository.save(new Reminder("오늘", null, null, today.atTime(9, 0)));
         reminderRepository.save(new Reminder("마감 없음", null, null, null));
         Reminder done = reminderRepository.save(new Reminder("완료", null, null, today.atTime(10, 0)));
-        done.toggleComplete();
+        done.toggleComplete(LocalDateTime.now());
 
         List<Reminder> result = reminderService.getSmartReminders("scheduled");
 
@@ -248,7 +264,7 @@ class ReminderServiceTest {
     void getSmartReminders_all_returnsAllIncompleteReminders() {
         reminderRepository.save(new Reminder("우유 사기", null, null, null));
         Reminder done = reminderRepository.save(new Reminder("완료", null, null, null));
-        done.toggleComplete();
+        done.toggleComplete(LocalDateTime.now());
 
         List<Reminder> result = reminderService.getSmartReminders("all");
 
@@ -262,7 +278,7 @@ class ReminderServiceTest {
         flagged.toggleFlag();
         Reminder flaggedDone = reminderRepository.save(new Reminder("중요하지만 완료", null, null, null));
         flaggedDone.toggleFlag();
-        flaggedDone.toggleComplete();
+        flaggedDone.toggleComplete(LocalDateTime.now());
         reminderRepository.save(new Reminder("일반", null, null, null));
 
         List<Reminder> result = reminderService.getSmartReminders("flagged");
@@ -275,11 +291,40 @@ class ReminderServiceTest {
     void getSmartReminders_completed_returnsCompletedReminders() {
         reminderRepository.save(new Reminder("미완료", null, null, null));
         Reminder done = reminderRepository.save(new Reminder("완료", null, null, null));
-        done.toggleComplete();
+        done.toggleComplete(LocalDateTime.now());
 
         List<Reminder> result = reminderService.getSmartReminders("completed");
 
         assertThat(result).extracting(Reminder::getTitle).containsExactly("완료");
+    }
+
+    @Test
+    @DisplayName("completed 뷰는 생성 순서와 관계없이 완료일시 최신순으로 조회한다")
+    void getSmartReminders_completed_ordersByCompletedAtDesc() {
+        Reminder first = reminderRepository.save(new Reminder("먼저 생성", null, null, null));
+        Reminder second = reminderRepository.save(new Reminder("나중 생성", null, null, null));
+        second.toggleComplete(LocalDateTime.of(2026, 9, 30, 9, 0));
+        first.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
+
+        List<Reminder> result = reminderService.getSmartReminders("completed");
+
+        assertThat(result).extracting(Reminder::getTitle).containsExactly("먼저 생성", "나중 생성");
+    }
+
+    @Test
+    @DisplayName("완료된 리마인더를 수정해도 completed 뷰의 순서는 바뀌지 않는다")
+    void getSmartReminders_completed_orderIsNotAffectedByUpdate() {
+        Reminder older = reminderRepository.save(new Reminder("먼저 완료", null, null, null));
+        Reminder newer = reminderRepository.save(new Reminder("나중 완료", null, null, null));
+        older.toggleComplete(LocalDateTime.of(2026, 9, 30, 9, 0));
+        newer.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
+        reminderRepository.flush();
+
+        reminderService.updateReminder(older.getId(), new ReminderUpdateRequest("먼저 완료(수정)", null, null, false));
+        reminderRepository.flush();
+        List<Reminder> result = reminderService.getSmartReminders("completed");
+
+        assertThat(result).extracting(Reminder::getTitle).containsExactly("나중 완료", "먼저 완료(수정)");
     }
 
     @Test
@@ -296,8 +341,8 @@ class ReminderServiceTest {
     @DisplayName("알 수 없는 스마트 뷰를 요청하면 400 예외가 발생한다")
     void getSmartReminders_throwsBadRequest_whenViewIsUnknown() {
         assertThatThrownBy(() -> reminderService.getSmartReminders("unknown"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("400");
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
     }
 
     @Test
@@ -314,7 +359,7 @@ class ReminderServiceTest {
     @DisplayName("존재하지 않는 리마인더를 삭제하면 404 예외가 발생한다")
     void deleteReminder_throwsNotFound_whenReminderDoesNotExist() {
         assertThatThrownBy(() -> reminderService.deleteReminder(-1L))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 }

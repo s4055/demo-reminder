@@ -41,7 +41,7 @@ class ReminderTest {
     void toggleComplete_flipsCompletedState() {
         Reminder reminder = new Reminder("우유 사기", null, null, null);
 
-        reminder.toggleComplete();
+        reminder.toggleComplete(LocalDateTime.now());
 
         assertThat(reminder.isCompleted()).isTrue();
     }
@@ -69,7 +69,7 @@ class ReminderTest {
     @DisplayName("update를 호출하면 제목, 메모, 마감일시, 플래그가 변경되고 완료 상태는 유지된다")
     void update_changesEditableFields_andKeepsCompletedState() {
         Reminder reminder = new Reminder("우유 사기", null, null, null);
-        reminder.toggleComplete();
+        reminder.toggleComplete(LocalDateTime.now());
         LocalDateTime dueAt = LocalDateTime.of(2026, 9, 21, 9, 0);
 
         reminder.update("계란 사기", "12구", dueAt, true);
@@ -114,12 +114,55 @@ class ReminderTest {
     }
 
     @Test
+    @DisplayName("생성 직후에는 완료일시가 비어있다")
+    void constructor_leavesCompletedAtNull() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+
+        assertThat(reminder.getCompletedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("완료 처리하면 전달받은 시각이 완료일시로 기록된다")
+    void toggleComplete_whenCompleting_recordsCompletedAt() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+        LocalDateTime now = LocalDateTime.of(2026, 9, 30, 10, 0);
+
+        reminder.toggleComplete(now);
+
+        assertThat(reminder.getCompletedAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("완료를 취소하면 완료일시가 비워진다")
+    void toggleComplete_whenUncompleting_clearsCompletedAt() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+        reminder.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
+
+        reminder.toggleComplete(LocalDateTime.of(2026, 9, 30, 11, 0));
+
+        assertThat(reminder.isCompleted()).isFalse();
+        assertThat(reminder.getCompletedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("update는 완료일시를 바꾸지 않는다")
+    void update_keepsCompletedAt() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+        LocalDateTime completedAt = LocalDateTime.of(2026, 9, 30, 10, 0);
+        reminder.toggleComplete(completedAt);
+
+        reminder.update("계란 사기", null, null, false);
+
+        assertThat(reminder.getCompletedAt()).isEqualTo(completedAt);
+    }
+
+    @Test
     @DisplayName("toggleComplete를 두 번 호출하면 원래 상태로 돌아온다")
     void toggleComplete_calledTwice_restoresOriginalState() {
         Reminder reminder = new Reminder("우유 사기", null, null, null);
 
-        reminder.toggleComplete();
-        reminder.toggleComplete();
+        reminder.toggleComplete(LocalDateTime.now());
+        reminder.toggleComplete(LocalDateTime.now());
 
         assertThat(reminder.isCompleted()).isFalse();
     }

@@ -19,13 +19,15 @@ import {
   useToggleReminderFlag,
 } from "@/hooks/use-reminders"
 
-// 미완료 항목은 서버가 준 순서(생성순)를 유지하고, 완료 항목은 아래에 완료(수정) 시각 최신순으로 둔다.
+// 미완료 항목은 서버가 준 순서(생성순)를 유지하고, 완료 항목은 아래에 완료 시각 최신순으로 둔다.
 function sortForDisplay(reminders: Reminder[]): Reminder[] {
-  const byRecentUpdate = (a: Reminder, b: Reminder) =>
-    Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
+  const completedTime = (reminder: Reminder) =>
+    reminder.completedAt ? Date.parse(reminder.completedAt) : 0
+  const byRecentCompletion = (a: Reminder, b: Reminder) =>
+    completedTime(b) - completedTime(a)
   return [
     ...reminders.filter((reminder) => !reminder.completed),
-    ...reminders.filter((reminder) => reminder.completed).sort(byRecentUpdate),
+    ...reminders.filter((reminder) => reminder.completed).sort(byRecentCompletion),
   ]
 }
 

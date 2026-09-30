@@ -1,7 +1,7 @@
 package demo.ai.reminder.service;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+import demo.ai.reminder.common.BusinessException;
+import demo.ai.reminder.common.ResultCode;
 
 import java.util.Arrays;
 
@@ -16,6 +16,6 @@ public enum SmartView {
         return Arrays.stream(values())
                 .filter(view -> view.name().equalsIgnoreCase(value))
                 .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown smart view: " + value));
+                .orElseThrow(() -> new BusinessException(ResultCode.BAD_REQUEST, "Unknown smart view: " + value));
     }
 }
