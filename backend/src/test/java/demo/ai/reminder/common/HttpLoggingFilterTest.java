@@ -19,6 +19,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -139,6 +140,34 @@ class HttpLoggingFilterTest {
         assertThat(requestIds).hasSize(3);
         assertThat(requestIds).containsOnly(requestIds.get(0));
         assertThat(MDC.get(HttpLoggingFilter.REQUEST_ID)).isNull();
+    }
+
+    @Test
+    @DisplayName("H2 콘솔 요청은 로깅하지 않고 원래 요청을 그대로 다음 체인에 넘긴다")
+    void passesH2ConsoleRequestThroughWithoutLogging(CapturedOutput output) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/h2-console/login.do");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        List<Object> passed = new ArrayList<>();
+        FilterChain chain = (req, res) -> {
+            passed.add(req);
+            passed.add(res);
+        };
+
+        httpLoggingFilter.doFilter(request, response, chain);
+
+        assertThat(passed).containsExactly(request, response);
+        assertThat(output).doesNotContain("[Request]", "[Response]");
+        assertThat(MDC.get(HttpLoggingFilter.REQUEST_ID)).isNull();
+    }
+
+    @Test
+    @DisplayName("경로가 /h2-console로 시작하기만 하는 다른 요청은 로깅한다")
+    void logsRequestWhosePathOnlyStartsWithH2ConsoleText(CapturedOutput output) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/h2-console-backup");
+
+        httpLoggingFilter.doFilter(request, new MockHttpServletResponse(), (req, res) -> { });
+
+        assertThat(output).contains("[Request] GET /h2-console-backup");
     }
 
     @Test
