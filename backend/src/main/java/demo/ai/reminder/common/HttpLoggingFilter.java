@@ -33,6 +33,8 @@ import java.util.stream.Stream;
  * <p>
  * 요청 로그를 체인 실행 전에 남기기 위해 요청 본문은 {@link CachedBodyRequestWrapper}로 미리 읽어 두고,
  * 캐싱된 응답 본문은 {@code copyBodyToResponse()}로 반드시 클라이언트에 돌려준다.
+ * <p>
+ * {@code /h2-console} 요청은 로깅하지 않고 그대로 통과시킨다.
  */
 @Slf4j
 @Component
@@ -41,9 +43,16 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     public static final String REQUEST_ID = "request_id";
 
+    private static final String H2_CONSOLE_PATH = "/h2-console";
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        // H2 콘솔은 로그인 값을 폼 파라미터로 읽는데, 본문을 미리 읽으면 파라미터가 비어 로그인할 수 없으므로 로깅하지 않고 그대로 넘긴다.
+        if (isH2ConsoleRequest(request)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         MDC.put(REQUEST_ID, UUID.randomUUID().toString());
         try {
             CachedBodyRequestWrapper cachedRequest = new CachedBodyRequestWrapper(request);
@@ -64,6 +73,11 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
             // 요청 스레드는 스레드 풀에서 재사용되므로 다음 요청에 request_id가 남지 않도록 반드시 지운다.
             MDC.remove(REQUEST_ID);
         }
+    }
+
+    private boolean isH2ConsoleRequest(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return path.equals(H2_CONSOLE_PATH) || path.startsWith(H2_CONSOLE_PATH + "/");
     }
 
     private String requestHeaders(HttpServletRequest request) {
