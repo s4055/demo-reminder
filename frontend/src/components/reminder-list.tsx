@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ReminderEditDialog } from "@/components/reminder-edit-dialog"
 import { cn } from "@/lib/utils"
 import { formatDueAt, isOverdue } from "@/lib/due-date"
+import { PRIORITY_LABELS, priorityMark } from "@/lib/priority"
 import type { ReminderList as ReminderListType } from "@/lib/lists-api"
 import type { Reminder } from "@/lib/reminders-api"
 import { emptyMessage, type Selection } from "@/lib/selection"
@@ -137,6 +138,7 @@ function ReminderItem({
 }) {
   const overdue =
     reminder.dueAt !== null && !reminder.completed && isOverdue(reminder.dueAt)
+  const mark = priorityMark(reminder.priority)
 
   return (
     <li className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2">
@@ -157,6 +159,22 @@ function ReminderItem({
             reminder.completed && "text-muted-foreground line-through"
           )}
         >
+          {mark && (
+            <>
+              <span
+                aria-hidden
+                className={cn(
+                  "mr-1 font-semibold",
+                  !reminder.completed && "text-primary"
+                )}
+              >
+                {mark}
+              </span>
+              <span className="sr-only">
+                우선순위 {PRIORITY_LABELS[reminder.priority]},
+              </span>
+            </>
+          )}
           {reminder.title}
         </span>
         {(reminder.dueAt || list) && (

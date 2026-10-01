@@ -14,9 +14,17 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useUpdateReminder } from "@/hooks/use-reminders"
 import { toDueAtParam } from "@/lib/due-date"
+import { PRIORITIES, PRIORITY_LABELS, type Priority } from "@/lib/priority"
 import type { Reminder } from "@/lib/reminders-api"
 
 type ReminderFormValues = {
@@ -24,6 +32,7 @@ type ReminderFormValues = {
   memo: string
   dueAt: Date | undefined
   flagged: boolean
+  priority: Priority
 }
 
 export function ReminderEditDialog({
@@ -56,6 +65,10 @@ function ReminderEditForm({
   onSaved: () => void
 }) {
   const updateReminder = useUpdateReminder()
+  // 입력 연결 방식은 컴포넌트가 값을 주고받는 방식에 따라 나눈다.
+  // - register: 내부가 진짜 HTML 입력 요소인 컴포넌트(Input, Textarea). ref와 onChange 이벤트(event.target.value)로 값을 읽는다.
+  // - Controller(control): 진짜 입력 요소 없이 value / onChange 계열 prop으로 값을 주고받는 컴포넌트
+  //   (DueDatePicker, Checkbox, Select). field.value와 field.onChange를 컴포넌트 prop에 이어 준다.
   const {
     register,
     handleSubmit,
@@ -67,6 +80,7 @@ function ReminderEditForm({
       memo: reminder.memo ?? "",
       dueAt: reminder.dueAt ? parseISO(reminder.dueAt) : undefined,
       flagged: reminder.flagged,
+      priority: reminder.priority,
     },
   })
 
@@ -79,6 +93,7 @@ function ReminderEditForm({
           memo: values.memo.trim() || null,
           dueAt: values.dueAt ? toDueAtParam(values.dueAt) : null,
           flagged: values.flagged,
+          priority: values.priority,
         },
       },
       { onSuccess: onSaved }
@@ -116,6 +131,31 @@ function ReminderEditForm({
           name="dueAt"
           render={({ field }) => (
             <DueDatePicker value={field.value} onChange={field.onChange} />
+          )}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="reminder-priority">우선순위</Label>
+        <Controller
+          control={control}
+          name="priority"
+          render={({ field }) => (
+            <Select
+              items={PRIORITY_LABELS}
+              value={field.value}
+              onValueChange={(value) => field.onChange(value ?? "NONE")}
+            >
+              <SelectTrigger id="reminder-priority" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRIORITIES.map((priority) => (
+                  <SelectItem key={priority} value={priority}>
+                    {PRIORITY_LABELS[priority]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         />
       </div>

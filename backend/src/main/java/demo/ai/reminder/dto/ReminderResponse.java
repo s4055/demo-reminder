@@ -1,5 +1,6 @@
 package demo.ai.reminder.dto;
 
+import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Reminder;
 
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ public record ReminderResponse(
         String memo,
         boolean completed,
         boolean flagged,
+        Priority priority,
         LocalDateTime dueAt,
         LocalDateTime completedAt,
         Long listId,
@@ -24,6 +26,7 @@ public record ReminderResponse(
                 reminder.getMemo(),
                 reminder.isCompleted(),
                 reminder.isFlagged(),
+                reminder.getPriority(),
                 reminder.getDueAt(),
                 reminder.getCompletedAt(),
                 reminder.getList() != null ? reminder.getList().getId() : null,
