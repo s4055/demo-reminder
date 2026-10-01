@@ -1,5 +1,6 @@
 package demo.ai.reminder.controller;
 
+import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.repository.ReminderRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,6 +55,59 @@ class ReminderControllerTest {
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.title").value("우유 사기"));
+    }
+
+    @Test
+    @DisplayName("우선순위를 생략하고 생성하면 응답의 priority는 NONE이다")
+    void createReminder_returnsNonePriority_whenPriorityIsOmitted() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.priority").value("NONE"));
+    }
+
+    @Test
+    @DisplayName("우선순위를 지정해 생성하면 응답에 해당 priority를 담는다")
+    void createReminder_returnsGivenPriority() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\",\"priority\":\"HIGH\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.priority").value("HIGH"));
+    }
+
+    @Test
+    @DisplayName("리마인더 수정 응답은 변경된 priority를 담는다")
+    void updateReminder_returnsChangedPriority() throws Exception {
+        Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null));
+
+        mockMvc.perform(put("/api/reminders/{id}", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\",\"flagged\":false,\"priority\":\"LOW\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.priority").value("LOW"));
+    }
+
+    @Test
+    @DisplayName("리마인더 목록 조회 응답의 각 항목은 priority를 포함한다")
+    void getReminders_includesPriority() throws Exception {
+        Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null, Priority.MEDIUM));
+
+        mockMvc.perform(get("/api/reminders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.id == " + saved.getId() + ")].priority").value(hasItem("MEDIUM")));
+    }
+
+    @Test
+    @DisplayName("지원하지 않는 우선순위 값으로 생성하면 400과 BAD_REQUEST 응답을 반환한다")
+    void createReminder_returnsBadRequest_whenPriorityIsUnknown() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\",\"priority\":\"URGENT\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
     }
 
     @Test

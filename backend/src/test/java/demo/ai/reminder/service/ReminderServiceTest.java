@@ -2,6 +2,7 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.ReminderRequest;
@@ -74,7 +75,7 @@ class ReminderServiceTest {
     void createReminder_belongsToGivenList() {
         ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
 
-        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null));
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null, null));
 
         assertThat(result.getList().getId()).isEqualTo(shopping.getId());
     }
@@ -82,7 +83,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하지 않는 리스트로 리마인더를 생성하면 404 예외가 발생한다")
     void createReminder_throwsNotFound_whenListDoesNotExist() {
-        assertThatThrownBy(() -> reminderService.createReminder(new ReminderRequest("우유 사기", null, -1L, null)))
+        assertThatThrownBy(() -> reminderService.createReminder(new ReminderRequest("우유 사기", null, -1L, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
@@ -90,7 +91,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("요청으로 받은 제목과 메모로 리마인더를 생성한다")
     void createReminder_savesReminderWithGivenTitleAndMemo() {
-        ReminderRequest request = new ReminderRequest("우유 사기", "저지방", null, null);
+        ReminderRequest request = new ReminderRequest("우유 사기", "저지방", null, null, null);
 
         Reminder result = reminderService.createReminder(request);
 
@@ -139,7 +140,7 @@ class ReminderServiceTest {
     void createReminder_savesDueAt_andIsNotFlagged() {
         LocalDateTime dueAt = LocalDate.now().atTime(18, 30);
 
-        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, dueAt));
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, dueAt, null));
 
         assertThat(result.getDueAt()).isEqualTo(dueAt);
         assertThat(result.isFlagged()).isFalse();
@@ -150,7 +151,7 @@ class ReminderServiceTest {
     void createReminder_fillsCreatedAtAndUpdatedAt() {
         LocalDateTime before = LocalDateTime.now();
 
-        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null));
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null));
 
         assertThat(result.getCreatedAt()).isNotNull().isAfterOrEqualTo(before);
         assertThat(result.getUpdatedAt()).isNotNull().isAfterOrEqualTo(before);
@@ -163,7 +164,7 @@ class ReminderServiceTest {
         LocalDateTime createdAt = saved.getCreatedAt();
         LocalDateTime updatedAt = saved.getUpdatedAt();
 
-        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("계란 사기", null, null, false));
+        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("계란 사기", null, null, false, null));
         reminderRepository.flush();
 
         Reminder result = reminderRepository.findById(saved.getId()).orElseThrow();
@@ -179,7 +180,7 @@ class ReminderServiceTest {
         LocalDateTime dueAt = LocalDate.now().atTime(18, 30);
 
         Reminder result = reminderService.updateReminder(
-                saved.getId(), new ReminderUpdateRequest("계란 사기", "12구", dueAt, true));
+                saved.getId(), new ReminderUpdateRequest("계란 사기", "12구", dueAt, true, null));
 
         assertThat(result.getTitle()).isEqualTo("계란 사기");
         assertThat(result.getMemo()).isEqualTo("12구");
@@ -195,16 +196,54 @@ class ReminderServiceTest {
         Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null));
 
         reminderService.updateReminder(
-                saved.getId(), new ReminderUpdateRequest("우유 사기", null, LocalDate.now().atTime(9, 0), true));
+                saved.getId(), new ReminderUpdateRequest("우유 사기", null, LocalDate.now().atTime(9, 0), true, null));
 
         assertThat(reminderService.getSmartReminders("today")).extracting(Reminder::getTitle).containsExactly("우유 사기");
         assertThat(reminderService.getSmartReminders("flagged")).extracting(Reminder::getTitle).containsExactly("우유 사기");
     }
 
     @Test
+    @DisplayName("우선순위를 지정해 리마인더를 생성하면 우선순위가 저장된다")
+    void createReminder_savesGivenPriority() {
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, Priority.HIGH));
+        reminderRepository.flush();
+
+        assertThat(reminderRepository.findById(result.getId()).orElseThrow().getPriority()).isEqualTo(Priority.HIGH);
+    }
+
+    @Test
+    @DisplayName("우선순위를 생략하고 리마인더를 생성하면 없음(NONE)으로 저장된다")
+    void createReminder_savesNonePriority_whenPriorityIsOmitted() {
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null));
+
+        assertThat(result.getPriority()).isEqualTo(Priority.NONE);
+    }
+
+    @Test
+    @DisplayName("리마인더를 수정하면 우선순위가 변경되어 저장된다")
+    void updateReminder_savesChangedPriority() {
+        Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null, Priority.LOW));
+
+        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, false, Priority.MEDIUM));
+        reminderRepository.flush();
+
+        assertThat(reminderRepository.findById(saved.getId()).orElseThrow().getPriority()).isEqualTo(Priority.MEDIUM);
+    }
+
+    @Test
+    @DisplayName("수정 요청에서 우선순위를 생략하면 없음(NONE)으로 바뀐다")
+    void updateReminder_resetsPriorityToNone_whenPriorityIsOmitted() {
+        Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null, Priority.HIGH));
+
+        Reminder result = reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, false, null));
+
+        assertThat(result.getPriority()).isEqualTo(Priority.NONE);
+    }
+
+    @Test
     @DisplayName("존재하지 않는 리마인더를 수정하면 404 예외가 발생한다")
     void updateReminder_throwsNotFound_whenReminderDoesNotExist() {
-        assertThatThrownBy(() -> reminderService.updateReminder(-1L, new ReminderUpdateRequest("우유 사기", null, null, false)))
+        assertThatThrownBy(() -> reminderService.updateReminder(-1L, new ReminderUpdateRequest("우유 사기", null, null, false, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
@@ -320,7 +359,7 @@ class ReminderServiceTest {
         newer.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
         reminderRepository.flush();
 
-        reminderService.updateReminder(older.getId(), new ReminderUpdateRequest("먼저 완료(수정)", null, null, false));
+        reminderService.updateReminder(older.getId(), new ReminderUpdateRequest("먼저 완료(수정)", null, null, false, null));
         reminderRepository.flush();
         List<Reminder> result = reminderService.getSmartReminders("completed");
 

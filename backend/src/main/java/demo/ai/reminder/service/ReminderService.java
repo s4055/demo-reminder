@@ -53,14 +53,14 @@ public class ReminderService {
     @Transactional
     public Reminder createReminder(ReminderRequest request) {
         ReminderList list = request.listId() == null ? null : findListOrThrow(request.listId());
-        Reminder reminder = new Reminder(request.title(), request.memo(), list, request.dueAt());
+        Reminder reminder = new Reminder(request.title(), request.memo(), list, request.dueAt(), request.priority());
         return reminderRepository.save(reminder);
     }
 
     @Transactional
     public Reminder updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
-        reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged());
+        reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority());
         return reminder;
     }
 

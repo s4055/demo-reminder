@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: demoreminder API
   description: |
-    Apple Reminders 웹 클론 (demoreminder) 백엔드 API. 현재는 Phase 4(리마인더 상세 편집, 리스트 수정)까지의 범위를 포함한다.
+    Apple Reminders 웹 클론 (demoreminder) 백엔드 API. 현재는 Phase 6(리마인더 우선순위)까지의 범위를 포함한다.
 
     모든 응답(성공/실패)은 `{ resultCode, resultMsg, data }` 형태다. 성공 시 `resultCode`는 `SUCCESS`이고 결과는 `data`에 담긴다.
     실패 시 HTTP 상태 코드와 함께 `resultCode`에 오류 종류, `resultMsg`에 원인이 담기며 `data`는 null이다.
@@ -144,7 +144,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderApiResponse"
         "400":
-          description: 유효성 검증 실패 (title 누락 등)
+          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority 값 등)
           content:
             application/json:
               schema:
@@ -234,8 +234,8 @@ paths:
   /api/reminders/{id}:
     put:
       tags: [Reminders]
-      summary: 리마인더 수정 (제목/메모/마감일시/플래그 전체 교체)
-      description: 요청 본문의 값으로 제목, 메모, 마감일시, 플래그를 교체한다. memo/dueAt을 생략하거나 null로 보내면 비워진다. flagged는 필수다. 완료 상태와 소속 리스트는 변경되지 않는다.
+      summary: 리마인더 수정 (제목/메모/마감일시/플래그/우선순위 전체 교체)
+      description: 요청 본문의 값으로 제목, 메모, 마감일시, 플래그, 우선순위를 교체한다. memo/dueAt을 생략하거나 null로 보내면 비워지고, priority를 생략하거나 null로 보내면 NONE이 된다. flagged는 필수다. 완료 상태와 소속 리스트는 변경되지 않는다.
       operationId: updateReminder
       parameters:
         - $ref: "#/components/parameters/ReminderId"
@@ -253,7 +253,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderApiResponse"
         "400":
-          description: 유효성 검증 실패 (title 누락 등)
+          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority 값 등)
           content:
             application/json:
               schema:
@@ -326,6 +326,11 @@ components:
           nullable: true
           description: 마감 일시 (타임존 없는 로컬 일시, 예 2026-09-20T18:30:00)
           example: "2026-09-20T18:30:00"
+        priority:
+          allOf:
+            - $ref: "#/components/schemas/Priority"
+          nullable: true
+          description: 우선순위. 생략하거나 null이면 NONE으로 저장된다.
 
     ReminderUpdateRequest:
       type: object
@@ -346,6 +351,17 @@ components:
           example: "2026-09-21T09:00:00"
         flagged:
           type: boolean
+        priority:
+          allOf:
+            - $ref: "#/components/schemas/Priority"
+          nullable: true
+          description: 우선순위. 생략하거나 null이면 NONE으로 바뀐다.
+
+    Priority:
+      type: string
+      enum: [NONE, LOW, MEDIUM, HIGH]
+      description: 리마인더 우선순위 (없음/낮음/보통/높음). 목록에서는 LOW/MEDIUM/HIGH를 각각 !, !!, !!!로 표시한다.
+      example: HIGH
 
     ReminderResponse:
       type: object
@@ -362,6 +378,8 @@ components:
           type: boolean
         flagged:
           type: boolean
+        priority:
+          $ref: "#/components/schemas/Priority"
         dueAt:
           type: string
           format: date-time

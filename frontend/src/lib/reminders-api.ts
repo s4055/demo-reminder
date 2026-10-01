@@ -1,4 +1,5 @@
 import { apiRequest, jsonBody } from "@/lib/api"
+import type { Priority } from "@/lib/priority"
 import type { SmartView } from "@/lib/selection"
 
 export type Reminder = {
@@ -7,6 +8,7 @@ export type Reminder = {
   memo: string | null
   completed: boolean
   flagged: boolean
+  priority: Priority
   dueAt: string | null
   completedAt: string | null
   listId: number | null
@@ -19,6 +21,7 @@ export type CreateReminderInput = {
   memo?: string | null
   listId?: number | null
   dueAt?: string | null
+  priority?: Priority
 }
 
 export type UpdateReminderInput = {
@@ -26,6 +29,7 @@ export type UpdateReminderInput = {
   memo: string | null
   dueAt: string | null
   flagged: boolean
+  priority: Priority
 }
 
 export function getReminders(listId?: number): Promise<Reminder[]> {
