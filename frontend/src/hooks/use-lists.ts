@@ -10,7 +10,9 @@ import {
   createList,
   deleteList,
   getLists,
+  reorderLists,
   updateList,
+  type ReminderList,
   type ReminderListInput,
 } from "@/lib/lists-api"
 import { listsQueryKey, remindersQueryKey } from "@/hooks/query-keys"
@@ -38,6 +40,35 @@ export function useUpdateList() {
     mutationFn: ({ id, input }: { id: number; input: ReminderListInput }) =>
       updateList(id, input),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listsQueryKey }) // 쿼리 캐시 무효화
+    },
+  })
+}
+
+// 드롭 즉시 사이드바 순서를 바꾸고(optimistic update), 실패하면 원래 순서로 되돌린다.
+export function useReorderLists() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: number[]) => reorderLists(ids),
+    meta: { errorMessage: "리스트 순서를 변경하지 못했습니다." },
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: listsQueryKey })
+      const previous = queryClient.getQueryData<ReminderList[]>(listsQueryKey)
+      if (previous) {
+        const byId = new Map(previous.map((list) => [list.id, list]))
+        queryClient.setQueryData(
+          listsQueryKey,
+          ids.flatMap((id) => byId.get(id) ?? [])
+        )
+      }
+      return { previous }
+    },
+    onError: (_error, _ids, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(listsQueryKey, context.previous)
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: listsQueryKey }) // 쿼리 캐시 무효화
     },
   })

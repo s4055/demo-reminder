@@ -1,6 +1,7 @@
 package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
+import demo.ai.reminder.dto.ReminderOrderRequest;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderResponse;
 import demo.ai.reminder.dto.ReminderUpdateRequest;
@@ -47,6 +48,12 @@ public class ReminderController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReminderResponse> createReminder(@Valid @RequestBody ReminderRequest request) {
         return ApiResponse.success(ReminderResponse.from(reminderService.createReminder(request)));
+    }
+
+    @PatchMapping("/order")
+    public ApiResponse<Void> reorderReminders(@Valid @RequestBody ReminderOrderRequest request) {
+        reminderService.reorderReminders(request.listId(), request.ids());
+        return ApiResponse.success();
     }
 
     @PutMapping("/{id}")

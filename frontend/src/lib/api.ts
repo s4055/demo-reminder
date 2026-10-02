@@ -23,8 +23,11 @@ export async function apiRequest<T>(
   return body.data
 }
 
-// POST, PUT 요청 시 Request Boby 생성
-export function jsonBody(method: "POST" | "PUT", body: unknown): RequestInit {
+// POST, PUT, PATCH 요청 시 Request Body 생성
+export function jsonBody(
+  method: "POST" | "PUT" | "PATCH",
+  body: unknown
+): RequestInit {
   return {
     method,
     headers: { "Content-Type": "application/json" },

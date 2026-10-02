@@ -142,24 +142,24 @@
 
 ## Phase 7 — 드래그앤드롭 순서 변경
 ### 백엔드
-- [ ] `ReminderList`, `Reminder`에 `sortOrder` 필드 추가
-- [ ] 새 리스트/리마인더 생성 시 같은 범위의 마지막 순서로 지정
-- [ ] `PATCH /api/lists/order` — `ids` 순서대로 리스트 순서 일괄 갱신
-- [ ] `PATCH /api/reminders/order` — `listId` + `ids` 순서대로 리마인더 순서 일괄 갱신
-- [ ] `ids`가 대상 범위의 항목과 일치하지 않으면 400 (`BusinessException`)
-- [ ] `GET /api/lists`, `GET /api/reminders?listId=` 정렬 기준을 `sortOrder`로 변경 (스마트 뷰 정렬 유지)
-- [ ] `openapi.yml` 갱신
-- [ ] 테스트: 생성 시 순서 부여, 순서 변경 반영, 잘못된 `ids` 400, 스마트 뷰 정렬 유지
+- [x] `ReminderList`, `Reminder`에 `sortOrder` 필드 추가
+- [x] 새 리스트/리마인더 생성 시 같은 범위의 마지막 순서로 지정
+- [x] `PATCH /api/lists/order` — `ids` 순서대로 리스트 순서 일괄 갱신
+- [x] `PATCH /api/reminders/order` — `listId` + `ids` 순서대로 리마인더 순서 일괄 갱신
+- [x] `ids`가 대상 범위의 항목과 일치하지 않으면 400 (`BusinessException`)
+- [x] `GET /api/lists`, `GET /api/reminders?listId=` 정렬 기준을 `sortOrder`로 변경 (스마트 뷰 정렬 유지)
+- [x] `openapi.yml` 갱신
+- [x] 테스트: 생성 시 순서 부여, 순서 변경 반영, 잘못된 `ids` 400, 스마트 뷰 정렬 유지
 
 ### 프론트엔드
-- [ ] `@dnd-kit/core`, `@dnd-kit/sortable` 도입
-- [ ] 사이드바 리스트 드래그 정렬
-- [ ] 사용자 리스트 화면의 미완료 리마인더 드래그 정렬
-- [ ] 드롭 시 optimistic update, 실패 시 원래 순서 복구 + 토스트
-- [ ] 스마트 뷰에서 드래그 비활성화
+- [x] `@dnd-kit/core`, `@dnd-kit/sortable` 도입
+- [x] 사이드바 리스트 드래그 정렬
+- [x] 사용자 리스트 화면의 미완료 리마인더 드래그 정렬
+- [x] 드롭 시 optimistic update, 실패 시 원래 순서 복구 + 토스트
+- [x] 스마트 뷰에서 드래그 비활성화
 
 ### 완료 기준 검증
-- [ ] 리스트/리마인더 순서 변경 후 새로고침해도 순서가 유지되는지 확인
+- [x] 리스트/리마인더 순서 변경 후 새로고침해도 순서가 유지되는지 확인
 
 ## Phase 8 — 태그
 ### 백엔드

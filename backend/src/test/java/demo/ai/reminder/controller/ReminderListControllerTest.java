@@ -11,9 +11,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -74,6 +78,42 @@ class ReminderListControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
                 .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("리스트 순서 변경은 200 성공 응답을 반환하고, 리스트 목록이 바뀐 순서와 sortOrder로 조회된다")
+    void reorderLists_returnsSuccess_andIsReflected() throws Exception {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        ReminderList work = reminderListRepository.save(new ReminderList("업무", null));
+        List<Long> ids = new ArrayList<>(List.of(work.getId(), shopping.getId()));
+        reminderListRepository.findAll().stream()
+                .map(ReminderList::getId)
+                .filter(id -> !ids.contains(id))
+                .forEach(ids::add);
+
+        mockMvc.perform(patch("/api/lists/order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ids\":" + ids + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"));
+
+        mockMvc.perform(get("/api/lists"))
+                .andExpect(jsonPath("$.data[0].name").value("업무"))
+                .andExpect(jsonPath("$.data[0].sortOrder").value(0))
+                .andExpect(jsonPath("$.data[1].name").value("장보기"))
+                .andExpect(jsonPath("$.data[1].sortOrder").value(1));
+    }
+
+    @Test
+    @DisplayName("리스트 순서 변경 ids가 전체 리스트와 일치하지 않으면 400과 BAD_REQUEST 응답을 반환한다")
+    void reorderLists_returnsBadRequest_whenIdsDoNotMatch() throws Exception {
+        reminderListRepository.save(new ReminderList("장보기", null));
+
+        mockMvc.perform(patch("/api/lists/order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ids\":[-1]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
     }
 
     @Test

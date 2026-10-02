@@ -11,18 +11,24 @@ import {
   deleteReminder,
   getReminders,
   getSmartReminders,
+  reorderReminders,
   toggleReminderComplete,
   toggleReminderFlag,
   updateReminder,
   type CreateReminderInput,
+  type Reminder,
   type UpdateReminderInput,
 } from "@/lib/reminders-api"
 import { listsQueryKey, remindersQueryKey } from "@/hooks/query-keys"
 import type { Selection } from "@/lib/selection"
 
+function remindersQueryKeyOf(selection: Selection) {
+  return [...remindersQueryKey, selection] as const
+}
+
 export function useReminders(selection: Selection) {
   return useQuery({
-    queryKey: [...remindersQueryKey, selection],
+    queryKey: remindersQueryKeyOf(selection),
     queryFn: () =>
       selection.type === "list"
         ? getReminders(selection.listId)
@@ -53,6 +59,38 @@ export function useUpdateReminder() {
     mutationFn: ({ id, input }: { id: number; input: UpdateReminderInput }) =>
       updateReminder(id, input),
     onSuccess: invalidate,
+  })
+}
+
+// 드롭 즉시 리스트 화면의 순서를 바꾸고(optimistic update), 실패하면 원래 순서로 되돌린다.
+export function useReorderReminders() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ listId, ids }: { listId: number; ids: number[] }) =>
+      reorderReminders(listId, ids),
+    meta: { errorMessage: "리마인더 순서를 변경하지 못했습니다." },
+    onMutate: async ({ listId, ids }) => {
+      const queryKey = remindersQueryKeyOf({ type: "list", listId })
+      await queryClient.cancelQueries({ queryKey })
+      const previous = queryClient.getQueryData<Reminder[]>(queryKey)
+      if (previous) {
+        const byId = new Map(previous.map((reminder) => [reminder.id, reminder]))
+        const reordered = ids.flatMap((id) => byId.get(id) ?? [])
+        const rest = previous.filter((reminder) => !ids.includes(reminder.id))
+        queryClient.setQueryData(queryKey, [...reordered, ...rest])
+      }
+      return { queryKey, previous }
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(context.queryKey, context.previous)
+      }
+    },
+    onSettled: (_data, _error, { listId }) => {
+      queryClient.invalidateQueries({
+        queryKey: remindersQueryKeyOf({ type: "list", listId }),
+      }) // 쿼리 캐시 무효화
+    },
   })
 }
 

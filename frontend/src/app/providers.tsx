@@ -12,8 +12,14 @@ import { Toaster } from '@/components/ui/sonner'
 function createQueryClient() {
   return new QueryClient({ // 서버에서 가져온 데이터를 관리
     mutationCache: new MutationCache({
-      onError: () => {
-        toast.error('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+      // mutation의 meta.errorMessage가 있으면 그 문구로, 없으면 공통 문구로 알린다.
+      onError: (_error, _variables, _context, mutation) => {
+        const message = mutation.meta?.errorMessage
+        toast.error(
+          typeof message === 'string'
+            ? message
+            : '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+        )
       },
     }),
   })

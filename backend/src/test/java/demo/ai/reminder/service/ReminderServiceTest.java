@@ -401,4 +401,85 @@ class ReminderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
+
+    @Test
+    @DisplayName("리마인더를 생성하면 같은 리스트 안의 마지막 순서가 부여되고, 리스트마다 순서는 따로 매겨진다")
+    void createReminder_assignsLastSortOrderWithinSameList() {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        ReminderList work = reminderListRepository.save(new ReminderList("업무", null));
+
+        Reminder milk = create("우유 사기", shopping.getId());
+        Reminder eggs = create("계란 사기", shopping.getId());
+        Reminder report = create("보고서 작성", work.getId());
+
+        assertThat(milk.getSortOrder()).isZero();
+        assertThat(eggs.getSortOrder()).isEqualTo(1);
+        assertThat(report.getSortOrder()).isZero();
+    }
+
+    @Test
+    @DisplayName("순서를 변경하면 리스트별 조회가 바뀐 순서대로 반환된다")
+    void reorderReminders_changesListOrder() {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        Reminder milk = create("우유", shopping.getId());
+        Reminder eggs = create("계란", shopping.getId());
+        Reminder bread = create("빵", shopping.getId());
+
+        reminderService.reorderReminders(shopping.getId(), List.of(bread.getId(), milk.getId(), eggs.getId()));
+
+        assertThat(reminderService.getReminders(shopping.getId()))
+                .extracting(Reminder::getTitle).containsExactly("빵", "우유", "계란");
+    }
+
+    @Test
+    @DisplayName("순서 변경 ids가 리스트의 미완료 리마인더와 정확히 일치하지 않으면 400 예외가 발생한다")
+    void reorderReminders_throwsBadRequest_whenIdsDoNotMatch() {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        ReminderList work = reminderListRepository.save(new ReminderList("업무", null));
+        Reminder milk = create("우유", shopping.getId());
+        Reminder eggs = create("계란", shopping.getId());
+        Reminder done = create("빵", shopping.getId());
+        reminderService.toggleComplete(done.getId());
+        Reminder report = create("보고서", work.getId());
+
+        List<List<Long>> invalidIds = List.of(
+                List.of(milk.getId()),
+                List.of(milk.getId(), milk.getId()),
+                List.of(milk.getId(), eggs.getId(), done.getId()),
+                List.of(milk.getId(), report.getId()));
+
+        for (List<Long> ids : invalidIds) {
+            assertThatThrownBy(() -> reminderService.reorderReminders(shopping.getId(), ids))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        }
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 리스트의 순서를 변경하면 404 예외가 발생한다")
+    void reorderReminders_throwsNotFound_whenListDoesNotExist() {
+        assertThatThrownBy(() -> reminderService.reorderReminders(-1L, List.of()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("순서를 변경해도 스마트 뷰는 기존 정렬(마감일 순)을 유지한다")
+    void reorderReminders_doesNotAffectSmartViewOrder() {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        LocalDate today = LocalDate.now();
+        Reminder early = reminderService.createReminder(
+                new ReminderRequest("이른 마감", null, shopping.getId(), today.atTime(9, 0), null));
+        Reminder late = reminderService.createReminder(
+                new ReminderRequest("늦은 마감", null, shopping.getId(), today.atTime(18, 0), null));
+
+        reminderService.reorderReminders(shopping.getId(), List.of(late.getId(), early.getId()));
+
+        assertThat(reminderService.getSmartReminders("scheduled"))
+                .extracting(Reminder::getTitle).containsExactly("이른 마감", "늦은 마감");
+    }
+
+    private Reminder create(String title, Long listId) {
+        return reminderService.createReminder(new ReminderRequest(title, null, listId, null, null));
+    }
 }

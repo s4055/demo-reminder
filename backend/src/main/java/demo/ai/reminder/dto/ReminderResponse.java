@@ -15,6 +15,7 @@ public record ReminderResponse(
         LocalDateTime dueAt,
         LocalDateTime completedAt,
         Long listId,
+        int sortOrder,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -30,6 +31,7 @@ public record ReminderResponse(
                 reminder.getDueAt(),
                 reminder.getCompletedAt(),
                 reminder.getList() != null ? reminder.getList().getId() : null,
+                reminder.getSortOrder(),
                 reminder.getCreatedAt(),
                 reminder.getUpdatedAt()
         );
