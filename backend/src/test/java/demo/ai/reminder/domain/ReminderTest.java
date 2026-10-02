@@ -210,4 +210,22 @@ class ReminderTest {
 
         assertThat(reminder.getPriority()).isEqualTo(Priority.NONE);
     }
+
+    @Test
+    @DisplayName("생성 직후 표시 순서는 0이다")
+    void constructor_defaultsSortOrderToZero() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+
+        assertThat(reminder.getSortOrder()).isZero();
+    }
+
+    @Test
+    @DisplayName("changeSortOrder를 호출하면 표시 순서가 변경된다")
+    void changeSortOrder_changesSortOrder() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+
+        reminder.changeSortOrder(5);
+
+        assertThat(reminder.getSortOrder()).isEqualTo(5);
+    }
 }

@@ -43,6 +43,10 @@ public class Reminder extends BaseTimeEntity {
     // 완료 처리한 시각. 미완료 상태에서는 null이다.
     private LocalDateTime completedAt;
 
+    // 같은 리스트 안에서의 표시 순서. 작을수록 위에 표시된다.
+    @Column(nullable = false)
+    private int sortOrder;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "list_id")
     private ReminderList list;
@@ -67,6 +71,10 @@ public class Reminder extends BaseTimeEntity {
         this.dueAt = dueAt;
         this.flagged = flagged;
         this.priority = priorityOrNone(priority);
+    }
+
+    public void changeSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     public void toggleFlag() {

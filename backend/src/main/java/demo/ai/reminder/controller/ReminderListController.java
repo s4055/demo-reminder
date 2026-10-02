@@ -1,6 +1,7 @@
 package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
+import demo.ai.reminder.dto.ListOrderRequest;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.dto.ReminderListResponse;
 import demo.ai.reminder.service.ReminderListService;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -37,6 +39,12 @@ public class ReminderListController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReminderListResponse> createList(@Valid @RequestBody ReminderListRequest request) {
         return ApiResponse.success(ReminderListResponse.from(reminderListService.createList(request)));
+    }
+
+    @PatchMapping("/order")
+    public ApiResponse<Void> reorderLists(@Valid @RequestBody ListOrderRequest request) {
+        reminderListService.reorderLists(request.ids());
+        return ApiResponse.success();
     }
 
     @PutMapping("/{id}")

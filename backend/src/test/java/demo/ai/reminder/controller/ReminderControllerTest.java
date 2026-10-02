@@ -2,6 +2,8 @@ package demo.ai.reminder.controller;
 
 import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Reminder;
+import demo.ai.reminder.domain.ReminderList;
+import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -32,6 +35,9 @@ class ReminderControllerTest {
 
     @Autowired
     private ReminderRepository reminderRepository;
+
+    @Autowired
+    private ReminderListRepository reminderListRepository;
 
     @Test
     @DisplayName("리마인더 목록 조회 응답은 resultCode, resultMsg와 data 배열을 포함한다")
@@ -161,6 +167,49 @@ class ReminderControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.resultMsg").value("Unknown smart view: unknown"));
+    }
+
+    @Test
+    @DisplayName("리마인더 순서 변경은 200 성공 응답을 반환하고, 리스트별 조회에 반영된다")
+    void reorderReminders_returnsSuccess_andIsReflected() throws Exception {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        Reminder milk = reminderRepository.save(new Reminder("우유", null, shopping, null));
+        Reminder eggs = reminderRepository.save(new Reminder("계란", null, shopping, null));
+
+        mockMvc.perform(patch("/api/reminders/order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"listId\":%d,\"ids\":[%d,%d]}".formatted(shopping.getId(), eggs.getId(), milk.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        mockMvc.perform(get("/api/reminders").param("listId", shopping.getId().toString()))
+                .andExpect(jsonPath("$.data[*].title", contains("계란", "우유")))
+                .andExpect(jsonPath("$.data[*].sortOrder", contains(0, 1)));
+    }
+
+    @Test
+    @DisplayName("리마인더 순서 변경 ids가 리스트 항목과 일치하지 않으면 400과 BAD_REQUEST 응답을 반환한다")
+    void reorderReminders_returnsBadRequest_whenIdsDoNotMatch() throws Exception {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        Reminder milk = reminderRepository.save(new Reminder("우유", null, shopping, null));
+        reminderRepository.save(new Reminder("계란", null, shopping, null));
+
+        mockMvc.perform(patch("/api/reminders/order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"listId\":%d,\"ids\":[%d]}".formatted(shopping.getId(), milk.getId())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("리마인더 순서 변경에 listId가 없으면 400과 BAD_REQUEST 응답을 반환한다")
+    void reorderReminders_returnsBadRequest_whenListIdIsMissing() throws Exception {
+        mockMvc.perform(patch("/api/reminders/order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ids\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("listId: ")));
     }
 
     @Test

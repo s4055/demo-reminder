@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -135,5 +136,51 @@ class ReminderListServiceTest {
         assertThatThrownBy(() -> reminderListService.deleteList(-1L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("리스트를 생성하면 마지막 순서가 부여된다")
+    void createList_assignsLastSortOrder() {
+        ReminderListSummary first = reminderListService.createList(new ReminderListRequest("장보기", null));
+        ReminderListSummary second = reminderListService.createList(new ReminderListRequest("업무", null));
+
+        assertThat(second.list().getSortOrder()).isEqualTo(first.list().getSortOrder() + 1);
+    }
+
+    @Test
+    @DisplayName("리스트 순서를 변경하면 리스트 목록이 바뀐 순서대로 반환된다")
+    void reorderLists_changesListOrder() {
+        Long shopping = reminderListService.createList(new ReminderListRequest("장보기", null)).list().getId();
+        Long work = reminderListService.createList(new ReminderListRequest("업무", null)).list().getId();
+        Long hobby = reminderListService.createList(new ReminderListRequest("취미", null)).list().getId();
+        List<Long> ids = new ArrayList<>(List.of(hobby, shopping, work));
+        reminderListRepository.findAll().stream()
+                .map(ReminderList::getId)
+                .filter(id -> !ids.contains(id))
+                .forEach(ids::add);
+
+        reminderListService.reorderLists(ids);
+
+        assertThat(reminderListService.getLists())
+                .extracting(summary -> summary.list().getId())
+                .containsExactlyElementsOf(ids);
+    }
+
+    @Test
+    @DisplayName("리스트 순서 변경 ids가 전체 리스트와 정확히 일치하지 않으면 400 예외가 발생한다")
+    void reorderLists_throwsBadRequest_whenIdsDoNotMatch() {
+        Long shopping = reminderListService.createList(new ReminderListRequest("장보기", null)).list().getId();
+        List<Long> allIds = reminderListRepository.findAll().stream().map(ReminderList::getId).toList();
+        List<Long> missing = allIds.stream().filter(id -> !id.equals(shopping)).toList();
+        List<Long> duplicated = new ArrayList<>(missing);
+        duplicated.add(missing.isEmpty() ? -1L : missing.getFirst());
+        List<Long> unknown = new ArrayList<>(missing);
+        unknown.add(-1L);
+
+        for (List<Long> ids : List.of(missing, duplicated, unknown)) {
+            assertThatThrownBy(() -> reminderListService.reorderLists(ids))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        }
     }
 }

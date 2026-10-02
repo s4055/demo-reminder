@@ -34,4 +34,22 @@ class ReminderListTest {
         assertThat(list.getName()).isEqualTo("업무");
         assertThat(list.getColor()).isEqualTo("#007AFF");
     }
+
+    @Test
+    @DisplayName("순서를 지정하지 않고 생성하면 표시 순서는 0이다")
+    void constructor_defaultsSortOrderToZero() {
+        ReminderList list = new ReminderList("장보기", null);
+
+        assertThat(list.getSortOrder()).isZero();
+    }
+
+    @Test
+    @DisplayName("changeSortOrder를 호출하면 표시 순서가 변경된다")
+    void changeSortOrder_changesSortOrder() {
+        ReminderList list = new ReminderList("장보기", null, 3);
+
+        list.changeSortOrder(1);
+
+        assertThat(list.getSortOrder()).isEqualTo(1);
+    }
 }

@@ -8,6 +8,7 @@ public record ReminderListResponse(
         Long id,
         String name,
         String color,
+        int sortOrder,
         long reminderCount,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -18,6 +19,7 @@ public record ReminderListResponse(
                 summary.list().getId(),
                 summary.list().getName(),
                 summary.list().getColor(),
+                summary.list().getSortOrder(),
                 summary.reminderCount(),
                 summary.list().getCreatedAt(),
                 summary.list().getUpdatedAt()

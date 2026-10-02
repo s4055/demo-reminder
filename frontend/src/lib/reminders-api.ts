@@ -12,6 +12,7 @@ export type Reminder = {
   dueAt: string | null
   completedAt: string | null
   listId: number | null
+  sortOrder: number
   createdAt: string
   updatedAt: string
 }
@@ -50,6 +51,14 @@ export function updateReminder(
   input: UpdateReminderInput
 ): Promise<Reminder> {
   return apiRequest<Reminder>(`/api/reminders/${id}`, jsonBody("PUT", input))
+}
+
+// ids 순서가 곧 새 순서다. 리스트의 미완료 리마인더 id를 모두 담아야 한다.
+export function reorderReminders(listId: number, ids: number[]): Promise<void> {
+  return apiRequest<void>(
+    "/api/reminders/order",
+    jsonBody("PATCH", { listId, ids })
+  )
 }
 
 export function toggleReminderComplete(id: number): Promise<Reminder> {
