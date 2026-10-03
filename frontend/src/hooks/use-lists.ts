@@ -15,7 +15,7 @@ import {
   type ReminderList,
   type ReminderListInput,
 } from "@/lib/lists-api"
-import { listsQueryKey, remindersQueryKey } from "@/hooks/query-keys"
+import { listsQueryKey, remindersQueryKey, tagsQueryKey } from "@/hooks/query-keys"
 
 export function useLists() {
   return useQuery({
@@ -81,6 +81,7 @@ export function useDeleteList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: listsQueryKey }) // 쿼리 캐시 무효화
       queryClient.invalidateQueries({ queryKey: remindersQueryKey }) // 쿼리 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: tagsQueryKey }) // 리스트와 함께 리마인더가 지워지면 태그별 개수도 바뀐다
     },
   })
 }

@@ -2,8 +2,10 @@ package demo.ai.reminder.dto;
 
 import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Reminder;
+import demo.ai.reminder.domain.Tag;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ReminderResponse(
         Long id,
@@ -16,6 +18,7 @@ public record ReminderResponse(
         LocalDateTime completedAt,
         Long listId,
         int sortOrder,
+        List<String> tags,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -32,6 +35,7 @@ public record ReminderResponse(
                 reminder.getCompletedAt(),
                 reminder.getList() != null ? reminder.getList().getId() : null,
                 reminder.getSortOrder(),
+                reminder.getTags().stream().map(Tag::getName).sorted().toList(),
                 reminder.getCreatedAt(),
                 reminder.getUpdatedAt()
         );

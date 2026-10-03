@@ -31,8 +31,10 @@ public class ReminderController {
     private final ReminderService reminderService;
 
     @GetMapping
-    public ApiResponse<List<ReminderResponse>> getReminders(@RequestParam(required = false) Long listId) {
-        return ApiResponse.success(reminderService.getReminders(listId).stream()
+    public ApiResponse<List<ReminderResponse>> getReminders(
+            @RequestParam(required = false) Long listId,
+            @RequestParam(required = false) String tag) {
+        return ApiResponse.success(reminderService.getReminders(listId, tag).stream()
                 .map(ReminderResponse::from)
                 .toList());
     }

@@ -34,7 +34,9 @@ export function RemindersApp() {
   const title =
     selection.type === "list"
       ? (selectedList?.name ?? "")
-      : smartViewLabel(selection.view)
+      : selection.type === "tag"
+        ? `#${selection.name}`
+        : smartViewLabel(selection.view)
 
   // "오늘" 뷰에서 추가한 리마인더가 바로 그 뷰에 나타나도록 마감일 기본값을 오늘로 둔다.
   const defaultDueAt =
@@ -88,6 +90,7 @@ export function RemindersApp() {
           <ReminderForm
             key={selectionKey(selection)}
             listId={selection.type === "list" ? selection.listId : undefined}
+            tagNames={selection.type === "tag" ? [selection.name] : undefined}
             defaultDueAt={defaultDueAt}
           />
           <ReminderList selection={selection} />

@@ -12,6 +12,10 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
     List<Reminder> findByListId(Long listId, Sort sort);
 
+    List<Reminder> findByTagsName(String tagName, Sort sort);
+
+    List<Reminder> findByTagsId(Long tagId);
+
     long countByListIdAndCompletedFalse(Long listId);
 
     void deleteAllByListId(Long listId);

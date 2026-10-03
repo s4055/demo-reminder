@@ -3,6 +3,7 @@
 import { parseISO } from "date-fns"
 import { Controller, useForm } from "react-hook-form"
 import { DueDatePicker } from "@/components/due-date-picker"
+import { TagInput } from "@/components/tag-input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -33,6 +34,7 @@ type ReminderFormValues = {
   dueAt: Date | undefined
   flagged: boolean
   priority: Priority
+  tagNames: string[]
 }
 
 export function ReminderEditDialog({
@@ -68,7 +70,7 @@ function ReminderEditForm({
   // 입력 연결 방식은 컴포넌트가 값을 주고받는 방식에 따라 나눈다.
   // - register: 내부가 진짜 HTML 입력 요소인 컴포넌트(Input, Textarea). ref와 onChange 이벤트(event.target.value)로 값을 읽는다.
   // - Controller(control): 진짜 입력 요소 없이 value / onChange 계열 prop으로 값을 주고받는 컴포넌트
-  //   (DueDatePicker, Checkbox, Select). field.value와 field.onChange를 컴포넌트 prop에 이어 준다.
+  //   (DueDatePicker, Checkbox, Select, TagInput). field.value와 field.onChange를 컴포넌트 prop에 이어 준다.
   const {
     register,
     handleSubmit,
@@ -81,6 +83,7 @@ function ReminderEditForm({
       dueAt: reminder.dueAt ? parseISO(reminder.dueAt) : undefined,
       flagged: reminder.flagged,
       priority: reminder.priority,
+      tagNames: reminder.tags,
     },
   })
 
@@ -94,6 +97,7 @@ function ReminderEditForm({
           dueAt: values.dueAt ? toDueAtParam(values.dueAt) : null,
           flagged: values.flagged,
           priority: values.priority,
+          tagNames: values.tagNames,
         },
       },
       { onSuccess: onSaved }
@@ -156,6 +160,20 @@ function ReminderEditForm({
                 ))}
               </SelectContent>
             </Select>
+          )}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="reminder-tags">태그</Label>
+        <Controller
+          control={control}
+          name="tagNames"
+          render={({ field }) => (
+            <TagInput
+              id="reminder-tags"
+              value={field.value}
+              onChange={field.onChange}
+            />
           )}
         />
       </div>

@@ -10,6 +10,7 @@ import {
   createReminder,
   deleteReminder,
   getReminders,
+  getRemindersByTag,
   getSmartReminders,
   reorderReminders,
   toggleReminderComplete,
@@ -19,29 +20,38 @@ import {
   type Reminder,
   type UpdateReminderInput,
 } from "@/lib/reminders-api"
-import { listsQueryKey, remindersQueryKey } from "@/hooks/query-keys"
+import { listsQueryKey, remindersQueryKey, tagsQueryKey } from "@/hooks/query-keys"
 import type { Selection } from "@/lib/selection"
 
 function remindersQueryKeyOf(selection: Selection) {
   return [...remindersQueryKey, selection] as const
 }
 
+function fetchReminders(selection: Selection): Promise<Reminder[]> {
+  switch (selection.type) {
+    case "list":
+      return getReminders(selection.listId)
+    case "tag":
+      return getRemindersByTag(selection.name)
+    default:
+      return getSmartReminders(selection.view)
+  }
+}
+
 export function useReminders(selection: Selection) {
   return useQuery({
     queryKey: remindersQueryKeyOf(selection),
-    queryFn: () =>
-      selection.type === "list"
-        ? getReminders(selection.listId)
-        : getSmartReminders(selection.view),
+    queryFn: () => fetchReminders(selection),
   })
 }
 
-// 리마인더 변경은 목록 조회 결과와 사이드바의 리스트별 개수에 모두 영향을 준다.
+// 리마인더 변경은 목록 조회 결과와 사이드바의 리스트별/태그별 개수에 모두 영향을 준다.
 function useInvalidateReminderQueries() {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries({ queryKey: remindersQueryKey }) // 쿼리 캐시 무효화
     queryClient.invalidateQueries({ queryKey: listsQueryKey }) // 쿼리 캐시 무효화
+    queryClient.invalidateQueries({ queryKey: tagsQueryKey }) // 쿼리 캐시 무효화
   }
 }
 
