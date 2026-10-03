@@ -9,13 +9,20 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -51,6 +58,15 @@ public class Reminder extends BaseTimeEntity {
     @JoinColumn(name = "list_id")
     private ReminderList list;
 
+    @ManyToMany
+    @JoinTable(
+            name = "reminder_tag",
+            joinColumns = @JoinColumn(name = "reminder_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    @BatchSize(size = 100)
+    private Set<Tag> tags = new LinkedHashSet<>();
+
     public Reminder(String title, String memo, ReminderList list, LocalDateTime dueAt) {
         this(title, memo, list, dueAt, Priority.NONE);
     }
@@ -71,6 +87,19 @@ public class Reminder extends BaseTimeEntity {
         this.dueAt = dueAt;
         this.flagged = flagged;
         this.priority = priorityOrNone(priority);
+    }
+
+    public void replaceTags(Collection<Tag> tags) {
+        this.tags.clear();
+        this.tags.addAll(tags);
+    }
+
+    public void removeTag(Tag tag) {
+        this.tags.remove(tag);
+    }
+
+    public Set<Tag> getTags() {
+        return Collections.unmodifiableSet(tags);
     }
 
     public void changeSortOrder(int sortOrder) {

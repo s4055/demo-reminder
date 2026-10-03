@@ -4,8 +4,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ReminderTest {
 
@@ -227,5 +229,49 @@ class ReminderTest {
         reminder.changeSortOrder(5);
 
         assertThat(reminder.getSortOrder()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("생성 직후에는 태그가 없다")
+    void constructor_hasNoTags() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+
+        assertThat(reminder.getTags()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("replaceTags를 호출하면 태그가 주어진 목록으로 교체된다")
+    void replaceTags_replacesAllTags() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+        Tag home = new Tag("집");
+        Tag errand = new Tag("심부름");
+        Tag urgent = new Tag("급함");
+        reminder.replaceTags(List.of(home, errand));
+
+        reminder.replaceTags(List.of(urgent));
+
+        assertThat(reminder.getTags()).containsExactly(urgent);
+    }
+
+    @Test
+    @DisplayName("removeTag를 호출하면 해당 태그만 떨어진다")
+    void removeTag_removesOnlyGivenTag() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+        Tag home = new Tag("집");
+        Tag errand = new Tag("심부름");
+        reminder.replaceTags(List.of(home, errand));
+
+        reminder.removeTag(home);
+
+        assertThat(reminder.getTags()).containsExactly(errand);
+    }
+
+    @Test
+    @DisplayName("getTags로 받은 태그 목록은 직접 수정할 수 없다")
+    void getTags_isUnmodifiable() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null);
+
+        assertThatThrownBy(() -> reminder.getTags().add(new Tag("집")))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 }

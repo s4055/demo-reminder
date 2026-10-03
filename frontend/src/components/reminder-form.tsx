@@ -10,9 +10,12 @@ import { toDueAtParam } from "@/lib/due-date"
 export function ReminderForm({
   listId,
   defaultDueAt,
+  tagNames,
 }: {
   listId?: number
   defaultDueAt?: Date
+  // 태그 화면에서 추가한 리마인더가 바로 그 화면에 나타나도록 붙일 태그
+  tagNames?: string[]
 }) {
   const [title, setTitle] = useState("")
   const [dueAt, setDueAt] = useState<Date | undefined>(defaultDueAt)
@@ -29,6 +32,7 @@ export function ReminderForm({
         title: trimmedTitle,
         listId,
         dueAt: dueAt ? toDueAtParam(dueAt) : null,
+        tagNames,
       },
       {
         onSuccess: () => {

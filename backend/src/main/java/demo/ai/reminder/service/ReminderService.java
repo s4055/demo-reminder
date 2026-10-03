@@ -32,13 +32,17 @@ public class ReminderService {
 
     private final ReminderRepository reminderRepository;
     private final ReminderListRepository reminderListRepository;
+    private final TagService tagService;
 
-    // 리스트를 지정하면 표시 순서대로, 지정하지 않으면 생성순으로 조회한다.
-    public List<Reminder> getReminders(Long listId) {
-        if (listId == null) {
-            return reminderRepository.findAll(DEFAULT_SORT);
+    // 리스트를 지정하면 표시 순서대로, 태그를 지정하면 그 태그가 붙은 리마인더를 생성순으로, 둘 다 없으면 전체를 생성순으로 조회한다.
+    public List<Reminder> getReminders(Long listId, String tag) {
+        if (listId != null) {
+            return reminderRepository.findByListId(listId, LIST_SORT);
         }
-        return reminderRepository.findByListId(listId, LIST_SORT);
+        if (tag != null) {
+            return reminderRepository.findByTagsName(tag.trim(), DEFAULT_SORT);
+        }
+        return reminderRepository.findAll(DEFAULT_SORT);
     }
 
     public List<Reminder> getSmartReminders(String view) {
@@ -61,13 +65,16 @@ public class ReminderService {
         ReminderList list = request.listId() == null ? null : findListOrThrow(request.listId());
         Reminder reminder = new Reminder(request.title(), request.memo(), list, request.dueAt(), request.priority());
         reminder.changeSortOrder(nextSortOrder(list));
+        reminder.replaceTags(tagService.resolveTags(request.tagNames()));
         return reminderRepository.save(reminder);
     }
 
+    // 태그도 요청 목록으로 교체한다 (생략하거나 null이면 모두 떨어진다).
     @Transactional
     public Reminder updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
         reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority());
+        reminder.replaceTags(tagService.resolveTags(request.tagNames()));
         return reminder;
     }
 

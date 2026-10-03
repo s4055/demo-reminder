@@ -122,7 +122,7 @@ export function ReminderList({ selection }: { selection: Selection }) {
     onDelete: (reminder) => deleteReminder.mutate(reminder.id),
   }
   // 사용자 리스트 화면에서만 미완료 항목을 드래그로 정렬한다. 미완료 항목은 서버가 준 순서(표시 순서)를 유지한다.
-  // 스마트 뷰에서는 여러 리스트의 항목이 섞이므로 드래그를 끄고 소속 리스트를 함께 보여준다.
+  // 스마트 뷰와 태그 화면에서는 여러 리스트의 항목이 섞이므로 드래그를 끄고 소속 리스트를 함께 보여준다.
   const listId = selection.type === "list" ? selection.listId : null
   const incomplete = reminders.filter((reminder) => !reminder.completed)
   const completed = reminders
@@ -314,8 +314,8 @@ function ReminderItem({
           )}
           {reminder.title}
         </span>
-        {(reminder.dueAt || list) && (
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+        {(reminder.dueAt || list || reminder.tags.length > 0) && (
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
             {reminder.dueAt && (
               <span className={cn(overdue && "text-destructive")}>
                 {formatDueAt(reminder.dueAt)}
@@ -330,6 +330,11 @@ function ReminderItem({
                 {list.name}
               </span>
             )}
+            {reminder.tags.map((tag) => (
+              <span key={tag} className="text-primary/80">
+                #{tag}
+              </span>
+            ))}
           </span>
         )}
         {reminder.memo && (

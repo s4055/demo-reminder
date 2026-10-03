@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -210,6 +211,63 @@ class ReminderControllerTest {
                         .content("{\"ids\":[]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultMsg").value(startsWith("listId: ")));
+    }
+
+    @Test
+    @DisplayName("태그 이름을 담아 생성하면 응답의 tags에 태그 이름이 이름순으로 담긴다")
+    void createReminder_returnsTagNames() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\",\"tagNames\":[\"집\",\"심부름\"]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.tags", contains("심부름", "집")));
+    }
+
+    @Test
+    @DisplayName("태그 없이 생성하면 응답의 tags는 빈 배열이다")
+    void createReminder_returnsEmptyTags_whenTagNamesAreOmitted() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.tags", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("빈 태그 이름으로 생성하면 400과 BAD_REQUEST 응답을 반환한다")
+    void createReminder_returnsBadRequest_whenTagNameIsBlank() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\",\"tagNames\":[\" \"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("리마인더 수정 응답은 교체된 tags를 담는다")
+    void updateReminder_returnsReplacedTags() throws Exception {
+        Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null));
+
+        mockMvc.perform(put("/api/reminders/{id}", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\",\"flagged\":false,\"tagNames\":[\"급함\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tags", contains("급함")));
+    }
+
+    @Test
+    @DisplayName("tag 파라미터로 조회하면 해당 태그가 붙은 리마인더만 반환한다")
+    void getReminders_byTag_returnsTaggedReminders() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"우유 사기\",\"tagNames\":[\"집\"]}"));
+        mockMvc.perform(post("/api/reminders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"보고서\",\"tagNames\":[\"회사\"]}"));
+
+        mockMvc.perform(get("/api/reminders").param("tag", "집"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].title", contains("우유 사기")));
     }
 
     @Test

@@ -3,6 +3,7 @@ export type SmartView = "today" | "scheduled" | "all" | "flagged" | "completed"
 export type Selection =
   | { type: "smart"; view: SmartView }
   | { type: "list"; listId: number }
+  | { type: "tag"; name: string }
 
 export const SMART_VIEWS: { view: SmartView; label: string }[] = [
   { view: "today", label: "오늘" },
@@ -20,6 +21,9 @@ export function smartViewLabel(view: SmartView): string {
 
 export function emptyMessage(selection: Selection): string {
   if (selection.type === "list") return "이 리스트에 리마인더가 없습니다."
+  if (selection.type === "tag") {
+    return `#${selection.name} 태그가 붙은 리마인더가 없습니다.`
+  }
   switch (selection.view) {
     case "today":
       return "오늘 마감인 리마인더가 없습니다."
@@ -37,11 +41,17 @@ export function emptyMessage(selection: Selection): string {
 export function isSameSelection(a: Selection, b: Selection): boolean {
   if (a.type === "list" && b.type === "list") return a.listId === b.listId
   if (a.type === "smart" && b.type === "smart") return a.view === b.view
+  if (a.type === "tag" && b.type === "tag") return a.name === b.name
   return false
 }
 
 export function selectionKey(selection: Selection): string {
-  return selection.type === "list"
-    ? `list-${selection.listId}`
-    : `smart-${selection.view}`
+  switch (selection.type) {
+    case "list":
+      return `list-${selection.listId}`
+    case "tag":
+      return `tag-${selection.name}`
+    default:
+      return `smart-${selection.view}`
+  }
 }

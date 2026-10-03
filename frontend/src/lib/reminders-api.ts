@@ -13,6 +13,8 @@ export type Reminder = {
   completedAt: string | null
   listId: number | null
   sortOrder: number
+  // 붙은 태그 이름 (이름순)
+  tags: string[]
   createdAt: string
   updatedAt: string
 }
@@ -23,19 +25,28 @@ export type CreateReminderInput = {
   listId?: number | null
   dueAt?: string | null
   priority?: Priority
+  tagNames?: string[]
 }
 
+// 전체 교체 방식이라 tagNames를 빈 배열로 보내면 태그가 모두 떨어진다.
 export type UpdateReminderInput = {
   title: string
   memo: string | null
   dueAt: string | null
   flagged: boolean
   priority: Priority
+  tagNames: string[]
 }
 
 export function getReminders(listId?: number): Promise<Reminder[]> {
   const query = listId === undefined ? "" : `?listId=${listId}`
   return apiRequest<Reminder[]>(`/api/reminders${query}`)
+}
+
+export function getRemindersByTag(tag: string): Promise<Reminder[]> {
+  return apiRequest<Reminder[]>(
+    `/api/reminders?tag=${encodeURIComponent(tag)}`
+  )
 }
 
 export function getSmartReminders(view: SmartView): Promise<Reminder[]> {

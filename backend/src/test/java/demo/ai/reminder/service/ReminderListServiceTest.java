@@ -4,10 +4,12 @@ import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
+import demo.ai.reminder.domain.Tag;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderListSummary;
 import demo.ai.reminder.repository.ReminderRepository;
+import demo.ai.reminder.repository.TagRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,9 @@ class ReminderListServiceTest {
 
     @Autowired
     private ReminderRepository reminderRepository;
+
+    @Autowired
+    private TagRepository tagRepository;
 
     @Test
     @DisplayName("리스트 목록은 리스트별 미완료 리마인더 개수를 포함한다")
@@ -128,6 +133,23 @@ class ReminderListServiceTest {
         assertThat(reminderListRepository.findById(shopping.getId())).isEmpty();
         assertThat(reminderRepository.findById(milk.getId())).isEmpty();
         assertThat(reminderRepository.findById(report.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("태그가 붙은 리마인더가 있는 리스트도 삭제할 수 있다")
+    void deleteList_deletesTaggedReminders() {
+        ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
+        Tag home = tagRepository.save(new Tag("집"));
+        Reminder milk = new Reminder("우유 사기", null, shopping, null);
+        milk.replaceTags(List.of(home));
+        reminderRepository.save(milk);
+        reminderRepository.flush();
+
+        reminderListService.deleteList(shopping.getId());
+        reminderRepository.flush();
+
+        assertThat(reminderRepository.findById(milk.getId())).isEmpty();
+        assertThat(tagRepository.findById(home.getId())).isPresent();
     }
 
     @Test
