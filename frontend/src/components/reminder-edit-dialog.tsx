@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, type KeyboardEvent } from "react"
 import { parseISO } from "date-fns"
 import { Controller, useForm } from "react-hook-form"
 import { DueDatePicker } from "@/components/due-date-picker"
@@ -23,10 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useUpdateReminder } from "@/hooks/use-reminders"
+import { useCreateReminder, useUpdateReminder } from "@/hooks/use-reminders"
 import { toDueAtParam } from "@/lib/due-date"
 import { PRIORITIES, PRIORITY_LABELS, type Priority } from "@/lib/priority"
 import type { Reminder } from "@/lib/reminders-api"
+import { cn } from "@/lib/utils"
 
 type ReminderFormValues = {
   title: string
@@ -107,7 +109,9 @@ function ReminderEditForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
       <DialogHeader>
-        <DialogTitle>리마인더 편집</DialogTitle>
+        <DialogTitle>
+          {reminder.parentId === null ? "리마인더 편집" : "하위 작업 편집"}
+        </DialogTitle>
       </DialogHeader>
       <div className="grid gap-1.5">
         <Label htmlFor="reminder-title">제목</Label>
@@ -191,11 +195,79 @@ function ReminderEditForm({
         />
         <Label htmlFor="reminder-flagged">플래그 지정</Label>
       </div>
+      {/* 하위 작업은 1단계까지만 만들 수 있으므로 최상위 리마인더에서만 보여준다. */}
+      {reminder.parentId === null && <SubtaskSection parent={reminder} />}
       <DialogFooter>
         <Button type="submit" disabled={updateReminder.isPending}>
           저장
         </Button>
       </DialogFooter>
     </form>
+  )
+}
+
+// 하위 작업은 편집 폼의 저장과 별개로 추가 즉시 생성한다.
+// 이 영역은 편집 폼 안에 있으므로 Enter가 폼을 제출하지 않도록 막는다.
+function SubtaskSection({ parent }: { parent: Reminder }) {
+  const createReminder = useCreateReminder()
+  const [title, setTitle] = useState("")
+
+  function addSubtask() {
+    const trimmed = title.trim()
+    if (!trimmed || createReminder.isPending) return
+    createReminder.mutate(
+      { title: trimmed, parentId: parent.id },
+      { onSuccess: () => setTitle("") }
+    )
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    // 한글 조합 중 Enter는 조합 확정이므로 추가하지 않는다.
+    if (event.nativeEvent.isComposing || event.key !== "Enter") return
+    event.preventDefault()
+    addSubtask()
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor="reminder-subtask">하위 작업</Label>
+      {parent.subtasks.length > 0 && (
+        <ul className="grid gap-1 text-sm">
+          {parent.subtasks.map((subtask) => (
+            <li
+              key={subtask.id}
+              className={cn(
+                "truncate rounded-md bg-secondary px-2 py-1",
+                subtask.completed && "text-muted-foreground line-through"
+              )}
+            >
+              {subtask.title}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <Input
+          id="reminder-subtask"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="하위 작업 입력 후 Enter"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addSubtask}
+          disabled={!title.trim() || createReminder.isPending}
+        >
+          추가
+        </Button>
+      </div>
+      {createReminder.isError && (
+        <p className="text-xs text-destructive">
+          하위 작업을 추가하지 못했습니다.
+        </p>
+      )}
+    </div>
   )
 }

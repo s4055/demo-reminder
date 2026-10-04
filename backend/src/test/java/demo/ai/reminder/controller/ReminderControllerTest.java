@@ -271,6 +271,73 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("parentId를 담아 생성하면 응답의 parentId에 부모 id가 담기고 listId는 부모의 리스트를 따른다")
+    void createReminder_withParentId_returnsSubtask() throws Exception {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        Reminder parent = reminderRepository.save(new Reminder("이사 준비", null, home, null));
+
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"박스 구하기\",\"parentId\":" + parent.getId() + "}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.parentId").value(parent.getId()))
+                .andExpect(jsonPath("$.data.listId").value(home.getId()))
+                .andExpect(jsonPath("$.data.subtasks", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("최상위 리마인더의 응답은 parentId가 null이고 subtasks는 빈 배열이다")
+    void createReminder_returnsNullParentId_andEmptySubtasks() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"이사 준비\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.parentId").isEmpty())
+                .andExpect(jsonPath("$.data.subtasks", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 부모로 하위 작업을 생성하면 404와 NOT_FOUND 응답을 반환한다")
+    void createReminder_returnsNotFound_whenParentDoesNotExist() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"박스 구하기\",\"parentId\":-1}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.resultCode").value("NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("하위 작업 아래에 하위 작업을 생성하면 400과 BAD_REQUEST 응답을 반환한다")
+    void createReminder_returnsBadRequest_whenParentIsSubtask() throws Exception {
+        Reminder parent = new Reminder("이사 준비", null, null, null);
+        Reminder subtask = new Reminder("박스 구하기", null, null, null);
+        parent.addSubtask(subtask);
+        reminderRepository.save(parent);
+
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"테이프 사기\",\"parentId\":" + subtask.getId() + "}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("리스트별 조회 응답은 최상위 리마인더만 담고, 하위 작업은 각 항목의 subtasks에 담는다")
+    void getReminders_byList_nestsSubtasks() throws Exception {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        Reminder parent = new Reminder("이사 준비", null, home, null);
+        parent.addSubtask(new Reminder("박스 구하기", null, null, null));
+        parent.addSubtask(new Reminder("이삿짐센터 예약", null, null, null));
+        reminderRepository.save(parent);
+
+        mockMvc.perform(get("/api/reminders").param("listId", home.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].title", contains("이사 준비")))
+                .andExpect(jsonPath("$.data[0].subtasks[*].title", contains("박스 구하기", "이삿짐센터 예약")))
+                .andExpect(jsonPath("$.data[0].subtasks[0].parentId").value(parent.getId()));
+    }
+
+    @Test
     @DisplayName("본문을 읽을 수 없는 요청은 400과 BAD_REQUEST 응답을 반환한다")
     void createReminder_returnsBadRequest_whenBodyIsMalformed() throws Exception {
         mockMvc.perform(post("/api/reminders")

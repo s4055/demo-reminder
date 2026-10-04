@@ -40,7 +40,7 @@ public class ReminderListService {
     public ReminderListSummary updateList(Long id, ReminderListRequest request) {
         ReminderList list = findListOrThrow(id);
         list.update(request.name(), request.color());
-        return new ReminderListSummary(list, reminderRepository.countByListIdAndCompletedFalse(id));
+        return new ReminderListSummary(list, reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(id));
     }
 
     // ids 순서대로 리스트의 표시 순서를 0부터 다시 매긴다.

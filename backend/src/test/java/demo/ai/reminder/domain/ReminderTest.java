@@ -274,4 +274,117 @@ class ReminderTest {
         assertThatThrownBy(() -> reminder.getTags().add(new Tag("집")))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
+
+    @Test
+    @DisplayName("생성 직후에는 최상위 리마인더이고 하위 작업이 없다")
+    void constructor_isTopLevel_andHasNoSubtasks() {
+        Reminder reminder = new Reminder("이사 준비", null, null, null);
+
+        assertThat(reminder.isSubtask()).isFalse();
+        assertThat(reminder.getParent()).isNull();
+        assertThat(reminder.getSubtasks()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("addSubtask로 추가한 하위 작업은 부모와 같은 리스트에 속하고 부모 안에서 0부터 순서가 매겨진다")
+    void addSubtask_setsParentAndListOfParent_andAssignsSortOrderWithinParent() {
+        ReminderList home = new ReminderList("집", null);
+        ReminderList work = new ReminderList("업무", null);
+        Reminder parent = new Reminder("이사 준비", null, home, null);
+        parent.changeSortOrder(7);
+        Reminder boxes = new Reminder("박스 구하기", null, work, null);
+        Reminder movers = new Reminder("이삿짐센터 예약", null, null, null);
+
+        parent.addSubtask(boxes);
+        parent.addSubtask(movers);
+
+        assertThat(parent.getSubtasks()).containsExactly(boxes, movers);
+        assertThat(boxes.getParent()).isSameAs(parent);
+        assertThat(boxes.isSubtask()).isTrue();
+        assertThat(boxes.getList()).isSameAs(home);
+        assertThat(movers.getList()).isSameAs(home);
+        assertThat(boxes.getSortOrder()).isZero();
+        assertThat(movers.getSortOrder()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("하위 작업에는 하위 작업을 추가할 수 없다")
+    void addSubtask_throws_whenReminderIsSubtask() {
+        Reminder parent = new Reminder("이사 준비", null, null, null);
+        Reminder subtask = new Reminder("박스 구하기", null, null, null);
+        parent.addSubtask(subtask);
+
+        assertThatThrownBy(() -> subtask.addSubtask(new Reminder("테이프 사기", null, null, null)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("removeSubtask를 호출하면 해당 하위 작업만 목록에서 빠진다")
+    void removeSubtask_removesOnlyGivenSubtask() {
+        Reminder parent = new Reminder("이사 준비", null, null, null);
+        Reminder boxes = new Reminder("박스 구하기", null, null, null);
+        Reminder movers = new Reminder("이삿짐센터 예약", null, null, null);
+        parent.addSubtask(boxes);
+        parent.addSubtask(movers);
+
+        parent.removeSubtask(boxes);
+
+        assertThat(parent.getSubtasks()).containsExactly(movers);
+    }
+
+    @Test
+    @DisplayName("getSubtasks로 받은 하위 작업 목록은 직접 수정할 수 없다")
+    void getSubtasks_isUnmodifiable() {
+        Reminder parent = new Reminder("이사 준비", null, null, null);
+
+        assertThatThrownBy(() -> parent.getSubtasks().add(new Reminder("박스 구하기", null, null, null)))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @DisplayName("부모를 완료하면 미완료 하위 작업도 같은 시각으로 완료되고, 이미 완료된 하위 작업의 완료일시는 유지된다")
+    void toggleComplete_whenCompletingParent_completesIncompleteSubtasks() {
+        Reminder parent = new Reminder("이사 준비", null, null, null);
+        Reminder boxes = new Reminder("박스 구하기", null, null, null);
+        Reminder movers = new Reminder("이삿짐센터 예약", null, null, null);
+        parent.addSubtask(boxes);
+        parent.addSubtask(movers);
+        LocalDateTime earlier = LocalDateTime.of(2026, 10, 1, 9, 0);
+        LocalDateTime now = LocalDateTime.of(2026, 10, 3, 10, 0);
+        boxes.toggleComplete(earlier);
+
+        parent.toggleComplete(now);
+
+        assertThat(parent.isCompleted()).isTrue();
+        assertThat(movers.isCompleted()).isTrue();
+        assertThat(movers.getCompletedAt()).isEqualTo(now);
+        assertThat(boxes.getCompletedAt()).isEqualTo(earlier);
+    }
+
+    @Test
+    @DisplayName("부모의 완료를 취소해도 하위 작업의 완료 상태는 바뀌지 않는다")
+    void toggleComplete_whenUncompletingParent_keepsSubtasksCompleted() {
+        Reminder parent = new Reminder("이사 준비", null, null, null);
+        Reminder boxes = new Reminder("박스 구하기", null, null, null);
+        parent.addSubtask(boxes);
+        parent.toggleComplete(LocalDateTime.of(2026, 10, 3, 10, 0));
+
+        parent.toggleComplete(LocalDateTime.of(2026, 10, 3, 11, 0));
+
+        assertThat(parent.isCompleted()).isFalse();
+        assertThat(boxes.isCompleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("하위 작업을 완료해도 부모의 완료 상태는 바뀌지 않는다")
+    void toggleComplete_whenCompletingSubtask_doesNotCompleteParent() {
+        Reminder parent = new Reminder("이사 준비", null, null, null);
+        Reminder boxes = new Reminder("박스 구하기", null, null, null);
+        parent.addSubtask(boxes);
+
+        boxes.toggleComplete(LocalDateTime.of(2026, 10, 3, 10, 0));
+
+        assertThat(boxes.isCompleted()).isTrue();
+        assertThat(parent.isCompleted()).isFalse();
+    }
 }
