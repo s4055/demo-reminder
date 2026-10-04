@@ -1,4 +1,5 @@
 import { apiRequest, jsonBody } from "@/lib/api"
+import { toDueAtParam } from "@/lib/due-date"
 import type { Priority } from "@/lib/priority"
 import type { RepeatRule } from "@/lib/repeat"
 import type { SmartView } from "@/lib/selection"
@@ -65,6 +66,15 @@ export function getRemindersByTag(tag: string): Promise<Reminder[]> {
 
 export function getSmartReminders(view: SmartView): Promise<Reminder[]> {
   return apiRequest<Reminder[]>(`/api/reminders/smart/${view}`)
+}
+
+// 마감일시가 [from, to) 에 있는 미완료 리마인더 (하위 작업 포함, 마감일시 순). 브라우저 알림 스케줄링용이다.
+export function getUpcomingReminders(from: Date, to: Date): Promise<Reminder[]> {
+  const query = new URLSearchParams({
+    from: toDueAtParam(from),
+    to: toDueAtParam(to),
+  })
+  return apiRequest<Reminder[]>(`/api/reminders/upcoming?${query}`)
 }
 
 export function createReminder(input: CreateReminderInput): Promise<Reminder> {

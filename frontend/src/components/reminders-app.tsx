@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { set, startOfDay } from "date-fns"
 import { MenuIcon } from "lucide-react"
+import { ReminderEditDialog } from "@/components/reminder-edit-dialog"
 import { ReminderForm } from "@/components/reminder-form"
 import { ReminderList } from "@/components/reminder-list"
 import { Sidebar } from "@/components/sidebar"
@@ -15,6 +16,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { useLists } from "@/hooks/use-lists"
+import { useNotificationPermission } from "@/hooks/use-notification-permission"
+import { useReminderNotifications } from "@/hooks/use-reminder-notifications"
+import type { Reminder } from "@/lib/reminders-api"
 import {
   DEFAULT_SELECTION,
   selectionKey,
@@ -26,6 +30,17 @@ export function RemindersApp() {
   const [selection, setSelection] = useState<Selection>(DEFAULT_SELECTION)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { data: lists } = useLists()
+  const { permission } = useNotificationPermission()
+  // 브라우저 알림을 클릭하면 어느 화면에 있든 해당 리마인더의 상세 편집을 연다.
+  // 닫힘 애니메이션 동안 폼 내용이 유지되도록 open 과 대상 리마인더를 함께 보관한다.
+  const [notifiedEdit, setNotifiedEdit] = useState<{
+    open: boolean
+    reminder?: Reminder
+  }>({ open: false })
+  useReminderNotifications({
+    enabled: permission === "granted",
+    onOpen: (reminder) => setNotifiedEdit({ open: true, reminder }),
+  })
 
   const selectedList =
     selection.type === "list"
@@ -96,6 +111,13 @@ export function RemindersApp() {
           <ReminderList selection={selection} />
         </div>
       </main>
+      {notifiedEdit.reminder && (
+        <ReminderEditDialog
+          open={notifiedEdit.open}
+          onOpenChange={(open) => setNotifiedEdit((prev) => ({ ...prev, open }))}
+          reminder={notifiedEdit.reminder}
+        />
+      )}
     </div>
   )
 }

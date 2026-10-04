@@ -189,6 +189,46 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("다가오는 리마인더 조회는 기간 안에 마감되는 미완료 리마인더를 data에 담는다")
+    void getUpcomingReminders_returnsRemindersDueInRange() throws Exception {
+        reminderRepository.save(new Reminder("회의", null, null, LocalDateTime.of(2026, 10, 4, 21, 1)));
+        reminderRepository.save(new Reminder("내일 회의", null, null, LocalDateTime.of(2026, 10, 5, 21, 1)));
+
+        mockMvc.perform(get("/api/reminders/upcoming")
+                        .param("from", "2026-10-04T21:00:00")
+                        .param("to", "2026-10-04T21:02:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].title").value("회의"))
+                .andExpect(jsonPath("$.data[0].dueAt").value("2026-10-04T21:01:00"));
+    }
+
+    @Test
+    @DisplayName("다가오는 리마인더 조회에서 from/to가 없거나 형식이 잘못되면 400을 반환한다")
+    void getUpcomingReminders_withMissingOrInvalidRange_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/reminders/upcoming").param("from", "2026-10-04T21:00:00"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+
+        mockMvc.perform(get("/api/reminders/upcoming")
+                        .param("from", "not-a-date")
+                        .param("to", "2026-10-04T21:02:00"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("다가오는 리마인더 조회에서 from이 to보다 늦으면 400을 반환한다")
+    void getUpcomingReminders_withFromAfterTo_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/reminders/upcoming")
+                        .param("from", "2026-10-04T21:02:00")
+                        .param("to", "2026-10-04T21:00:00"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
     @DisplayName("리마인더 삭제는 200과 함께 data가 null인 성공 응답을 반환한다")
     void deleteReminder_returnsSuccessWithNullData() throws Exception {
         Reminder saved = reminderRepository.save(new Reminder("우유 사기", null, null, null));
