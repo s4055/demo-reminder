@@ -265,6 +265,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/reminders/upcoming:
+    get:
+      tags: [Reminders]
+      summary: 다가오는 리마인더 조회 (브라우저 알림 스케줄링용)
+      description: |
+        마감일시가 [from, to) 기간에 있는 미완료 리마인더를 마감일시 순(같으면 id 순)으로 조회한다.
+        from은 포함하고 to는 포함하지 않는다. 하위 작업도 개별 항목으로 포함된다.
+      operationId: getUpcomingReminders
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: 기간 시작 (포함, 타임존 없는 로컬 일시)
+          schema:
+            type: string
+            format: date-time
+            example: "2026-10-04T21:00:00"
+        - name: to
+          in: query
+          required: true
+          description: 기간 끝 (미포함, 타임존 없는 로컬 일시). from보다 늦어야 한다.
+          schema:
+            type: string
+            format: date-time
+            example: "2026-10-04T21:02:00"
+      responses:
+        "200":
+          description: 기간 안에 마감되는 미완료 리마인더 목록
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderArrayApiResponse"
+        "400":
+          description: from/to 누락, 일시 형식 오류, 또는 from이 to보다 늦거나 같음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/reminders/{id}/flag:
     patch:
       tags: [Reminders]

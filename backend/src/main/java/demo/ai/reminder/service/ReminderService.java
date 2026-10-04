@@ -62,6 +62,14 @@ public class ReminderService {
         };
     }
 
+    // 알림 스케줄링용. [from, to) 기간에 마감되는 미완료 리마인더를 하위 작업까지 개별 항목으로 마감일시 순으로 조회한다.
+    public List<Reminder> getUpcomingReminders(LocalDateTime from, LocalDateTime to) {
+        if (!from.isBefore(to)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "from must be before to: from=" + from + ", to=" + to);
+        }
+        return reminderRepository.findByCompletedFalseAndDueAtGreaterThanEqualAndDueAtLessThan(from, to, DUE_DATE_SORT);
+    }
+
     // 새 리마인더는 같은 리스트(리스트 없음도 하나의 범위)의 마지막 순서로 추가한다.
     // parentId를 지정하면 그 리마인더의 하위 작업으로 추가하며, 이때 listId는 무시하고 부모의 리스트를 따른다.
     @Transactional

@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ListFormDialog } from "@/components/list-form-dialog"
 import { ListDeleteDialog } from "@/components/list-delete-dialog"
+import { NotificationToggle } from "@/components/notification-toggle"
 import { useLists, useReorderLists } from "@/hooks/use-lists"
 import { useDeleteTag, useTags } from "@/hooks/use-tags"
 import type { ReminderList } from "@/lib/lists-api"
@@ -166,14 +167,17 @@ export function Sidebar({
 
       <TagSection selection={selection} onSelect={onSelect} />
 
-      <Button
-        variant="ghost"
-        className="mt-auto justify-start"
-        onClick={() => setListForm({ open: true })}
-      >
-        <PlusIcon />
-        리스트 추가
-      </Button>
+      <div className="mt-auto flex flex-col gap-1">
+        <NotificationToggle />
+        <Button
+          variant="ghost"
+          className="justify-start"
+          onClick={() => setListForm({ open: true })}
+        >
+          <PlusIcon />
+          리스트 추가
+        </Button>
+      </div>
 
       <ListFormDialog
         open={listForm.open}

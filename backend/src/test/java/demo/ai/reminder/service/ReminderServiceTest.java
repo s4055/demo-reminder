@@ -818,6 +818,59 @@ class ReminderServiceTest {
                 .containsExactly(LocalDateTime.of(2026, 10, 4, 7, 0), LocalDateTime.of(2026, 10, 5, 7, 0));
     }
 
+    @Test
+    @DisplayName("다가오는 리마인더 조회는 from 이상 to 미만에 마감되는 항목을 마감일시 순으로 반환한다")
+    void getUpcomingReminders_includesFromAndExcludesTo_sortedByDueAt() {
+        LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
+        LocalDateTime to = from.plusMinutes(2);
+        reminderRepository.save(new Reminder("직전", null, null, from.minusSeconds(1)));
+        reminderRepository.save(new Reminder("마지막", null, null, to.minusSeconds(1)));
+        reminderRepository.save(new Reminder("시작", null, null, from));
+        reminderRepository.save(new Reminder("끝", null, null, to));
+        reminderRepository.save(new Reminder("마감일 없음", null, null, null));
+
+        List<Reminder> result = reminderService.getUpcomingReminders(from, to);
+
+        assertThat(result).extracting(Reminder::getTitle).containsExactly("시작", "마지막");
+    }
+
+    @Test
+    @DisplayName("다가오는 리마인더 조회는 완료된 항목을 제외한다")
+    void getUpcomingReminders_excludesCompleted() {
+        LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
+        Reminder done = reminderRepository.save(new Reminder("완료함", null, null, from.plusMinutes(1)));
+        done.toggleComplete(LocalDateTime.of(2026, 10, 4, 20, 0));
+        reminderRepository.save(new Reminder("남음", null, null, from.plusMinutes(1)));
+
+        assertThat(reminderService.getUpcomingReminders(from, from.plusMinutes(2)))
+                .extracting(Reminder::getTitle).containsExactly("남음");
+    }
+
+    @Test
+    @DisplayName("다가오는 리마인더 조회는 하위 작업도 개별 항목으로 포함한다")
+    void getUpcomingReminders_includesSubtasks() {
+        LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
+        Reminder parent = create("이사 준비", null);
+        reminderService.createReminder(new ReminderRequest(
+                "박스 구하기", null, null, from.plusMinutes(1), null, null, parent.getId(), null));
+
+        assertThat(reminderService.getUpcomingReminders(from, from.plusMinutes(2)))
+                .extracting(Reminder::getTitle).containsExactly("박스 구하기");
+    }
+
+    @Test
+    @DisplayName("from이 to보다 늦거나 같으면 400 예외가 발생한다")
+    void getUpcomingReminders_throwsBadRequest_whenFromIsNotBeforeTo() {
+        LocalDateTime time = LocalDateTime.of(2026, 10, 4, 21, 0);
+
+        assertThatThrownBy(() -> reminderService.getUpcomingReminders(time, time))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        assertThatThrownBy(() -> reminderService.getUpcomingReminders(time.plusMinutes(1), time))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+    }
+
     private Reminder createRepeating(String title, Long listId, LocalDateTime dueAt, RepeatRule repeatRule) {
         return reminderService.createReminder(
                 new ReminderRequest(title, null, listId, dueAt, null, null, null, repeatRule));
