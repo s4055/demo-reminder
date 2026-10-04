@@ -10,13 +10,13 @@ import java.util.List;
 
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
-    List<Reminder> findByListId(Long listId, Sort sort);
+    List<Reminder> findByListIdAndParentIsNull(Long listId, Sort sort);
 
     List<Reminder> findByTagsName(String tagName, Sort sort);
 
     List<Reminder> findByTagsId(Long tagId);
 
-    long countByListIdAndCompletedFalse(Long listId);
+    long countByListIdAndParentIsNullAndCompletedFalse(Long listId);
 
     void deleteAllByListId(Long listId);
 
@@ -31,12 +31,13 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
     List<Reminder> findByCompletedTrue(Sort sort);
 
-    List<Reminder> findByListIdAndCompletedFalse(Long listId);
+    List<Reminder> findByListIdAndParentIsNullAndCompletedFalse(Long listId);
 
-    // 아래 max 조회는 범위가 비어 있으면 -1을 돌려주므로 +1 하면 첫 순서(0)가 된다.
-    @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list.id = :listId")
+    // 아래 max 조회는 최상위 리마인더만 대상으로 하며(하위 작업은 부모 안에서 따로 순서를 매긴다),
+    // 범위가 비어 있으면 -1을 돌려주므로 +1 하면 첫 순서(0)가 된다.
+    @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list.id = :listId and r.parent is null")
     int findMaxSortOrderInList(Long listId);
 
-    @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list is null")
+    @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list is null and r.parent is null")
     int findMaxSortOrderWithoutList();
 }

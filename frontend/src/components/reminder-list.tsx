@@ -18,7 +18,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { ClipboardListIcon, FlagIcon, GripVerticalIcon } from "lucide-react"
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ClipboardListIcon,
+  FlagIcon,
+  GripVerticalIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -43,6 +49,25 @@ type ReminderActions = {
   onToggleComplete: (reminder: Reminder) => void
   onToggleFlag: (reminder: Reminder) => void
   onDelete: (reminder: Reminder) => void
+}
+
+// 리스트 화면에서 부모 아래에 하위 작업을 펼쳐 보여줄 때 쓰는 상태. 스마트 뷰/태그 화면에는 넘기지 않는다.
+type SubtaskView = {
+  collapsed: boolean
+  onToggleCollapsed: () => void
+}
+
+// 하위 작업까지 포함해 id로 리마인더를 찾는다.
+function findReminder(
+  reminders: Reminder[] | undefined,
+  id: number
+): Reminder | undefined {
+  for (const reminder of reminders ?? []) {
+    if (reminder.id === id) return reminder
+    const subtask = reminder.subtasks.find((item) => item.id === id)
+    if (subtask) return subtask
+  }
+  return undefined
 }
 
 // 완료 항목은 미완료 항목 아래에 완료 시각 최신순으로 둔다.
@@ -77,6 +102,10 @@ export function ReminderList({ selection }: { selection: Selection }) {
     reminder: Reminder
     open: boolean
   } | null>(null)
+  // 접어 둔 부모 리마인더 id. 기본은 모두 펼친 상태다.
+  const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<number>>(
+    () => new Set()
+  )
 
   if (isLoading) {
     return (
@@ -132,6 +161,25 @@ export function ReminderList({ selection }: { selection: Selection }) {
     listId === null
       ? lists?.find((list) => list.id === reminder.listId)
       : undefined
+  // 리스트 화면만 서버가 최상위 리마인더와 그 하위 작업을 묶어서 주므로 부모 아래에 펼쳐 보여준다.
+  // 스마트 뷰/태그 화면에서는 하위 작업도 개별 항목으로 오므로 그대로 나열한다.
+  const subtaskViewOf = (reminder: Reminder): SubtaskView | undefined =>
+    listId === null
+      ? undefined
+      : {
+          collapsed: collapsedIds.has(reminder.id),
+          onToggleCollapsed: () =>
+            setCollapsedIds((prev) => {
+              const next = new Set(prev)
+              if (!next.delete(reminder.id)) next.add(reminder.id)
+              return next
+            }),
+        }
+  // 편집 중에 하위 작업이 추가/변경되면 대화상자에도 반영되도록 최신 조회 결과에서 다시 찾는다.
+  // 삭제되어 찾을 수 없으면 닫힘 애니메이션 동안 마지막 내용을 유지한다.
+  const editingReminder = editing
+    ? (findReminder(reminders, editing.reminder.id) ?? editing.reminder)
+    : null
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (listId === null || !over || active.id === over.id) return
@@ -162,6 +210,7 @@ export function ReminderList({ selection }: { selection: Selection }) {
                     key={reminder.id}
                     reminder={reminder}
                     actions={actions}
+                    subtaskView={subtaskViewOf(reminder)}
                   />
                 ))}
               </ul>
@@ -187,18 +236,19 @@ export function ReminderList({ selection }: { selection: Selection }) {
                 reminder={reminder}
                 list={listOf(reminder)}
                 actions={actions}
+                subtaskView={subtaskViewOf(reminder)}
               />
             ))}
           </ul>
         )}
       </div>
-      {editing && (
+      {editing && editingReminder && (
         <ReminderEditDialog
           open={editing.open}
           onOpenChange={(open) =>
             setEditing((prev) => prev && { ...prev, open })
           }
-          reminder={editing.reminder}
+          reminder={editingReminder}
         />
       )}
     </>
@@ -208,9 +258,11 @@ export function ReminderList({ selection }: { selection: Selection }) {
 function SortableReminderItem({
   reminder,
   actions,
+  subtaskView,
 }: {
   reminder: Reminder
   actions: ReminderActions
+  subtaskView?: SubtaskView
 }) {
   const {
     attributes,
@@ -226,6 +278,7 @@ function SortableReminderItem({
     <ReminderItem
       reminder={reminder}
       actions={actions}
+      subtaskView={subtaskView}
       itemRef={setNodeRef}
       style={{
         transform: CSS.Translate.toString(transform),
@@ -248,10 +301,12 @@ function SortableReminderItem({
   )
 }
 
+// 리마인더 한 항목. subtaskView가 있으면 하위 작업을 들여쓰기해 함께 보여주고, 드래그 시에도 같이 움직인다.
 function ReminderItem({
   reminder,
   list,
   actions,
+  subtaskView,
   itemRef,
   style,
   dragging,
@@ -260,25 +315,101 @@ function ReminderItem({
   reminder: Reminder
   list?: ReminderListType
   actions: ReminderActions
+  subtaskView?: SubtaskView
   itemRef?: (node: HTMLElement | null) => void
   style?: CSSProperties
   dragging?: boolean
   dragHandle?: ReactNode
+}) {
+  const subtasks = subtaskView ? reminder.subtasks : []
+  const expanded = subtasks.length > 0 && !subtaskView?.collapsed
+  const subtasksId = `reminder-${reminder.id}-subtasks`
+
+  return (
+    <li
+      ref={itemRef}
+      style={style}
+      className={cn("flex flex-col gap-1", dragging && "relative z-10")}
+    >
+      <ReminderRow
+        reminder={reminder}
+        list={list}
+        actions={actions}
+        className={cn(dragging && "shadow-md")}
+        leading={
+          <>
+            {dragHandle}
+            {subtasks.length > 0 && subtaskView && (
+              <button
+                type="button"
+                onClick={subtaskView.onToggleCollapsed}
+                aria-expanded={expanded}
+                aria-controls={subtasksId}
+                aria-label={`${reminder.title} 하위 작업 ${expanded ? "접기" : "펼치기"}`}
+                className="-mx-1 flex items-center rounded-sm text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {expanded ? (
+                  <ChevronDownIcon className="size-4" />
+                ) : (
+                  <ChevronRightIcon className="size-4" />
+                )}
+              </button>
+            )}
+          </>
+        }
+        trailing={
+          subtasks.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {subtasks.filter((subtask) => subtask.completed).length}/
+              {subtasks.length}
+            </span>
+          )
+        }
+      />
+      {expanded && (
+        <ul
+          id={subtasksId}
+          aria-label={`${reminder.title} 하위 작업`}
+          className="ml-8 flex flex-col gap-1"
+        >
+          {subtasks.map((subtask) => (
+            <li key={subtask.id}>
+              <ReminderRow reminder={subtask} actions={actions} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  )
+}
+
+function ReminderRow({
+  reminder,
+  list,
+  actions,
+  className,
+  leading,
+  trailing,
+}: {
+  reminder: Reminder
+  list?: ReminderListType
+  actions: ReminderActions
+  className?: string
+  leading?: ReactNode
+  trailing?: ReactNode
 }) {
   const overdue =
     reminder.dueAt !== null && !reminder.completed && isOverdue(reminder.dueAt)
   const mark = priorityMark(reminder.priority)
 
   return (
-    <li
-      ref={itemRef}
-      style={style}
+    <div
       className={cn(
         "flex items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2",
-        dragging && "relative z-10 shadow-md"
+        className
       )}
     >
-      {dragHandle}
+      {leading}
       <Checkbox
         checked={reminder.completed}
         onCheckedChange={() => actions.onToggleComplete(reminder)}
@@ -343,6 +474,7 @@ function ReminderItem({
           </span>
         )}
       </button>
+      {trailing}
       <Button
         variant="ghost"
         size="icon-sm"
@@ -362,6 +494,6 @@ function ReminderItem({
       >
         삭제
       </Button>
-    </li>
+    </div>
   )
 }

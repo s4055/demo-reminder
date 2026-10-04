@@ -34,10 +34,12 @@ public class ReminderService {
     private final ReminderListRepository reminderListRepository;
     private final TagService tagService;
 
-    // 리스트를 지정하면 표시 순서대로, 태그를 지정하면 그 태그가 붙은 리마인더를 생성순으로, 둘 다 없으면 전체를 생성순으로 조회한다.
+    // 리스트를 지정하면 최상위 리마인더만 표시 순서대로(하위 작업은 각 부모의 subtasks로),
+    // 태그를 지정하면 그 태그가 붙은 리마인더를 생성순으로, 둘 다 없으면 전체를 생성순으로 조회한다.
+    // 태그별/전체 조회에는 하위 작업도 개별 항목으로 포함된다.
     public List<Reminder> getReminders(Long listId, String tag) {
         if (listId != null) {
-            return reminderRepository.findByListId(listId, LIST_SORT);
+            return reminderRepository.findByListIdAndParentIsNull(listId, LIST_SORT);
         }
         if (tag != null) {
             return reminderRepository.findByTagsName(tag.trim(), DEFAULT_SORT);
@@ -60,13 +62,29 @@ public class ReminderService {
     }
 
     // 새 리마인더는 같은 리스트(리스트 없음도 하나의 범위)의 마지막 순서로 추가한다.
+    // parentId를 지정하면 그 리마인더의 하위 작업으로 추가하며, 이때 listId는 무시하고 부모의 리스트를 따른다.
     @Transactional
     public Reminder createReminder(ReminderRequest request) {
+        if (request.parentId() != null) {
+            return createSubtask(request);
+        }
         ReminderList list = request.listId() == null ? null : findListOrThrow(request.listId());
         Reminder reminder = new Reminder(request.title(), request.memo(), list, request.dueAt(), request.priority());
         reminder.changeSortOrder(nextSortOrder(list));
         reminder.replaceTags(tagService.resolveTags(request.tagNames()));
         return reminderRepository.save(reminder);
+    }
+
+    private Reminder createSubtask(ReminderRequest request) {
+        Reminder parent = findReminderOrThrow(request.parentId());
+        if (parent.isSubtask()) {
+            throw new BusinessException(ResultCode.BAD_REQUEST,
+                    "A subtask cannot have subtasks: " + request.parentId());
+        }
+        Reminder subtask = new Reminder(request.title(), request.memo(), null, request.dueAt(), request.priority());
+        parent.addSubtask(subtask);
+        subtask.replaceTags(tagService.resolveTags(request.tagNames()));
+        return reminderRepository.save(subtask);
     }
 
     // 태그도 요청 목록으로 교체한다 (생략하거나 null이면 모두 떨어진다).
@@ -78,11 +96,11 @@ public class ReminderService {
         return reminder;
     }
 
-    // ids 순서대로 리스트의 미완료 리마인더 표시 순서를 0부터 다시 매긴다.
+    // ids 순서대로 리스트의 최상위 미완료 리마인더 표시 순서를 0부터 다시 매긴다.
     @Transactional
     public void reorderReminders(Long listId, List<Long> ids) {
         findListOrThrow(listId);
-        Map<Long, Reminder> reminders = reminderRepository.findByListIdAndCompletedFalse(listId).stream()
+        Map<Long, Reminder> reminders = reminderRepository.findByListIdAndParentIsNullAndCompletedFalse(listId).stream()
                 .collect(Collectors.toMap(Reminder::getId, Function.identity()));
         SortOrders.validateIds(ids, reminders.keySet(), "incomplete reminder of the list");
         for (int i = 0; i < ids.size(); i++) {
@@ -104,12 +122,14 @@ public class ReminderService {
         return reminder;
     }
 
+    // 하위 작업이 있으면 함께 삭제된다. 하위 작업을 삭제하면 부모의 하위 작업 목록에서도 떼어낸다.
     @Transactional
     public void deleteReminder(Long id) {
-        if (!reminderRepository.existsById(id)) {
-            throw new BusinessException(ResultCode.NOT_FOUND, "Reminder not found: " + id);
+        Reminder reminder = findReminderOrThrow(id);
+        if (reminder.isSubtask()) {
+            reminder.getParent().removeSubtask(reminder);
         }
-        reminderRepository.deleteById(id);
+        reminderRepository.delete(reminder);
     }
 
     private int nextSortOrder(ReminderList list) {

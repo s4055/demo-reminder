@@ -13,7 +13,8 @@ public record ReminderRequest(
         Long listId,
         LocalDateTime dueAt,
         Priority priority,
-        List<@NotBlank @Size(max = TAG_NAME_MAX_LENGTH) String> tagNames
+        List<@NotBlank @Size(max = TAG_NAME_MAX_LENGTH) String> tagNames,
+        Long parentId
 ) {
 
     public static final int TAG_NAME_MAX_LENGTH = 50;

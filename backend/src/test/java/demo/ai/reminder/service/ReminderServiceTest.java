@@ -84,7 +84,7 @@ class ReminderServiceTest {
     void createReminder_belongsToGivenList() {
         ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
 
-        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null, null, null));
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null, null, null, null));
 
         assertThat(result.getList().getId()).isEqualTo(shopping.getId());
     }
@@ -92,7 +92,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하지 않는 리스트로 리마인더를 생성하면 404 예외가 발생한다")
     void createReminder_throwsNotFound_whenListDoesNotExist() {
-        assertThatThrownBy(() -> reminderService.createReminder(new ReminderRequest("우유 사기", null, -1L, null, null, null)))
+        assertThatThrownBy(() -> reminderService.createReminder(new ReminderRequest("우유 사기", null, -1L, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
@@ -100,7 +100,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("요청으로 받은 제목과 메모로 리마인더를 생성한다")
     void createReminder_savesReminderWithGivenTitleAndMemo() {
-        ReminderRequest request = new ReminderRequest("우유 사기", "저지방", null, null, null, null);
+        ReminderRequest request = new ReminderRequest("우유 사기", "저지방", null, null, null, null, null);
 
         Reminder result = reminderService.createReminder(request);
 
@@ -149,7 +149,7 @@ class ReminderServiceTest {
     void createReminder_savesDueAt_andIsNotFlagged() {
         LocalDateTime dueAt = LocalDate.now().atTime(18, 30);
 
-        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, dueAt, null, null));
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, dueAt, null, null, null));
 
         assertThat(result.getDueAt()).isEqualTo(dueAt);
         assertThat(result.isFlagged()).isFalse();
@@ -160,7 +160,7 @@ class ReminderServiceTest {
     void createReminder_fillsCreatedAtAndUpdatedAt() {
         LocalDateTime before = LocalDateTime.now();
 
-        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null));
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null));
 
         assertThat(result.getCreatedAt()).isNotNull().isAfterOrEqualTo(before);
         assertThat(result.getUpdatedAt()).isNotNull().isAfterOrEqualTo(before);
@@ -214,7 +214,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("우선순위를 지정해 리마인더를 생성하면 우선순위가 저장된다")
     void createReminder_savesGivenPriority() {
-        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, Priority.HIGH, null));
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, Priority.HIGH, null, null));
         reminderRepository.flush();
 
         assertThat(reminderRepository.findById(result.getId()).orElseThrow().getPriority()).isEqualTo(Priority.HIGH);
@@ -223,7 +223,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("우선순위를 생략하고 리마인더를 생성하면 없음(NONE)으로 저장된다")
     void createReminder_savesNonePriority_whenPriorityIsOmitted() {
-        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null));
+        Reminder result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null));
 
         assertThat(result.getPriority()).isEqualTo(Priority.NONE);
     }
@@ -478,9 +478,9 @@ class ReminderServiceTest {
         ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
         LocalDate today = LocalDate.now();
         Reminder early = reminderService.createReminder(
-                new ReminderRequest("이른 마감", null, shopping.getId(), today.atTime(9, 0), null, null));
+                new ReminderRequest("이른 마감", null, shopping.getId(), today.atTime(9, 0), null, null, null));
         Reminder late = reminderService.createReminder(
-                new ReminderRequest("늦은 마감", null, shopping.getId(), today.atTime(18, 0), null, null));
+                new ReminderRequest("늦은 마감", null, shopping.getId(), today.atTime(18, 0), null, null, null));
 
         reminderService.reorderReminders(shopping.getId(), List.of(late.getId(), early.getId()));
 
@@ -494,7 +494,7 @@ class ReminderServiceTest {
         Tag home = tagRepository.save(new Tag("집"));
 
         Reminder result = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, null, null, null, List.of("집", " 심부름 ", "집")));
+                new ReminderRequest("우유 사기", null, null, null, null, List.of("집", " 심부름 ", "집"), null));
 
         assertThat(result.getTags()).extracting(Tag::getName).containsExactlyInAnyOrder("집", "심부름");
         assertThat(result.getTags()).extracting(Tag::getId).contains(home.getId());
@@ -505,7 +505,7 @@ class ReminderServiceTest {
     @DisplayName("리마인더를 수정하면 태그가 요청 목록으로 교체되고, 태그를 생략하면 모두 떨어진다")
     void updateReminder_replacesTags() {
         Reminder saved = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, null, null, null, List.of("집", "심부름")));
+                new ReminderRequest("우유 사기", null, null, null, null, List.of("집", "심부름"), null));
 
         Reminder replaced = reminderService.updateReminder(saved.getId(),
                 new ReminderUpdateRequest("우유 사기", null, null, false, null, List.of("급함")));
@@ -520,9 +520,9 @@ class ReminderServiceTest {
     @DisplayName("태그로 조회하면 해당 태그가 붙은 리마인더만 생성순으로 반환한다")
     void getReminders_byTag_returnsOnlyTaggedReminders() {
         ReminderList shopping = reminderListRepository.save(new ReminderList("장보기", null));
-        reminderService.createReminder(new ReminderRequest("우유", null, shopping.getId(), null, null, List.of("집")));
-        reminderService.createReminder(new ReminderRequest("보고서", null, null, null, null, List.of("회사")));
-        reminderService.createReminder(new ReminderRequest("빨래", null, null, null, null, List.of("집", "주말")));
+        reminderService.createReminder(new ReminderRequest("우유", null, shopping.getId(), null, null, List.of("집"), null));
+        reminderService.createReminder(new ReminderRequest("보고서", null, null, null, null, List.of("회사"), null));
+        reminderService.createReminder(new ReminderRequest("빨래", null, null, null, null, List.of("집", "주말"), null));
 
         List<Reminder> result = reminderService.getReminders(null, "집");
 
@@ -533,7 +533,7 @@ class ReminderServiceTest {
     @DisplayName("태그가 붙은 리마인더도 삭제할 수 있고, 태그는 남는다")
     void deleteReminder_withTags_keepsTags() {
         Reminder saved = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, null, null, null, List.of("집")));
+                new ReminderRequest("우유 사기", null, null, null, null, List.of("집"), null));
         entityManager.flush();
         entityManager.clear();
 
@@ -544,7 +544,160 @@ class ReminderServiceTest {
         assertThat(tagRepository.findByNameIn(List.of("집"))).hasSize(1);
     }
 
+    @Test
+    @DisplayName("parentId로 생성하면 하위 작업이 되고, listId와 관계없이 부모의 리스트에 속하며 부모 안에서 순서가 매겨진다")
+    void createReminder_withParentId_createsSubtaskInParentList() {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        ReminderList work = reminderListRepository.save(new ReminderList("업무", null));
+        Reminder parent = create("이사 준비", home.getId());
+
+        Reminder boxes = createSubtask("박스 구하기", parent.getId());
+        Reminder movers = reminderService.createReminder(
+                new ReminderRequest("이삿짐센터 예약", null, work.getId(), null, null, null, parent.getId()));
+
+        assertThat(boxes.getParent().getId()).isEqualTo(parent.getId());
+        assertThat(boxes.getList().getId()).isEqualTo(home.getId());
+        assertThat(movers.getList().getId()).isEqualTo(home.getId());
+        assertThat(boxes.getSortOrder()).isZero();
+        assertThat(movers.getSortOrder()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 부모로 하위 작업을 생성하면 404 예외가 발생한다")
+    void createReminder_throwsNotFound_whenParentDoesNotExist() {
+        assertThatThrownBy(() -> createSubtask("박스 구하기", -1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("하위 작업 아래에 하위 작업을 생성하면 400 예외가 발생한다")
+    void createReminder_throwsBadRequest_whenParentIsSubtask() {
+        Reminder parent = create("이사 준비", null);
+        Reminder subtask = createSubtask("박스 구하기", parent.getId());
+
+        assertThatThrownBy(() -> createSubtask("테이프 사기", subtask.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("하위 작업을 추가해도 최상위 리마인더의 순서 부여에는 영향을 주지 않는다")
+    void createReminder_topLevelSortOrder_ignoresSubtasks() {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        Reminder parent = create("이사 준비", home.getId());
+        createSubtask("박스 구하기", parent.getId());
+        createSubtask("이삿짐센터 예약", parent.getId());
+
+        Reminder next = create("빨래", home.getId());
+
+        assertThat(next.getSortOrder()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("리스트별 조회는 최상위 리마인더만 반환하고, 하위 작업은 부모의 subtasks에 순서대로 담긴다")
+    void getReminders_byList_returnsTopLevelOnly_withSubtasks() {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        Reminder parent = create("이사 준비", home.getId());
+        createSubtask("박스 구하기", parent.getId());
+        createSubtask("이삿짐센터 예약", parent.getId());
+        create("빨래", home.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Reminder> result = reminderService.getReminders(home.getId(), null);
+
+        assertThat(result).extracting(Reminder::getTitle).containsExactly("이사 준비", "빨래");
+        assertThat(result.get(0).getSubtasks())
+                .extracting(Reminder::getTitle).containsExactly("박스 구하기", "이삿짐센터 예약");
+    }
+
+    @Test
+    @DisplayName("스마트 뷰는 하위 작업도 개별 항목으로 포함한다")
+    void getSmartReminders_includesSubtasksAsIndividualItems() {
+        Reminder parent = create("이사 준비", null);
+        createSubtask("박스 구하기", parent.getId());
+
+        assertThat(reminderService.getSmartReminders("all"))
+                .extracting(Reminder::getTitle).contains("이사 준비", "박스 구하기");
+    }
+
+    @Test
+    @DisplayName("부모를 완료하면 하위 작업도 모두 완료되어 completed 뷰에 나타난다")
+    void toggleComplete_parent_completesSubtasks() {
+        Reminder parent = create("이사 준비", null);
+        Reminder boxes = createSubtask("박스 구하기", parent.getId());
+        Reminder movers = createSubtask("이삿짐센터 예약", parent.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        reminderService.toggleComplete(parent.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(reminderRepository.findById(boxes.getId())).get().extracting(Reminder::isCompleted).isEqualTo(true);
+        assertThat(reminderRepository.findById(movers.getId())).get().extracting(Reminder::isCompleted).isEqualTo(true);
+        assertThat(reminderService.getSmartReminders("completed"))
+                .extracting(Reminder::getTitle).contains("이사 준비", "박스 구하기", "이삿짐센터 예약");
+    }
+
+    @Test
+    @DisplayName("부모를 삭제하면 하위 작업도 함께 삭제된다")
+    void deleteReminder_parent_deletesSubtasks() {
+        Reminder parent = create("이사 준비", null);
+        Reminder boxes = createSubtask("박스 구하기", parent.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        reminderService.deleteReminder(parent.getId());
+        entityManager.flush();
+
+        assertThat(reminderRepository.findById(parent.getId())).isEmpty();
+        assertThat(reminderRepository.findById(boxes.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("하위 작업을 삭제하면 그 하위 작업만 삭제되고 부모와 다른 하위 작업은 유지된다")
+    void deleteReminder_subtask_keepsParentAndSiblings() {
+        Reminder parent = create("이사 준비", null);
+        Reminder boxes = createSubtask("박스 구하기", parent.getId());
+        Reminder movers = createSubtask("이삿짐센터 예약", parent.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        reminderService.deleteReminder(boxes.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(reminderRepository.findById(boxes.getId())).isEmpty();
+        assertThat(reminderRepository.findById(parent.getId())).get()
+                .extracting(reminder -> reminder.getSubtasks().stream().map(Reminder::getId).toList())
+                .isEqualTo(List.of(movers.getId()));
+    }
+
+    @Test
+    @DisplayName("순서 변경 대상은 최상위 미완료 리마인더뿐이라 하위 작업 id를 넣으면 400 예외가 발생한다")
+    void reorderReminders_targetsTopLevelOnly() {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        Reminder parent = create("이사 준비", home.getId());
+        Reminder laundry = create("빨래", home.getId());
+        Reminder boxes = createSubtask("박스 구하기", parent.getId());
+
+        reminderService.reorderReminders(home.getId(), List.of(laundry.getId(), parent.getId()));
+
+        assertThat(reminderService.getReminders(home.getId(), null))
+                .extracting(Reminder::getTitle).containsExactly("빨래", "이사 준비");
+        assertThatThrownBy(() -> reminderService.reorderReminders(home.getId(),
+                List.of(laundry.getId(), parent.getId(), boxes.getId())))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+    }
+
     private Reminder create(String title, Long listId) {
-        return reminderService.createReminder(new ReminderRequest(title, null, listId, null, null, null));
+        return reminderService.createReminder(new ReminderRequest(title, null, listId, null, null, null, null));
+    }
+
+    private Reminder createSubtask(String title, Long parentId) {
+        return reminderService.createReminder(new ReminderRequest(title, null, null, null, null, null, parentId));
     }
 }

@@ -8,10 +8,11 @@ import java.util.List;
 
 public interface ReminderListRepository extends JpaRepository<ReminderList, Long> {
 
+    // 리마인더 개수는 최상위 미완료 리마인더만 센다 (하위 작업 제외).
     @Query("""
             select new demo.ai.reminder.repository.ReminderListSummary(
                 l,
-                (select count(r) from Reminder r where r.list = l and r.completed = false)
+                (select count(r) from Reminder r where r.list = l and r.parent is null and r.completed = false)
             )
             from ReminderList l
             order by l.sortOrder, l.id

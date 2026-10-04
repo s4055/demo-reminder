@@ -19,10 +19,13 @@ public record ReminderResponse(
         Long listId,
         int sortOrder,
         List<String> tags,
+        Long parentId,
+        List<ReminderResponse> subtasks,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
 
+    // 하위 작업은 1단계까지만 있으므로 subtasks의 각 항목은 빈 subtasks를 가진다.
     public static ReminderResponse from(Reminder reminder) {
         return new ReminderResponse(
                 reminder.getId(),
@@ -36,6 +39,8 @@ public record ReminderResponse(
                 reminder.getList() != null ? reminder.getList().getId() : null,
                 reminder.getSortOrder(),
                 reminder.getTags().stream().map(Tag::getName).sorted().toList(),
+                reminder.getParent() != null ? reminder.getParent().getId() : null,
+                reminder.getSubtasks().stream().map(ReminderResponse::from).toList(),
                 reminder.getCreatedAt(),
                 reminder.getUpdatedAt()
         );

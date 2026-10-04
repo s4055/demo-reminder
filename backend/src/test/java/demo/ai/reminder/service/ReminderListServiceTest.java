@@ -153,6 +153,43 @@ class ReminderListServiceTest {
     }
 
     @Test
+    @DisplayName("리스트의 리마인더 개수는 최상위 미완료 리마인더만 세고 하위 작업은 제외한다")
+    void getLists_countsTopLevelRemindersOnly() {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        Reminder parent = new Reminder("이사 준비", null, home, null);
+        parent.addSubtask(new Reminder("박스 구하기", null, null, null));
+        parent.addSubtask(new Reminder("이삿짐센터 예약", null, null, null));
+        reminderRepository.save(parent);
+        reminderRepository.save(new Reminder("빨래", null, home, null));
+
+        List<ReminderListSummary> result = reminderListService.getLists();
+
+        assertThat(result)
+                .filteredOn(summary -> summary.list().getId().equals(home.getId()))
+                .extracting(ReminderListSummary::reminderCount)
+                .containsExactly(2L);
+        assertThat(reminderListService.updateList(home.getId(), new ReminderListRequest("우리 집", null)).reminderCount())
+                .isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("하위 작업이 있는 리스트를 삭제하면 부모와 하위 작업이 모두 삭제된다")
+    void deleteList_deletesParentsAndSubtasks() {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        Reminder parent = new Reminder("이사 준비", null, home, null);
+        Reminder boxes = new Reminder("박스 구하기", null, null, null);
+        parent.addSubtask(boxes);
+        reminderRepository.save(parent);
+        reminderRepository.flush();
+
+        reminderListService.deleteList(home.getId());
+        reminderRepository.flush();
+
+        assertThat(reminderRepository.findById(parent.getId())).isEmpty();
+        assertThat(reminderRepository.findById(boxes.getId())).isEmpty();
+    }
+
+    @Test
     @DisplayName("존재하지 않는 리스트를 삭제하면 404 예외가 발생한다")
     void deleteList_throwsNotFound_whenListDoesNotExist() {
         assertThatThrownBy(() -> reminderListService.deleteList(-1L))
