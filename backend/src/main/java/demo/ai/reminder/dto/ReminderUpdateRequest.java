@@ -1,6 +1,7 @@
 package demo.ai.reminder.dto;
 
 import demo.ai.reminder.domain.Priority;
+import demo.ai.reminder.domain.RepeatRule;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -13,6 +14,7 @@ public record ReminderUpdateRequest(
         LocalDateTime dueAt,
         boolean flagged,
         Priority priority,
-        List<@NotBlank @Size(max = ReminderRequest.TAG_NAME_MAX_LENGTH) String> tagNames
+        List<@NotBlank @Size(max = ReminderRequest.TAG_NAME_MAX_LENGTH) String> tagNames,
+        RepeatRule repeatRule
 ) {
 }

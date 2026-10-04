@@ -2,6 +2,7 @@ package demo.ai.reminder.dto;
 
 import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Reminder;
+import demo.ai.reminder.domain.RepeatRule;
 import demo.ai.reminder.domain.Tag;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public record ReminderResponse(
         boolean flagged,
         Priority priority,
         LocalDateTime dueAt,
+        RepeatRule repeatRule,
         LocalDateTime completedAt,
         Long listId,
         int sortOrder,
@@ -35,6 +37,7 @@ public record ReminderResponse(
                 reminder.isFlagged(),
                 reminder.getPriority(),
                 reminder.getDueAt(),
+                reminder.getRepeatRule(),
                 reminder.getCompletedAt(),
                 reminder.getList() != null ? reminder.getList().getId() : null,
                 reminder.getSortOrder(),

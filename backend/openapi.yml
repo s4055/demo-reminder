@@ -168,6 +168,7 @@ paths:
         tagNames의 태그 중 없는 태그는 새로 만든다.
         parentId를 지정하면 그 리마인더의 하위 작업으로 만든다. 하위 작업은 listId와 관계없이 부모의 리스트에 속하고, 부모의 하위 작업 중 마지막 순서로 추가된다.
         하위 작업의 하위 작업은 만들 수 없다 (깊이 1단계).
+        repeatRule로 반복을 설정할 수 있으며, 반복은 dueAt이 있을 때만 설정할 수 있다.
       operationId: createReminder
       requestBody:
         required: true
@@ -183,7 +184,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderApiResponse"
         "400":
-          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority 값, 빈 태그 이름이나 50자를 넘는 태그 이름 등), 또는 parentId가 이미 하위 작업인 리마인더
+          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule 값, 빈 태그 이름이나 50자를 넘는 태그 이름 등), dueAt 없이 반복을 지정한 경우, 또는 parentId가 이미 하위 작업인 리마인더
           content:
             application/json:
               schema:
@@ -289,7 +290,13 @@ paths:
     patch:
       tags: [Reminders]
       summary: 리마인더 완료 상태 토글
-      description: 완료 처리하면 아직 완료되지 않은 하위 작업도 함께 완료된다. 완료를 취소할 때는 하위 작업의 상태를 바꾸지 않는다.
+      description: |
+        완료 처리하면 아직 완료되지 않은 하위 작업도 함께 완료된다. 완료를 취소할 때는 하위 작업의 상태를 바꾸지 않는다.
+        반복 리마인더(repeatRule이 NONE이 아님)를 완료하면 다음 마감일시로 제목/메모/플래그/우선순위/태그/리스트/반복 주기를 복사한 새 리마인더를 만든다.
+        - 최상위 리마인더의 다음 회차는 같은 리스트의 마지막 순서로, 하위 작업의 다음 회차는 같은 부모의 마지막 하위 작업으로 추가된다. 하위 작업은 복사하지 않는다.
+        - 완료를 취소해도 이미 만든 다음 회차는 유지되며, 다시 완료해도 다음 회차를 또 만들지 않는다.
+        - 부모 완료로 함께 완료된 하위 작업은 반복이어도 다음 회차를 만들지 않는다.
+        응답 data는 완료 상태가 토글된 현재 리마인더이며, 새 회차는 목록 조회로 확인한다.
       operationId: toggleReminderComplete
       parameters:
         - $ref: "#/components/parameters/ReminderId"
@@ -310,8 +317,8 @@ paths:
   /api/reminders/{id}:
     put:
       tags: [Reminders]
-      summary: 리마인더 수정 (제목/메모/마감일시/플래그/우선순위/태그 전체 교체)
-      description: 요청 본문의 값으로 제목, 메모, 마감일시, 플래그, 우선순위, 태그를 교체한다. memo/dueAt을 생략하거나 null로 보내면 비워지고, priority를 생략하거나 null로 보내면 NONE이 되며, tagNames를 생략하거나 null로 보내면 태그가 모두 떨어진다. flagged는 필수다. 완료 상태와 소속 리스트는 변경되지 않는다.
+      summary: 리마인더 수정 (제목/메모/마감일시/플래그/우선순위/태그/반복 전체 교체)
+      description: 요청 본문의 값으로 제목, 메모, 마감일시, 플래그, 우선순위, 태그, 반복 주기를 교체한다. memo/dueAt을 생략하거나 null로 보내면 비워지고, priority/repeatRule을 생략하거나 null로 보내면 NONE이 되며, tagNames를 생략하거나 null로 보내면 태그가 모두 떨어진다. flagged는 필수다. 완료 상태와 소속 리스트는 변경되지 않는다. dueAt 없이 반복을 지정하면 400.
       operationId: updateReminder
       parameters:
         - $ref: "#/components/parameters/ReminderId"
@@ -329,7 +336,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderApiResponse"
         "400":
-          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority 값, 빈 태그 이름이나 50자를 넘는 태그 이름 등)
+          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule 값, 빈 태그 이름이나 50자를 넘는 태그 이름 등), 또는 dueAt 없이 반복을 지정한 경우
           content:
             application/json:
               schema:
@@ -455,6 +462,11 @@ components:
           description: 우선순위. 생략하거나 null이면 NONE으로 저장된다.
         tagNames:
           $ref: "#/components/schemas/TagNames"
+        repeatRule:
+          allOf:
+            - $ref: "#/components/schemas/RepeatRule"
+          nullable: true
+          description: 반복 주기. 생략하거나 null이면 NONE으로 저장된다. NONE이 아니면 dueAt이 필요하다.
 
     ReminderUpdateRequest:
       type: object
@@ -482,6 +494,11 @@ components:
           description: 우선순위. 생략하거나 null이면 NONE으로 바뀐다.
         tagNames:
           $ref: "#/components/schemas/TagNames"
+        repeatRule:
+          allOf:
+            - $ref: "#/components/schemas/RepeatRule"
+          nullable: true
+          description: 반복 주기. 생략하거나 null이면 NONE으로 바뀐다. NONE이 아니면 dueAt이 필요하다.
 
     TagNames:
       type: array
@@ -526,6 +543,14 @@ components:
       description: 리마인더 우선순위 (없음/낮음/보통/높음). 목록에서는 LOW/MEDIUM/HIGH를 각각 !, !!, !!!로 표시한다.
       example: HIGH
 
+    RepeatRule:
+      type: string
+      enum: [NONE, DAILY, WEEKLY, MONTHLY, YEARLY]
+      description: |
+        반복 주기 (반복 안 함/매일/매주/매월/매년). 다음 마감일시는 현재 마감일시에 주기를 더해 계산한다.
+        매월/매년 반복에서 같은 날짜가 없으면 그 달의 말일로 맞춘다 (1월 31일 → 2월 28일 또는 29일, 2월 29일 → 다음 해 2월 28일).
+      example: WEEKLY
+
     ReminderResponse:
       type: object
       properties:
@@ -547,6 +572,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        repeatRule:
+          $ref: "#/components/schemas/RepeatRule"
         completedAt:
           type: string
           format: date-time

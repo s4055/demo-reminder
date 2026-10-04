@@ -3,6 +3,7 @@ package demo.ai.reminder.controller;
 import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
+import demo.ai.reminder.domain.RepeatRule;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
@@ -127,6 +130,62 @@ class ReminderControllerTest {
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.completed").value(true))
                 .andExpect(jsonPath("$.data.completedAt").isString());
+    }
+
+    @Test
+    @DisplayName("반복을 지정해 생성하면 응답에 repeatRule이 담기고, 생략하면 NONE이다")
+    void createReminder_returnsRepeatRule() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"분리수거\",\"dueAt\":\"2026-10-04T20:00:00\",\"repeatRule\":\"WEEKLY\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.repeatRule").value("WEEKLY"));
+
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.repeatRule").value("NONE"));
+    }
+
+    @Test
+    @DisplayName("마감일시 없이 반복을 지정해 생성하면 400을 반환한다")
+    void createReminder_withRepeatButNoDueAt_returnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"분리수거\",\"repeatRule\":\"DAILY\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("지원하지 않는 repeatRule 값으로 생성하면 400을 반환한다")
+    void createReminder_withUnknownRepeatRule_returnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"분리수거\",\"dueAt\":\"2026-10-04T20:00:00\",\"repeatRule\":\"HOURLY\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("반복 리마인더를 완료하면 완료된 현재 항목을 반환하고, 다음 회차가 조회된다")
+    void toggleComplete_whenRepeating_returnsCompletedReminder_andNextOccurrenceIsListed() throws Exception {
+        ReminderList home = reminderListRepository.save(new ReminderList("집", null));
+        Reminder saved = reminderRepository.save(new Reminder("분리수거", null, home,
+                LocalDateTime.of(2026, 10, 4, 20, 0), Priority.NONE, RepeatRule.WEEKLY));
+
+        mockMvc.perform(patch("/api/reminders/{id}/complete", saved.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(saved.getId()))
+                .andExpect(jsonPath("$.data.completed").value(true));
+
+        mockMvc.perform(get("/api/reminders").param("listId", String.valueOf(home.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[1].completed").value(false))
+                .andExpect(jsonPath("$.data[1].dueAt").value("2026-10-11T20:00:00"))
+                .andExpect(jsonPath("$.data[1].repeatRule").value("WEEKLY"));
     }
 
     @Test

@@ -2,8 +2,9 @@
 
 import { useState, type KeyboardEvent } from "react"
 import { parseISO } from "date-fns"
-import { Controller, useForm } from "react-hook-form"
+import { Controller, useForm, useWatch } from "react-hook-form"
 import { DueDatePicker } from "@/components/due-date-picker"
+import { RepeatSelect } from "@/components/repeat-select"
 import { TagInput } from "@/components/tag-input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,12 +29,14 @@ import { useCreateReminder, useUpdateReminder } from "@/hooks/use-reminders"
 import { toDueAtParam } from "@/lib/due-date"
 import { PRIORITIES, PRIORITY_LABELS, type Priority } from "@/lib/priority"
 import type { Reminder } from "@/lib/reminders-api"
+import type { RepeatRule } from "@/lib/repeat"
 import { cn } from "@/lib/utils"
 
 type ReminderFormValues = {
   title: string
   memo: string
   dueAt: Date | undefined
+  repeatRule: RepeatRule
   flagged: boolean
   priority: Priority
   tagNames: string[]
@@ -77,17 +80,21 @@ function ReminderEditForm({
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<ReminderFormValues>({
     defaultValues: {
       title: reminder.title,
       memo: reminder.memo ?? "",
       dueAt: reminder.dueAt ? parseISO(reminder.dueAt) : undefined,
+      repeatRule: reminder.repeatRule,
       flagged: reminder.flagged,
       priority: reminder.priority,
       tagNames: reminder.tags,
     },
   })
+
+  const dueAt = useWatch({ control, name: "dueAt" })
 
   function onSubmit(values: ReminderFormValues) {
     updateReminder.mutate(
@@ -100,6 +107,7 @@ function ReminderEditForm({
           flagged: values.flagged,
           priority: values.priority,
           tagNames: values.tagNames,
+          repeatRule: values.dueAt ? values.repeatRule : "NONE",
         },
       },
       { onSuccess: onSaved }
@@ -133,14 +141,36 @@ function ReminderEditForm({
         <Textarea id="reminder-memo" rows={3} {...register("memo")} />
       </div>
       <div className="grid gap-1.5">
-        <Label>마감일</Label>
-        <Controller
-          control={control}
-          name="dueAt"
-          render={({ field }) => (
-            <DueDatePicker value={field.value} onChange={field.onChange} />
-          )}
-        />
+        <Label>마감일 / 반복</Label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Controller
+            control={control}
+            name="dueAt"
+            render={({ field }) => (
+              <DueDatePicker
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value)
+                  // 반복은 마감일이 있어야 하므로 마감일을 지우면 반복도 해제한다.
+                  if (!value) setValue("repeatRule", "NONE")
+                }}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="repeatRule"
+            render={({ field }) => (
+              <RepeatSelect
+                id="reminder-repeat"
+                size="sm"
+                value={field.value}
+                onChange={field.onChange}
+                disabled={!dueAt}
+              />
+            )}
+          />
+        </div>
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="reminder-priority">우선순위</Label>

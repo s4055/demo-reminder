@@ -1,5 +1,6 @@
 import { apiRequest, jsonBody } from "@/lib/api"
 import type { Priority } from "@/lib/priority"
+import type { RepeatRule } from "@/lib/repeat"
 import type { SmartView } from "@/lib/selection"
 
 export type Reminder = {
@@ -10,6 +11,8 @@ export type Reminder = {
   flagged: boolean
   priority: Priority
   dueAt: string | null
+  // 반복 주기. 반복 리마인더를 완료하면 서버가 다음 회차를 새 리마인더로 만든다.
+  repeatRule: RepeatRule
   completedAt: string | null
   listId: number | null
   sortOrder: number
@@ -32,6 +35,8 @@ export type CreateReminderInput = {
   priority?: Priority
   tagNames?: string[]
   parentId?: number | null
+  // NONE이 아니면 dueAt이 있어야 한다 (없으면 400).
+  repeatRule?: RepeatRule
 }
 
 // 전체 교체 방식이라 tagNames를 빈 배열로 보내면 태그가 모두 떨어진다.
@@ -42,6 +47,8 @@ export type UpdateReminderInput = {
   flagged: boolean
   priority: Priority
   tagNames: string[]
+  // NONE이 아니면 dueAt이 있어야 한다 (없으면 400).
+  repeatRule: RepeatRule
 }
 
 // listId를 지정하면 최상위 리마인더만 오고, 하위 작업은 각 항목의 subtasks에 담긴다.
@@ -79,6 +86,7 @@ export function reorderReminders(listId: number, ids: number[]): Promise<void> {
   )
 }
 
+// 응답은 토글된 현재 리마인더뿐이다. 반복 리마인더의 다음 회차는 목록을 다시 조회해야 보인다.
 export function toggleReminderComplete(id: number): Promise<Reminder> {
   return apiRequest<Reminder>(`/api/reminders/${id}/complete`, {
     method: "PATCH",
