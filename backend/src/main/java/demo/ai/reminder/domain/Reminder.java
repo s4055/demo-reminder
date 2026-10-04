@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 @Entity
@@ -54,6 +55,15 @@ public class Reminder extends BaseTimeEntity {
 
     // 완료 처리한 시각. 미완료 상태에서는 null이다.
     private LocalDateTime completedAt;
+
+    // 반복 주기. 반복하지 않으면 NONE이며, 반복은 마감일시가 있을 때만 설정할 수 있다.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RepeatRule repeatRule;
+
+    // 이 회차를 완료하면서 다음 회차를 이미 만들었는지. 완료 취소 후 다시 완료해도 다음 회차를 중복으로 만들지 않는다.
+    @Column(nullable = false)
+    private boolean nextOccurrenceCreated;
 
     // 같은 리스트 안에서의 표시 순서. 작을수록 위에 표시된다.
     @Column(nullable = false)
@@ -88,21 +98,29 @@ public class Reminder extends BaseTimeEntity {
     }
 
     public Reminder(String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority) {
+        this(title, memo, list, dueAt, priority, RepeatRule.NONE);
+    }
+
+    public Reminder(String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
+                    RepeatRule repeatRule) {
         this.title = title;
         this.memo = memo;
         this.list = list;
         this.dueAt = dueAt;
         this.priority = priorityOrNone(priority);
+        this.repeatRule = repeatRuleOrNone(repeatRule, dueAt);
         this.completed = false;
         this.flagged = false;
     }
 
-    public void update(String title, String memo, LocalDateTime dueAt, boolean flagged, Priority priority) {
+    public void update(String title, String memo, LocalDateTime dueAt, boolean flagged, Priority priority,
+                       RepeatRule repeatRule) {
         this.title = title;
         this.memo = memo;
         this.dueAt = dueAt;
         this.flagged = flagged;
         this.priority = priorityOrNone(priority);
+        this.repeatRule = repeatRuleOrNone(repeatRule, dueAt);
     }
 
     public void replaceTags(Collection<Tag> tags) {
@@ -152,22 +170,53 @@ public class Reminder extends BaseTimeEntity {
         this.flagged = !this.flagged;
     }
 
-    // 완료 처리하면 아직 완료되지 않은 하위 작업도 함께 완료한다. 완료 취소는 하위 작업에 전파하지 않는다.
-    public void toggleComplete(LocalDateTime now) {
+    /**
+     * 완료 상태를 반전한다. 완료 처리하면 아직 완료되지 않은 하위 작업도 함께 완료한다. 완료 취소는 하위 작업에 전파하지 않는다.
+     * 반복 리마인더를 완료하면 다음 회차를 만들어 돌려준다. 저장과 리스트 안 순서 지정은 호출하는 쪽이 한다.
+     * 완료를 취소해도 이미 만든 다음 회차는 그대로 두며, 다시 완료해도 다음 회차를 또 만들지 않는다.
+     * 부모 완료로 함께 완료된 하위 작업은 반복이어도 다음 회차를 만들지 않는다.
+     */
+    public Optional<Reminder> toggleComplete(LocalDateTime now) {
         if (completed) {
             this.completed = false;
             this.completedAt = null;
-            return;
+            return Optional.empty();
         }
         complete(now);
         subtasks.stream()
                 .filter(subtask -> !subtask.completed)
                 .forEach(subtask -> subtask.complete(now));
+        return createNextOccurrence();
+    }
+
+    // 다음 마감일시로 제목/메모/플래그/우선순위/태그/리스트/반복 주기를 복사한 새 회차를 만든다. 하위 작업은 복사하지 않는다.
+    // 하위 작업의 다음 회차는 같은 부모의 하위 작업으로 붙인다.
+    private Optional<Reminder> createNextOccurrence() {
+        if (!repeatRule.isRepeating() || nextOccurrenceCreated) {
+            return Optional.empty();
+        }
+        this.nextOccurrenceCreated = true;
+        Reminder next = new Reminder(title, memo, list, repeatRule.nextDueAt(dueAt), priority, repeatRule);
+        next.flagged = flagged;
+        next.tags.addAll(tags);
+        if (isSubtask()) {
+            parent.addSubtask(next);
+        }
+        return Optional.of(next);
     }
 
     private void complete(LocalDateTime now) {
         this.completed = true;
         this.completedAt = now;
+    }
+
+    // 반복을 지정하지 않으면(null) '반복 안 함'으로 둔다. 마감일시 없이 반복을 설정할 수는 없다.
+    private static RepeatRule repeatRuleOrNone(RepeatRule repeatRule, LocalDateTime dueAt) {
+        RepeatRule rule = Objects.requireNonNullElse(repeatRule, RepeatRule.NONE);
+        if (rule.isRepeating() && dueAt == null) {
+            throw new IllegalArgumentException("A repeating reminder requires a due date");
+        }
+        return rule;
     }
 
     // 우선순위를 지정하지 않으면(null) '없음'으로 둔다.

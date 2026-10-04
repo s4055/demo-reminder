@@ -24,6 +24,7 @@ import {
   ClipboardListIcon,
   FlagIcon,
   GripVerticalIcon,
+  RepeatIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -32,6 +33,7 @@ import { ReminderEditDialog } from "@/components/reminder-edit-dialog"
 import { cn } from "@/lib/utils"
 import { formatDueAt, isOverdue } from "@/lib/due-date"
 import { PRIORITY_LABELS, priorityMark } from "@/lib/priority"
+import { REPEAT_RULE_LABELS, isRepeating } from "@/lib/repeat"
 import type { ReminderList as ReminderListType } from "@/lib/lists-api"
 import type { Reminder } from "@/lib/reminders-api"
 import { emptyMessage, type Selection } from "@/lib/selection"
@@ -450,6 +452,13 @@ function ReminderRow({
             {reminder.dueAt && (
               <span className={cn(overdue && "text-destructive")}>
                 {formatDueAt(reminder.dueAt)}
+              </span>
+            )}
+            {isRepeating(reminder.repeatRule) && (
+              <span className="flex items-center gap-1">
+                <RepeatIcon aria-hidden className="size-3" />
+                <span className="sr-only">반복:</span>
+                {REPEAT_RULE_LABELS[reminder.repeatRule]}
               </span>
             )}
             {list && (

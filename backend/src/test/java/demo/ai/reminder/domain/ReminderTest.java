@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,7 +75,7 @@ class ReminderTest {
         reminder.toggleComplete(LocalDateTime.now());
         LocalDateTime dueAt = LocalDateTime.of(2026, 9, 21, 9, 0);
 
-        reminder.update("계란 사기", "12구", dueAt, true, Priority.NONE);
+        reminder.update("계란 사기", "12구", dueAt, true, Priority.NONE, null);
 
         assertThat(reminder.getTitle()).isEqualTo("계란 사기");
         assertThat(reminder.getMemo()).isEqualTo("12구");
@@ -88,7 +89,7 @@ class ReminderTest {
     void update_allowsClearingMemoAndDueAt() {
         Reminder reminder = new Reminder("우유 사기", "저지방", null, LocalDateTime.of(2026, 9, 21, 9, 0));
 
-        reminder.update("우유 사기", null, null, false, Priority.NONE);
+        reminder.update("우유 사기", null, null, false, Priority.NONE, null);
 
         assertThat(reminder.getMemo()).isNull();
         assertThat(reminder.getDueAt()).isNull();
@@ -153,7 +154,7 @@ class ReminderTest {
         LocalDateTime completedAt = LocalDateTime.of(2026, 9, 30, 10, 0);
         reminder.toggleComplete(completedAt);
 
-        reminder.update("계란 사기", null, null, false, Priority.NONE);
+        reminder.update("계란 사기", null, null, false, Priority.NONE, null);
 
         assertThat(reminder.getCompletedAt()).isEqualTo(completedAt);
     }
@@ -198,7 +199,7 @@ class ReminderTest {
     void update_changesPriority() {
         Reminder reminder = new Reminder("우유 사기", null, null, null);
 
-        reminder.update("우유 사기", null, null, false, Priority.MEDIUM);
+        reminder.update("우유 사기", null, null, false, Priority.MEDIUM, null);
 
         assertThat(reminder.getPriority()).isEqualTo(Priority.MEDIUM);
     }
@@ -208,7 +209,7 @@ class ReminderTest {
     void update_treatsNullPriorityAsNone() {
         Reminder reminder = new Reminder("우유 사기", null, null, null, Priority.HIGH);
 
-        reminder.update("우유 사기", null, null, false, null);
+        reminder.update("우유 사기", null, null, false, null, null);
 
         assertThat(reminder.getPriority()).isEqualTo(Priority.NONE);
     }
@@ -386,5 +387,104 @@ class ReminderTest {
 
         assertThat(boxes.isCompleted()).isTrue();
         assertThat(parent.isCompleted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("반복을 지정하지 않으면 '반복 안 함'으로 생성된다")
+    void constructor_defaultsRepeatRuleToNone() {
+        Reminder reminder = new Reminder("우유 사기", null, null, null, Priority.NONE, null);
+
+        assertThat(reminder.getRepeatRule()).isEqualTo(RepeatRule.NONE);
+    }
+
+    @Test
+    @DisplayName("마감일시 없이 반복을 설정하면 예외가 발생한다")
+    void constructorAndUpdate_rejectRepeatWithoutDueAt() {
+        assertThatThrownBy(() -> new Reminder("우유 사기", null, null, null, Priority.NONE, RepeatRule.DAILY))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        Reminder reminder = new Reminder("우유 사기", null, null, LocalDateTime.of(2026, 10, 4, 9, 0));
+        assertThatThrownBy(() -> reminder.update("우유 사기", null, null, false, Priority.NONE, RepeatRule.WEEKLY))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("반복 리마인더를 완료하면 다음 마감일시로 내용을 복사한 다음 회차를 돌려준다")
+    void toggleComplete_whenRepeating_returnsNextOccurrenceWithCopiedFields() {
+        ReminderList home = new ReminderList("집", null);
+        Reminder reminder = new Reminder("분리수거", "캔/페트", home, LocalDateTime.of(2026, 10, 4, 20, 0),
+                Priority.HIGH, RepeatRule.WEEKLY);
+        reminder.toggleFlag();
+        reminder.replaceTags(List.of(new Tag("집안일")));
+
+        Optional<Reminder> next = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 0));
+
+        assertThat(reminder.isCompleted()).isTrue();
+        assertThat(next).hasValueSatisfying(occurrence -> {
+            assertThat(occurrence.getTitle()).isEqualTo("분리수거");
+            assertThat(occurrence.getMemo()).isEqualTo("캔/페트");
+            assertThat(occurrence.getList()).isSameAs(home);
+            assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 11, 20, 0));
+            assertThat(occurrence.getPriority()).isEqualTo(Priority.HIGH);
+            assertThat(occurrence.isFlagged()).isTrue();
+            assertThat(occurrence.getRepeatRule()).isEqualTo(RepeatRule.WEEKLY);
+            assertThat(occurrence.getTags()).extracting(Tag::getName).containsExactly("집안일");
+            assertThat(occurrence.isCompleted()).isFalse();
+            assertThat(occurrence.getCompletedAt()).isNull();
+        });
+    }
+
+    @Test
+    @DisplayName("반복하지 않는 리마인더를 완료하면 다음 회차가 없다")
+    void toggleComplete_whenNotRepeating_returnsEmpty() {
+        Reminder reminder = new Reminder("우유 사기", null, null, LocalDateTime.of(2026, 10, 4, 9, 0));
+
+        assertThat(reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 10, 0))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("반복 리마인더의 완료를 취소했다가 다시 완료해도 다음 회차는 한 번만 만든다")
+    void toggleComplete_whenRecompleting_doesNotCreateNextOccurrenceAgain() {
+        Reminder reminder = new Reminder("분리수거", null, null, LocalDateTime.of(2026, 10, 4, 20, 0),
+                Priority.NONE, RepeatRule.DAILY);
+
+        Optional<Reminder> first = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 0));
+        Optional<Reminder> undo = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 1));
+        Optional<Reminder> again = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 2));
+
+        assertThat(first).isPresent();
+        assertThat(undo).isEmpty();
+        assertThat(again).isEmpty();
+        assertThat(reminder.isCompleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("반복하는 하위 작업을 완료하면 다음 회차가 같은 부모의 마지막 하위 작업으로 붙는다")
+    void toggleComplete_whenRepeatingSubtask_attachesNextOccurrenceToSameParent() {
+        Reminder parent = new Reminder("운동", null, null, null);
+        Reminder stretching = new Reminder("스트레칭", null, null, LocalDateTime.of(2026, 10, 4, 7, 0),
+                Priority.NONE, RepeatRule.DAILY);
+        parent.addSubtask(stretching);
+
+        Optional<Reminder> next = stretching.toggleComplete(LocalDateTime.of(2026, 10, 4, 7, 30));
+
+        assertThat(next).hasValueSatisfying(occurrence -> {
+            assertThat(occurrence.getParent()).isSameAs(parent);
+            assertThat(occurrence.getSortOrder()).isEqualTo(1);
+        });
+        assertThat(parent.getSubtasks()).containsExactly(stretching, next.get());
+    }
+
+    @Test
+    @DisplayName("부모 완료로 함께 완료된 반복 하위 작업은 다음 회차를 만들지 않는다")
+    void toggleComplete_whenCompletingParent_doesNotRepeatSubtasks() {
+        Reminder parent = new Reminder("운동", null, null, null);
+        parent.addSubtask(new Reminder("스트레칭", null, null, LocalDateTime.of(2026, 10, 4, 7, 0),
+                Priority.NONE, RepeatRule.DAILY));
+
+        Optional<Reminder> next = parent.toggleComplete(LocalDateTime.of(2026, 10, 4, 8, 0));
+
+        assertThat(next).isEmpty();
+        assertThat(parent.getSubtasks()).hasSize(1);
     }
 }

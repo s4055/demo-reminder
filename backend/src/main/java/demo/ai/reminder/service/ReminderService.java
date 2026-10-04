@@ -4,6 +4,7 @@ import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
+import demo.ai.reminder.domain.RepeatRule;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderUpdateRequest;
 import demo.ai.reminder.repository.ReminderListRepository;
@@ -65,11 +66,13 @@ public class ReminderService {
     // parentId를 지정하면 그 리마인더의 하위 작업으로 추가하며, 이때 listId는 무시하고 부모의 리스트를 따른다.
     @Transactional
     public Reminder createReminder(ReminderRequest request) {
+        validateRepeatRule(request.repeatRule(), request.dueAt());
         if (request.parentId() != null) {
             return createSubtask(request);
         }
         ReminderList list = request.listId() == null ? null : findListOrThrow(request.listId());
-        Reminder reminder = new Reminder(request.title(), request.memo(), list, request.dueAt(), request.priority());
+        Reminder reminder = new Reminder(
+                request.title(), request.memo(), list, request.dueAt(), request.priority(), request.repeatRule());
         reminder.changeSortOrder(nextSortOrder(list));
         reminder.replaceTags(tagService.resolveTags(request.tagNames()));
         return reminderRepository.save(reminder);
@@ -81,7 +84,8 @@ public class ReminderService {
             throw new BusinessException(ResultCode.BAD_REQUEST,
                     "A subtask cannot have subtasks: " + request.parentId());
         }
-        Reminder subtask = new Reminder(request.title(), request.memo(), null, request.dueAt(), request.priority());
+        Reminder subtask = new Reminder(
+                request.title(), request.memo(), null, request.dueAt(), request.priority(), request.repeatRule());
         parent.addSubtask(subtask);
         subtask.replaceTags(tagService.resolveTags(request.tagNames()));
         return reminderRepository.save(subtask);
@@ -91,7 +95,9 @@ public class ReminderService {
     @Transactional
     public Reminder updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
-        reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority());
+        validateRepeatRule(request.repeatRule(), request.dueAt());
+        reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority(),
+                request.repeatRule());
         reminder.replaceTags(tagService.resolveTags(request.tagNames()));
         return reminder;
     }
@@ -108,10 +114,17 @@ public class ReminderService {
         }
     }
 
+    // 반복 리마인더를 완료하면 다음 회차를 저장한다. 최상위 리마인더의 다음 회차는 같은 리스트의 마지막 순서로 들어가고,
+    // 하위 작업의 다음 회차는 도메인에서 같은 부모의 마지막 하위 작업으로 붙는다.
     @Transactional
     public Reminder toggleComplete(Long id) {
         Reminder reminder = findReminderOrThrow(id);
-        reminder.toggleComplete(LocalDateTime.now());
+        reminder.toggleComplete(LocalDateTime.now()).ifPresent(next -> {
+            if (!next.isSubtask()) {
+                next.changeSortOrder(nextSortOrder(next.getList()));
+            }
+            reminderRepository.save(next);
+        });
         return reminder;
     }
 
@@ -130,6 +143,12 @@ public class ReminderService {
             reminder.getParent().removeSubtask(reminder);
         }
         reminderRepository.delete(reminder);
+    }
+
+    private void validateRepeatRule(RepeatRule repeatRule, LocalDateTime dueAt) {
+        if (repeatRule != null && repeatRule.isRepeating() && dueAt == null) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "A repeating reminder requires dueAt");
+        }
     }
 
     private int nextSortOrder(ReminderList list) {

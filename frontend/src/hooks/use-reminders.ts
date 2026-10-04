@@ -104,6 +104,8 @@ export function useReorderReminders() {
   })
 }
 
+// 반복 리마인더를 완료하면 서버가 다음 회차를 새로 만든다. 응답에는 현재 항목만 오므로
+// 캐시를 직접 고치지 않고 모든 리마인더 조회를 무효화해 새 회차가 각 화면(리스트/예정됨 등)에 나타나게 한다.
 export function useToggleReminderComplete() {
   const invalidate = useInvalidateReminderQueries()
   return useMutation({

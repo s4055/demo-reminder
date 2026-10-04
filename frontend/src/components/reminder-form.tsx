@@ -3,9 +3,11 @@
 import { useState, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { DueDatePicker } from "@/components/due-date-picker"
+import { RepeatSelect } from "@/components/repeat-select"
 import { Input } from "@/components/ui/input"
 import { useCreateReminder } from "@/hooks/use-reminders"
 import { toDueAtParam } from "@/lib/due-date"
+import type { RepeatRule } from "@/lib/repeat"
 
 export function ReminderForm({
   listId,
@@ -19,7 +21,14 @@ export function ReminderForm({
 }) {
   const [title, setTitle] = useState("")
   const [dueAt, setDueAt] = useState<Date | undefined>(defaultDueAt)
+  const [repeatRule, setRepeatRule] = useState<RepeatRule>("NONE")
   const createReminder = useCreateReminder()
+
+  // 반복은 마감일이 있어야 하므로 마감일을 지우면 반복도 해제한다.
+  function handleDueAtChange(value: Date | undefined) {
+    setDueAt(value)
+    if (!value) setRepeatRule("NONE")
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -33,11 +42,13 @@ export function ReminderForm({
         listId,
         dueAt: dueAt ? toDueAtParam(dueAt) : null,
         tagNames,
+        repeatRule: dueAt ? repeatRule : "NONE",
       },
       {
         onSuccess: () => {
           setTitle("")
           setDueAt(defaultDueAt)
+          setRepeatRule("NONE")
         },
       }
     )
@@ -59,7 +70,15 @@ export function ReminderForm({
           추가
         </Button>
       </div>
-      <DueDatePicker value={dueAt} onChange={setDueAt} />
+      <div className="flex flex-wrap items-center gap-2">
+        <DueDatePicker value={dueAt} onChange={handleDueAtChange} />
+        <RepeatSelect
+          size="sm"
+          value={repeatRule}
+          onChange={setRepeatRule}
+          disabled={!dueAt}
+        />
+      </div>
     </form>
   )
 }
