@@ -9,34 +9,51 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-// 사용자 데이터 격리를 위해 목록/단건 조회는 모두 소유자(userId) 조건을 붙인다.
-// 리스트(listId) 기준 조회는 서비스에서 리스트 소유자를 먼저 확인한 뒤 호출한다.
+// 사용자가 볼 수 있는 리마인더는 리스트에 속하면 그 리스트의 멤버인 경우, 리스트가 없으면 본인이 만든 경우다 (ACCESSIBLE).
+// 공유받은 리스트의 리마인더는 누가 만들었든 모든 멤버가 볼 수 있다.
+// 리스트(listId) 기준 조회는 서비스에서 리스트 멤버인지 먼저 확인한 뒤 호출한다.
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
-    Optional<Reminder> findByIdAndUserId(Long id, Long userId);
+    String ACCESSIBLE = """
+            ((r.list is null and r.user.id = :userId)
+             or exists (select 1 from ListMember m where m.list = r.list and m.user.id = :userId))
+            """;
 
-    List<Reminder> findByUserId(Long userId, Sort sort);
+    @Query("select r from Reminder r where r.id = :id and " + ACCESSIBLE)
+    Optional<Reminder> findAccessibleById(Long id, Long userId);
+
+    @Query("select r from Reminder r where " + ACCESSIBLE)
+    List<Reminder> findAccessible(Long userId, Sort sort);
+
+    // 같은 이름의 태그라도 사용자마다 따로 있으므로 이름으로 찾는다 (공유 리스트에서 다른 멤버가 붙인 태그 포함).
+    @Query("select r from Reminder r join r.tags t where t.name = :tagName and " + ACCESSIBLE)
+    List<Reminder> findAccessibleByTagName(Long userId, String tagName, Sort sort);
+
+    @Query("select r from Reminder r where r.completed = false and " + ACCESSIBLE)
+    List<Reminder> findAccessibleIncomplete(Long userId, Sort sort);
+
+    @Query("""
+            select r from Reminder r
+            where r.completed = false and r.dueAt >= :from and r.dueAt < :to and
+            """ + ACCESSIBLE)
+    List<Reminder> findAccessibleIncompleteDueBetween(Long userId, LocalDateTime from, LocalDateTime to, Sort sort);
+
+    @Query("select r from Reminder r where r.completed = false and r.dueAt is not null and " + ACCESSIBLE)
+    List<Reminder> findAccessibleIncompleteWithDueAt(Long userId, Sort sort);
+
+    @Query("select r from Reminder r where r.completed = false and r.flagged = true and " + ACCESSIBLE)
+    List<Reminder> findAccessibleIncompleteFlagged(Long userId, Sort sort);
+
+    @Query("select r from Reminder r where r.completed = true and " + ACCESSIBLE)
+    List<Reminder> findAccessibleCompleted(Long userId, Sort sort);
 
     List<Reminder> findByListIdAndParentIsNull(Long listId, Sort sort);
-
-    List<Reminder> findByUserIdAndTagsName(Long userId, String tagName, Sort sort);
 
     List<Reminder> findByTagsId(Long tagId);
 
     long countByListIdAndParentIsNullAndCompletedFalse(Long listId);
 
     void deleteAllByListId(Long listId);
-
-    List<Reminder> findByUserIdAndCompletedFalse(Long userId, Sort sort);
-
-    List<Reminder> findByUserIdAndCompletedFalseAndDueAtGreaterThanEqualAndDueAtLessThan(
-            Long userId, LocalDateTime from, LocalDateTime to, Sort sort);
-
-    List<Reminder> findByUserIdAndCompletedFalseAndDueAtIsNotNull(Long userId, Sort sort);
-
-    List<Reminder> findByUserIdAndCompletedFalseAndFlaggedTrue(Long userId, Sort sort);
-
-    List<Reminder> findByUserIdAndCompletedTrue(Long userId, Sort sort);
 
     List<Reminder> findByListIdAndParentIsNullAndCompletedFalse(Long listId);
 
