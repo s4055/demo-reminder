@@ -1,7 +1,6 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.common.BusinessException;
-import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.repository.ReminderListRepository;
@@ -24,29 +23,33 @@ public class ReminderListService {
 
     private final ReminderListRepository reminderListRepository;
     private final ReminderRepository reminderRepository;
+    private final ListAccess listAccess;
     private final CurrentUser currentUser;
 
+    // 소유한 리스트와 공유받은 리스트를 모두 조회한다.
     public List<ReminderListSummary> getLists() {
         return reminderListRepository.findAllWithReminderCount(currentUser.id());
     }
 
-    // 새 리스트는 사이드바 맨 아래(마지막 순서)에 추가한다.
+    // 새 리스트는 사이드바 맨 아래(마지막 순서)에 추가하고, 만든 사용자가 OWNER 멤버가 된다.
     @Transactional
     public ReminderListSummary createList(ReminderListRequest request) {
         int sortOrder = reminderListRepository.findMaxSortOrder(currentUser.id()) + 1;
         ReminderList list = reminderListRepository.save(
                 new ReminderList(currentUser.reference(), request.name(), request.color(), sortOrder));
-        return new ReminderListSummary(list, 0);
+        return new ReminderListSummary(list, 0, ListRole.OWNER, 1);
     }
 
+    // 소유자만 수정할 수 있다.
     @Transactional
     public ReminderListSummary updateList(Long id, ReminderListRequest request) {
-        ReminderList list = findListOrThrow(id);
+        ReminderList list = listAccess.ownedList(id);
         list.update(request.name(), request.color());
-        return new ReminderListSummary(list, reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(id));
+        return new ReminderListSummary(list, reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(id),
+                ListRole.OWNER, list.getMembers().size());
     }
 
-    // ids 순서대로 현재 사용자의 리스트 표시 순서를 0부터 다시 매긴다.
+    // ids 순서대로 현재 사용자가 소유한 리스트의 표시 순서를 0부터 다시 매긴다. 공유받은 리스트는 대상이 아니다.
     @Transactional
     public void reorderLists(List<Long> ids) {
         Map<Long, ReminderList> lists = reminderListRepository.findByUserId(currentUser.id()).stream()
@@ -57,15 +60,11 @@ public class ReminderListService {
         }
     }
 
+    // 소유자만 삭제할 수 있다. 다른 멤버가 만든 리마인더와 멤버 정보도 함께 삭제된다.
     @Transactional
     public void deleteList(Long id) {
-        ReminderList list = findListOrThrow(id);
+        ReminderList list = listAccess.ownedList(id);
         reminderRepository.deleteAllByListId(id);
         reminderListRepository.delete(list);
-    }
-
-    private ReminderList findListOrThrow(Long id) {
-        return reminderListRepository.findByIdAndUserId(id, currentUser.id())
-                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List not found: " + id));
     }
 }

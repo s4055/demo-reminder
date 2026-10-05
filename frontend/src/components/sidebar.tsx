@@ -29,6 +29,8 @@ import {
   PencilIcon,
   PlusIcon,
   Trash2Icon,
+  UserPlusIcon,
+  UsersIcon,
   XIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -37,11 +39,12 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ListFormDialog } from "@/components/list-form-dialog"
 import { ListDeleteDialog } from "@/components/list-delete-dialog"
+import { ListShareDialog } from "@/components/list-share-dialog"
 import { NotificationToggle } from "@/components/notification-toggle"
 import { UserMenu } from "@/components/user-menu"
 import { useLists, useReorderLists } from "@/hooks/use-lists"
 import { useDeleteTag, useTags } from "@/hooks/use-tags"
-import type { ReminderList } from "@/lib/lists-api"
+import { isOwner, isShared, type ReminderList } from "@/lib/lists-api"
 import {
   DEFAULT_SELECTION,
   SMART_VIEWS,
@@ -82,10 +85,14 @@ export function Sidebar({
     list?: ReminderList
   }>({ open: false })
   const [listToDelete, setListToDelete] = useState<ReminderList | null>(null)
+  const [listToShare, setListToShare] = useState<ReminderList | null>(null)
+  // 순서 변경은 소유한 리스트만 할 수 있다. 공유받은 리스트는 따로 모아 아래에 보여준다.
+  const ownedLists = lists?.filter(isOwner)
+  const sharedLists = lists?.filter((list) => !isOwner(list))
 
   function handleDragEnd({ active, over }: DragEndEvent) {
-    if (!lists || !over || active.id === over.id) return
-    const ids = lists.map((list) => list.id)
+    if (!ownedLists || !over || active.id === over.id) return
+    const ids = ownedLists.map((list) => list.id)
     const from = ids.indexOf(Number(active.id))
     const to = ids.indexOf(Number(over.id))
     if (from < 0 || to < 0) return
@@ -132,7 +139,7 @@ export function Sidebar({
             </Button>
           </div>
         )}
-        {lists?.length === 0 && (
+        {ownedLists?.length === 0 && (
           <p className="px-2 text-sm text-muted-foreground">
             리스트가 없습니다. 아래에서 새 리스트를 추가해 보세요.
           </p>
@@ -144,11 +151,11 @@ export function Sidebar({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={lists?.map((list) => list.id) ?? []}
+            items={ownedLists?.map((list) => list.id) ?? []}
             strategy={verticalListSortingStrategy}
           >
             <ul className="flex flex-col gap-0.5">
-              {lists?.map((list) => (
+              {ownedLists?.map((list) => (
                 <SortableListItem
                   key={list.id}
                   list={list}
@@ -157,6 +164,7 @@ export function Sidebar({
                     listId: list.id,
                   })}
                   onSelect={() => onSelect({ type: "list", listId: list.id })}
+                  onShare={() => setListToShare(list)}
                   onEdit={() => setListForm({ open: true, list })}
                   onDelete={() => setListToDelete(list)}
                 />
@@ -165,6 +173,30 @@ export function Sidebar({
           </SortableContext>
         </DndContext>
       </section>
+
+      {sharedLists && sharedLists.length > 0 && (
+        <section className="flex flex-col gap-1">
+          <h2 className="px-2 text-xs font-semibold text-muted-foreground">
+            공유받은 리스트
+          </h2>
+          <ul className="flex flex-col gap-0.5">
+            {sharedLists.map((list) => (
+              <li key={list.id} className="group/item relative flex items-center rounded-lg">
+                <span className="w-4 shrink-0" aria-hidden />
+                <ListItemContent
+                  list={list}
+                  active={isSameSelection(selection, {
+                    type: "list",
+                    listId: list.id,
+                  })}
+                  onSelect={() => onSelect({ type: "list", listId: list.id })}
+                  onShare={() => setListToShare(list)}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <TagSection selection={selection} onSelect={onSelect} />
 
@@ -200,6 +232,17 @@ export function Sidebar({
           }
         }}
       />
+      <ListShareDialog
+        list={listToShare}
+        onOpenChange={(open) => {
+          if (!open) setListToShare(null)
+        }}
+        onLeft={(list) => {
+          if (selection.type === "list" && selection.listId === list.id) {
+            onSelect(DEFAULT_SELECTION)
+          }
+        }}
+      />
     </div>
   )
 }
@@ -208,12 +251,14 @@ function SortableListItem({
   list,
   active,
   onSelect,
+  onShare,
   onEdit,
   onDelete,
 }: {
   list: ReminderList
   active: boolean
   onSelect: () => void
+  onShare: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -246,16 +291,55 @@ function SortableListItem({
       >
         <GripVerticalIcon className="size-3.5" />
       </button>
+      <ListItemContent
+        list={list}
+        active={active}
+        onSelect={onSelect}
+        onShare={onShare}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    </li>
+  )
+}
+
+// 리스트 이름/개수와 마우스를 올리면 나타나는 버튼. 편집/삭제는 소유자에게만 전달되어 보인다.
+function ListItemContent({
+  list,
+  active,
+  onSelect,
+  onShare,
+  onEdit,
+  onDelete,
+}: {
+  list: ReminderList
+  active: boolean
+  onSelect: () => void
+  onShare: () => void
+  onEdit?: () => void
+  onDelete?: () => void
+}) {
+  const shared = isShared(list)
+  return (
+    <>
       <SidebarItem
         active={active}
         onClick={onSelect}
-        className="min-w-0 flex-1 pr-14 md:pr-2"
+        className={cn("min-w-0 flex-1 md:pr-2", onEdit ? "pr-20" : "pr-8")}
       >
         <span
           className="size-3 shrink-0 rounded-full"
           style={{ backgroundColor: list.color ?? "#8E8E93" }}
         />
         <span className="flex-1 truncate">{list.name}</span>
+        {shared && (
+          <UsersIcon
+            className="size-3.5 shrink-0 text-muted-foreground"
+            aria-label={`공유된 리스트 (멤버 ${list.memberCount}명)`}
+          >
+            <title>{`공유된 리스트 (멤버 ${list.memberCount}명)`}</title>
+          </UsersIcon>
+        )}
         <Badge variant="secondary" className="md:group-hover/item:opacity-0">
           {list.reminderCount}
         </Badge>
@@ -264,21 +348,34 @@ function SortableListItem({
         <Button
           variant="ghost"
           size="icon-xs"
-          onClick={onEdit}
-          aria-label={`${list.name} 리스트 편집`}
+          onClick={onShare}
+          aria-label={`${list.name} 리스트 공유`}
+          title={isOwner(list) ? "공유" : "멤버 보기"}
         >
-          <PencilIcon />
+          <UserPlusIcon />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={onDelete}
-          aria-label={`${list.name} 리스트 삭제`}
-        >
-          <Trash2Icon />
-        </Button>
+        {onEdit && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={onEdit}
+            aria-label={`${list.name} 리스트 편집`}
+          >
+            <PencilIcon />
+          </Button>
+        )}
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={onDelete}
+            aria-label={`${list.name} 리스트 삭제`}
+          >
+            <Trash2Icon />
+          </Button>
+        )}
       </div>
-    </li>
+    </>
   )
 }
 

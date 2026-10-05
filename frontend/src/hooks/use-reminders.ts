@@ -20,7 +20,12 @@ import {
   type Reminder,
   type UpdateReminderInput,
 } from "@/lib/reminders-api"
-import { listsQueryKey, remindersQueryKey, tagsQueryKey } from "@/hooks/query-keys"
+import {
+  SYNC_INTERVAL_MS,
+  listsQueryKey,
+  remindersQueryKey,
+  tagsQueryKey,
+} from "@/hooks/query-keys"
 import type { Selection } from "@/lib/selection"
 
 function remindersQueryKeyOf(selection: Selection) {
@@ -42,6 +47,7 @@ export function useReminders(selection: Selection) {
   return useQuery({
     queryKey: remindersQueryKeyOf(selection),
     queryFn: () => fetchReminders(selection),
+    refetchInterval: SYNC_INTERVAL_MS, // 공유 리스트에서 다른 멤버가 바꾼 내용을 반영한다
   })
 }
 

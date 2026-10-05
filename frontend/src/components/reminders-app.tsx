@@ -46,6 +46,10 @@ export function RemindersApp() {
     selection.type === "list"
       ? lists?.find((list) => list.id === selection.listId)
       : undefined
+  // 보고 있던 리스트가 사라지면(소유자가 삭제하거나 공유에서 제외) 기본 화면으로 돌아간다.
+  if (selection.type === "list" && lists && !selectedList) {
+    setSelection(DEFAULT_SELECTION)
+  }
   const title =
     selection.type === "list"
       ? (selectedList?.name ?? "")

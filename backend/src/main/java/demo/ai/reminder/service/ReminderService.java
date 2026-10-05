@@ -7,7 +7,6 @@ import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.RepeatRule;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderUpdateRequest;
-import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -33,35 +32,35 @@ public class ReminderService {
     private static final Sort COMPLETED_SORT = Sort.by(Sort.Order.desc("completedAt"), Sort.Order.desc("id"));
 
     private final ReminderRepository reminderRepository;
-    private final ReminderListRepository reminderListRepository;
+    private final ListAccess listAccess;
     private final TagService tagService;
     private final CurrentUser currentUser;
 
     // 리스트를 지정하면 최상위 리마인더만 표시 순서대로(하위 작업은 각 부모의 subtasks로),
     // 태그를 지정하면 그 태그가 붙은 리마인더를 생성순으로, 둘 다 없으면 전체를 생성순으로 조회한다.
-    // 태그별/전체 조회에는 하위 작업도 개별 항목으로 포함된다. 모두 현재 사용자의 리마인더만 조회하며, 다른 사용자의 리스트는 404다.
+    // 태그별/전체 조회에는 하위 작업도 개별 항목으로 포함된다. 모두 현재 사용자가 볼 수 있는 리마인더(본인 것 + 멤버인 리스트의 것)만 조회하며, 멤버가 아닌 리스트는 404다.
     public List<Reminder> getReminders(Long listId, String tag) {
         if (listId != null) {
-            findListOrThrow(listId);
+            listAccess.memberList(listId);
             return reminderRepository.findByListIdAndParentIsNull(listId, LIST_SORT);
         }
         if (tag != null) {
-            return reminderRepository.findByUserIdAndTagsName(currentUser.id(), tag.trim(), DEFAULT_SORT);
+            return reminderRepository.findAccessibleByTagName(currentUser.id(), tag.trim(), DEFAULT_SORT);
         }
-        return reminderRepository.findByUserId(currentUser.id(), DEFAULT_SORT);
+        return reminderRepository.findAccessible(currentUser.id(), DEFAULT_SORT);
     }
 
     public List<Reminder> getSmartReminders(String view) {
         return switch (SmartView.from(view)) {
             case TODAY -> {
                 LocalDate today = LocalDate.now();
-                yield reminderRepository.findByUserIdAndCompletedFalseAndDueAtGreaterThanEqualAndDueAtLessThan(
+                yield reminderRepository.findAccessibleIncompleteDueBetween(
                         currentUser.id(), today.atStartOfDay(), today.plusDays(1).atStartOfDay(), DUE_DATE_SORT);
             }
-            case SCHEDULED -> reminderRepository.findByUserIdAndCompletedFalseAndDueAtIsNotNull(currentUser.id(), DUE_DATE_SORT);
-            case ALL -> reminderRepository.findByUserIdAndCompletedFalse(currentUser.id(), DEFAULT_SORT);
-            case FLAGGED -> reminderRepository.findByUserIdAndCompletedFalseAndFlaggedTrue(currentUser.id(), DEFAULT_SORT);
-            case COMPLETED -> reminderRepository.findByUserIdAndCompletedTrue(currentUser.id(), COMPLETED_SORT);
+            case SCHEDULED -> reminderRepository.findAccessibleIncompleteWithDueAt(currentUser.id(), DUE_DATE_SORT);
+            case ALL -> reminderRepository.findAccessibleIncomplete(currentUser.id(), DEFAULT_SORT);
+            case FLAGGED -> reminderRepository.findAccessibleIncompleteFlagged(currentUser.id(), DEFAULT_SORT);
+            case COMPLETED -> reminderRepository.findAccessibleCompleted(currentUser.id(), COMPLETED_SORT);
         };
     }
 
@@ -70,7 +69,7 @@ public class ReminderService {
         if (!from.isBefore(to)) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "from must be before to: from=" + from + ", to=" + to);
         }
-        return reminderRepository.findByUserIdAndCompletedFalseAndDueAtGreaterThanEqualAndDueAtLessThan(
+        return reminderRepository.findAccessibleIncompleteDueBetween(
                 currentUser.id(), from, to, DUE_DATE_SORT);
     }
 
@@ -82,7 +81,7 @@ public class ReminderService {
         if (request.parentId() != null) {
             return createSubtask(request);
         }
-        ReminderList list = request.listId() == null ? null : findListOrThrow(request.listId());
+        ReminderList list = request.listId() == null ? null : listAccess.memberList(request.listId());
         Reminder reminder = new Reminder(currentUser.reference(),
                 request.title(), request.memo(), list, request.dueAt(), request.priority(), request.repeatRule());
         reminder.changeSortOrder(nextSortOrder(list));
@@ -117,7 +116,7 @@ public class ReminderService {
     // ids 순서대로 리스트의 최상위 미완료 리마인더 표시 순서를 0부터 다시 매긴다.
     @Transactional
     public void reorderReminders(Long listId, List<Long> ids) {
-        findListOrThrow(listId);
+        listAccess.memberList(listId);
         Map<Long, Reminder> reminders = reminderRepository.findByListIdAndParentIsNullAndCompletedFalse(listId).stream()
                 .collect(Collectors.toMap(Reminder::getId, Function.identity()));
         SortOrders.validateIds(ids, reminders.keySet(), "incomplete reminder of the list");
@@ -170,13 +169,8 @@ public class ReminderService {
         return reminderRepository.findMaxSortOrderInList(list.getId()) + 1;
     }
 
-    private ReminderList findListOrThrow(Long listId) {
-        return reminderListRepository.findByIdAndUserId(listId, currentUser.id())
-                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List not found: " + listId));
-    }
-
     private Reminder findReminderOrThrow(Long id) {
-        return reminderRepository.findByIdAndUserId(id, currentUser.id())
+        return reminderRepository.findAccessibleById(id, currentUser.id())
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "Reminder not found: " + id));
     }
 }

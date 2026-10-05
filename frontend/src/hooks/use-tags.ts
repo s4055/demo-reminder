@@ -4,12 +4,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { deleteTag, getTags } from "@/lib/tags-api"
-import { remindersQueryKey, tagsQueryKey } from "@/hooks/query-keys"
+import { SYNC_INTERVAL_MS, remindersQueryKey, tagsQueryKey } from "@/hooks/query-keys"
 
 export function useTags() {
   return useQuery({
     queryKey: tagsQueryKey,
     queryFn: getTags,
+    refetchInterval: SYNC_INTERVAL_MS,
   })
 }
 

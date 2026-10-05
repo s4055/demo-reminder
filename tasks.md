@@ -268,21 +268,21 @@
 
 ## Phase 13 — 리스트 공유/협업
 ### 백엔드
-- [ ] `ListMember` 엔티티(id, list, user, role `OWNER`/`EDITOR`, createdAt) 작성, 리스트 생성 시 소유자를 `OWNER`로 저장
-- [ ] `GET /api/lists/{id}/members`
-- [ ] `POST /api/lists/{id}/members` — 이메일로 초대 (소유자만, 없는 사용자 404, 이미 멤버 400)
-- [ ] `DELETE /api/lists/{id}/members/{userId}` — 멤버 제거(소유자) / 본인 나가기
-- [ ] 접근 제어: 멤버는 리마인더 CRUD 가능, 리스트 수정/삭제·멤버 관리는 소유자만
-- [ ] `GET /api/lists`와 스마트 뷰에 공유받은 리스트/리마인더 포함
-- [ ] `openapi.yml` 갱신
-- [ ] 테스트: 초대/제거/나가기, 권한별 허용·거부, 비멤버 접근 차단, 스마트 뷰 포함
+- [x] `ListMember` 엔티티(id, list, user, role `OWNER`/`EDITOR`, createdAt) 작성, 리스트 생성 시 소유자를 `OWNER`로 저장
+- [x] `GET /api/lists/{id}/members`
+- [x] `POST /api/lists/{id}/members` — 이메일로 초대 (소유자만, 없는 사용자 404, 이미 멤버 400)
+- [x] `DELETE /api/lists/{id}/members/{userId}` — 멤버 제거(소유자) / 본인 나가기
+- [x] 접근 제어: 멤버는 리마인더 CRUD 가능, 리스트 수정/삭제·멤버 관리는 소유자만
+- [x] `GET /api/lists`와 스마트 뷰에 공유받은 리스트/리마인더 포함
+- [x] `openapi.yml` 갱신
+- [x] 테스트: 초대/제거/나가기, 권한별 허용·거부, 비멤버 접근 차단, 스마트 뷰 포함
 
 ### 프론트엔드
-- [ ] 리스트 공유 다이얼로그 (이메일 초대, 멤버 목록, 제거)
-- [ ] 사이드바의 공유 리스트에 공유 아이콘 표시
-- [ ] 소유자가 아닌 경우 리스트 편집/삭제 메뉴 숨김
-- [ ] TanStack Query `refetchInterval`/창 포커스 재조회로 다른 사용자 변경 반영
+- [x] 리스트 공유 다이얼로그 (이메일 초대, 멤버 목록, 제거)
+- [x] 사이드바의 공유 리스트에 공유 아이콘 표시
+- [x] 소유자가 아닌 경우 리스트 편집/삭제 메뉴 숨김
+- [x] TanStack Query `refetchInterval`/창 포커스 재조회로 다른 사용자 변경 반영
 
 ### 완료 기준 검증
-- [ ] A가 B를 초대하면 B 사이드바에 리스트가 나타나고, B가 추가한 리마인더가 A 화면에 반영되는지 확인
-- [ ] 멤버가 아닌 사용자가 리스트에 접근할 수 없는지 확인
+- [x] A가 B를 초대하면 B 사이드바에 리스트가 나타나고, B가 추가한 리마인더가 A 화면에 반영되는지 확인
+- [x] 멤버가 아닌 사용자가 리스트에 접근할 수 없는지 확인
