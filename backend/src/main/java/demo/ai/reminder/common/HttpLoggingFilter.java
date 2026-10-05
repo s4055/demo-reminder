@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,6 +46,11 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     private static final String H2_CONSOLE_PATH = "/h2-console";
 
+    // "password": "..." 형태 (이스케이프된 따옴표 포함)
+    private static final Pattern PASSWORD_FIELD = Pattern.compile("(\"password\"\\s*:\\s*)\"(?:[^\"\\\\]|\\\\.)*\"");
+
+    private static final String MASK = "****";
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -57,7 +63,7 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
         try {
             CachedBodyRequestWrapper cachedRequest = new CachedBodyRequestWrapper(request);
             log.info("[Request] {} {} body={}", request.getMethod(), request.getRequestURI(),
-                    new String(cachedRequest.getBody(), StandardCharsets.UTF_8));
+                    maskPassword(new String(cachedRequest.getBody(), StandardCharsets.UTF_8)));
             log.info("[Header] {}", requestHeaders(request));
             log.info("[Session] {}", sessionInfo(request));
 
@@ -73,6 +79,11 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
             // 요청 스레드는 스레드 풀에서 재사용되므로 다음 요청에 request_id가 남지 않도록 반드시 지운다.
             MDC.remove(REQUEST_ID);
         }
+    }
+
+    // 회원가입/로그인 요청 본문의 비밀번호가 로그에 평문으로 남지 않도록 JSON의 "password" 값을 가린다.
+    static String maskPassword(String body) {
+        return PASSWORD_FIELD.matcher(body).replaceAll("$1\"" + MASK + "\"");
     }
 
     private boolean isH2ConsoleRequest(HttpServletRequest request) {

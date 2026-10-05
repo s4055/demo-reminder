@@ -7,6 +7,7 @@ import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderListSummary;
 import demo.ai.reminder.repository.ReminderRepository;
+import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,16 +24,18 @@ public class ReminderListService {
 
     private final ReminderListRepository reminderListRepository;
     private final ReminderRepository reminderRepository;
+    private final CurrentUser currentUser;
 
     public List<ReminderListSummary> getLists() {
-        return reminderListRepository.findAllWithReminderCount();
+        return reminderListRepository.findAllWithReminderCount(currentUser.id());
     }
 
     // 새 리스트는 사이드바 맨 아래(마지막 순서)에 추가한다.
     @Transactional
     public ReminderListSummary createList(ReminderListRequest request) {
-        int sortOrder = reminderListRepository.findMaxSortOrder() + 1;
-        ReminderList list = reminderListRepository.save(new ReminderList(request.name(), request.color(), sortOrder));
+        int sortOrder = reminderListRepository.findMaxSortOrder(currentUser.id()) + 1;
+        ReminderList list = reminderListRepository.save(
+                new ReminderList(currentUser.reference(), request.name(), request.color(), sortOrder));
         return new ReminderListSummary(list, 0);
     }
 
@@ -43,10 +46,10 @@ public class ReminderListService {
         return new ReminderListSummary(list, reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(id));
     }
 
-    // ids 순서대로 리스트의 표시 순서를 0부터 다시 매긴다.
+    // ids 순서대로 현재 사용자의 리스트 표시 순서를 0부터 다시 매긴다.
     @Transactional
     public void reorderLists(List<Long> ids) {
-        Map<Long, ReminderList> lists = reminderListRepository.findAll().stream()
+        Map<Long, ReminderList> lists = reminderListRepository.findByUserId(currentUser.id()).stream()
                 .collect(Collectors.toMap(ReminderList::getId, Function.identity()));
         SortOrders.validateIds(ids, lists.keySet(), "list");
         for (int i = 0; i < ids.size(); i++) {
@@ -62,7 +65,7 @@ public class ReminderListService {
     }
 
     private ReminderList findListOrThrow(Long id) {
-        return reminderListRepository.findById(id)
+        return reminderListRepository.findByIdAndUserId(id, currentUser.id())
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List not found: " + id));
     }
 }

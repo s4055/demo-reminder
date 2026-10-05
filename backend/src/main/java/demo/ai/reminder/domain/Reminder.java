@@ -39,6 +39,11 @@ public class Reminder extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 소유자. 리스트 없이 만든 리마인더도 소유자를 구분해야 하므로 리스트와 별도로 둔다.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     private String title;
 
     private String memo;
@@ -93,16 +98,17 @@ public class Reminder extends BaseTimeEntity {
     @BatchSize(size = 100)
     private List<Reminder> subtasks = new ArrayList<>();
 
-    public Reminder(String title, String memo, ReminderList list, LocalDateTime dueAt) {
-        this(title, memo, list, dueAt, Priority.NONE);
+    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt) {
+        this(user, title, memo, list, dueAt, Priority.NONE);
     }
 
-    public Reminder(String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority) {
-        this(title, memo, list, dueAt, priority, RepeatRule.NONE);
+    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority) {
+        this(user, title, memo, list, dueAt, priority, RepeatRule.NONE);
     }
 
-    public Reminder(String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
+    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
                     RepeatRule repeatRule) {
+        this.user = user;
         this.title = title;
         this.memo = memo;
         this.list = list;
@@ -189,14 +195,14 @@ public class Reminder extends BaseTimeEntity {
         return createNextOccurrence();
     }
 
-    // 다음 마감일시로 제목/메모/플래그/우선순위/태그/리스트/반복 주기를 복사한 새 회차를 만든다. 하위 작업은 복사하지 않는다.
+    // 다음 마감일시로 소유자/제목/메모/플래그/우선순위/태그/리스트/반복 주기를 복사한 새 회차를 만든다. 하위 작업은 복사하지 않는다.
     // 하위 작업의 다음 회차는 같은 부모의 하위 작업으로 붙인다.
     private Optional<Reminder> createNextOccurrence() {
         if (!repeatRule.isRepeating() || nextOccurrenceCreated) {
             return Optional.empty();
         }
         this.nextOccurrenceCreated = true;
-        Reminder next = new Reminder(title, memo, list, repeatRule.nextDueAt(dueAt), priority, repeatRule);
+        Reminder next = new Reminder(user, title, memo, list, repeatRule.nextDueAt(dueAt), priority, repeatRule);
         next.flagged = flagged;
         next.tags.addAll(tags);
         if (isSubtask()) {

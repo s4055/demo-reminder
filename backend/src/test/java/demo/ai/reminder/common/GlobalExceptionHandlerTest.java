@@ -91,10 +91,21 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("별도 매핑이 없는 4xx 상태는 원래 상태 코드를 유지하고 BAD_REQUEST로 변환된다")
     void responseStatusException_otherClientError_fallsBackToBadRequest() throws Exception {
+        mockMvc.perform(get("/test/status/418"))
+                .andExpect(status().is(418))
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value("reason-418"));
+    }
+
+    @Test
+    @DisplayName("401, 409 ResponseStatusException은 각각 UNAUTHORIZED, CONFLICT로 변환된다")
+    void responseStatusException_unauthorizedAndConflict_mapToTheirResultCodes() throws Exception {
+        mockMvc.perform(get("/test/status/401"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.resultCode").value("UNAUTHORIZED"));
         mockMvc.perform(get("/test/status/409"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.resultMsg").value("reason-409"));
+                .andExpect(jsonPath("$.resultCode").value("CONFLICT"));
     }
 
     @Test

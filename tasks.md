@@ -233,37 +233,38 @@
 ### 완료 기준 검증
 - [x] 1~2분 뒤로 마감일시를 설정하면 그 시각에 알림이 한 번만 뜨는지 확인
 
-## Phase 12 — 사용자 인증/멀티 유저 + PostgreSQL 전환
+## Phase 12 — 사용자 인증/멀티 유저 + 영구 저장(H2 파일 모드)
 ### 백엔드 — 인증
-- [ ] `spring-boot-starter-security` 의존성 추가
-- [ ] `User` 엔티티(id, email 고유, password BCrypt, name, createdAt)와 `UserRepository` 작성
-- [ ] 세션(쿠키) 기반 로그인 `SecurityConfig` 작성
-- [ ] `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
-- [ ] 미인증 요청 401을 `ApiResponse` 형식으로 응답 (`ResultCode.UNAUTHORIZED` 추가)
-- [ ] CORS `allowCredentials` 설정 (또는 Next.js rewrites 프록시)
+- [x] `spring-boot-starter-security` 의존성 추가
+- [x] `User` 엔티티(id, email 고유, password BCrypt, name, createdAt)와 `UserRepository` 작성
+- [x] 세션(쿠키) 기반 로그인 `SecurityConfig` 작성
+- [x] `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- [x] 미인증 요청 401을 `ApiResponse` 형식으로 응답 (`ResultCode.UNAUTHORIZED` 추가)
+- [x] CORS `allowCredentials` 설정 (또는 Next.js rewrites 프록시)
+- [x] 세션 쿠키 `SameSite=Lax`, `HttpOnly` 명시 (CSRF 토큰 미사용 전제) + 쿠키 속성 테스트
 
 ### 백엔드 — 멀티 유저
-- [ ] `ReminderList`, `Reminder`, `Tag`에 소유자 `user` FK 추가
-- [ ] 태그 이름 고유 조건을 사용자별 고유로 변경
-- [ ] 모든 조회/수정/삭제를 현재 사용자 데이터로 제한 (다른 사용자 리소스는 404)
-- [ ] `openapi.yml` 갱신 (인증 API, 보안 스키마)
-- [ ] 테스트: 회원가입/로그인/로그아웃, 미인증 401, 사용자 간 데이터 격리
+- [x] `ReminderList`, `Reminder`, `Tag`에 소유자 `user` FK 추가
+- [x] 태그 이름 고유 조건을 사용자별 고유로 변경
+- [x] 모든 조회/수정/삭제를 현재 사용자 데이터로 제한 (다른 사용자 리소스는 404)
+- [x] `openapi.yml` 갱신 (인증 API, 보안 스키마)
+- [x] 테스트: 회원가입/로그인/로그아웃, 미인증 401, 사용자 간 데이터 격리
 
-### 백엔드 — PostgreSQL
-- [ ] `docker-compose.yml`로 로컬 PostgreSQL 구성
-- [ ] 프로필 분리 (`local`: H2, `postgres`: PostgreSQL)
-- [ ] Flyway 도입 및 초기 스키마 마이그레이션 작성 (`ddl-auto` 대체)
+### 백엔드 — 영구 저장
+- [x] H2를 파일 모드(`jdbc:h2:file:./data/reminderdb`)로 전환, 스키마는 `ddl-auto: update` 유지
+- [x] 테스트는 in-memory DB 사용
+- [x] DB 파일(`backend/data/`)을 `.gitignore`에 추가
 
 ### 프론트엔드
-- [ ] `/login`, `/signup` 페이지 (React Hook Form + 검증)
-- [ ] 비로그인 상태 접근 시 `/login`으로 이동
-- [ ] API 클라이언트 `credentials: "include"` 적용, 401 시 로그인 페이지로 이동
-- [ ] 사용자 이름 표시 + 로그아웃 버튼
+- [x] `/login`, `/signup` 페이지 (React Hook Form + 검증)
+- [x] 비로그인 상태 접근 시 `/login`으로 이동
+- [x] API 클라이언트 `credentials: "include"` 적용, 401 시 로그인 페이지로 이동
+- [x] 사용자 이름 표시 + 로그아웃 버튼
 
 ### 완료 기준 검증
-- [ ] 두 계정이 서로의 리스트/리마인더를 볼 수 없는지 확인
-- [ ] `postgres` 프로필로 재시작 후 데이터가 유지되는지 확인
-- [ ] README에 PostgreSQL 실행 방법 추가
+- [x] 두 계정이 서로의 리스트/리마인더를 볼 수 없는지 확인
+- [x] 서버 재시작 후 데이터(계정 포함)가 유지되는지 확인
+- [x] README에 DB 파일 위치와 초기화 방법 추가
 
 ## Phase 13 — 리스트 공유/협업
 ### 백엔드

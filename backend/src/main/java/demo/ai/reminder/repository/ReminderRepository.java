@@ -7,12 +7,19 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
+// 사용자 데이터 격리를 위해 목록/단건 조회는 모두 소유자(userId) 조건을 붙인다.
+// 리스트(listId) 기준 조회는 서비스에서 리스트 소유자를 먼저 확인한 뒤 호출한다.
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
+
+    Optional<Reminder> findByIdAndUserId(Long id, Long userId);
+
+    List<Reminder> findByUserId(Long userId, Sort sort);
 
     List<Reminder> findByListIdAndParentIsNull(Long listId, Sort sort);
 
-    List<Reminder> findByTagsName(String tagName, Sort sort);
+    List<Reminder> findByUserIdAndTagsName(Long userId, String tagName, Sort sort);
 
     List<Reminder> findByTagsId(Long tagId);
 
@@ -20,16 +27,16 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
     void deleteAllByListId(Long listId);
 
-    List<Reminder> findByCompletedFalse(Sort sort);
+    List<Reminder> findByUserIdAndCompletedFalse(Long userId, Sort sort);
 
-    List<Reminder> findByCompletedFalseAndDueAtGreaterThanEqualAndDueAtLessThan(
-            LocalDateTime from, LocalDateTime to, Sort sort);
+    List<Reminder> findByUserIdAndCompletedFalseAndDueAtGreaterThanEqualAndDueAtLessThan(
+            Long userId, LocalDateTime from, LocalDateTime to, Sort sort);
 
-    List<Reminder> findByCompletedFalseAndDueAtIsNotNull(Sort sort);
+    List<Reminder> findByUserIdAndCompletedFalseAndDueAtIsNotNull(Long userId, Sort sort);
 
-    List<Reminder> findByCompletedFalseAndFlaggedTrue(Sort sort);
+    List<Reminder> findByUserIdAndCompletedFalseAndFlaggedTrue(Long userId, Sort sort);
 
-    List<Reminder> findByCompletedTrue(Sort sort);
+    List<Reminder> findByUserIdAndCompletedTrue(Long userId, Sort sort);
 
     List<Reminder> findByListIdAndParentIsNullAndCompletedFalse(Long listId);
 
@@ -38,6 +45,10 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
     @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list.id = :listId and r.parent is null")
     int findMaxSortOrderInList(Long listId);
 
-    @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list is null and r.parent is null")
-    int findMaxSortOrderWithoutList();
+    // '리스트 없음'은 사용자마다 따로 순서를 매긴다.
+    @Query("""
+            select coalesce(max(r.sortOrder), -1) from Reminder r
+            where r.user.id = :userId and r.list is null and r.parent is null
+            """)
+    int findMaxSortOrderWithoutList(Long userId);
 }

@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ListFormDialog } from "@/components/list-form-dialog"
 import { ListDeleteDialog } from "@/components/list-delete-dialog"
 import { NotificationToggle } from "@/components/notification-toggle"
+import { UserMenu } from "@/components/user-menu"
 import { useLists, useReorderLists } from "@/hooks/use-lists"
 import { useDeleteTag, useTags } from "@/hooks/use-tags"
 import type { ReminderList } from "@/lib/lists-api"
@@ -177,6 +178,7 @@ export function Sidebar({
           <PlusIcon />
           리스트 추가
         </Button>
+        <UserMenu />
       </div>
 
       <ListFormDialog
