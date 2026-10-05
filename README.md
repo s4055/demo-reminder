@@ -1,7 +1,7 @@
 # demo-reminder
 
 Apple Reminders의 핵심 사용 경험(리스트, 리마인더, 완료 처리, 스마트 리스트)을 웹에서 재현한 데모 프로젝트입니다.
-인증 없이 단일 사용자 기준으로 동작하며, Spring Boot REST API와 Next.js 프론트엔드로 구성됩니다.
+이메일/비밀번호로 가입·로그인하며, 사용자마다 자기 리스트와 리마인더만 볼 수 있습니다. Spring Boot REST API와 Next.js 프론트엔드로 구성됩니다.
 
 ## 주요 기능
 
@@ -9,12 +9,13 @@ Apple Reminders의 핵심 사용 경험(리스트, 리마인더, 완료 처리, 
 - 리마인더 생성 / 수정(제목·메모·마감일시·플래그) / 완료 토글 / 삭제
 - 스마트 리스트: 오늘, 예정됨, 전체, 플래그 지정됨, 완료됨
 - 모바일 화면에서는 사이드바가 슬라이드 메뉴로 전환
+- 회원가입 / 로그인 / 로그아웃 (세션 쿠키), 사용자별 데이터 분리
 
 ## 기술 스택
 
 | 구분 | 스택 |
 |---|---|
-| 백엔드 | Java 21, Spring Boot 4, Spring Data JPA, H2(in-memory), Lombok |
+| 백엔드 | Java 21, Spring Boot 4, Spring Data JPA, Spring Security, H2(파일 모드), Lombok |
 | 프론트엔드 | Next.js(App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, React Hook Form, date-fns |
 
 ## 사전 준비
@@ -33,9 +34,12 @@ cd backend
 ./gradlew bootRun        # Windows: gradlew.bat bootRun
 ```
 
-- H2 in-memory DB를 사용하므로 서버를 재시작하면 데이터가 초기화됩니다.
-- H2 콘솔: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:mem:reminderdb`, 사용자 `sa`, 비밀번호 없음)
-- CORS는 `http://localhost:3000`만 허용합니다.
+- 데이터는 H2 파일 DB `backend/data/reminderdb.mv.db`에 저장되어 서버를 재시작해도 유지됩니다 (Git에는 올라가지 않습니다).
+- 데이터를 초기화하려면 서버를 끄고 `backend/data/` 폴더를 지운 뒤 다시 실행합니다. 스키마는 `ddl-auto: update`로 관리하므로, 엔티티 변경이 기존 데이터와 맞지 않아 기동에 실패할 때도 같은 방법으로 초기화합니다.
+- 테스트는 파일 DB를 건드리지 않고 in-memory DB(`jdbc:h2:mem:reminderdb`)를 사용합니다.
+- H2 콘솔: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:file:./data/reminderdb`, 사용자 `sa`, 비밀번호 없음)
+- 회원가입·로그인·로그아웃을 제외한 모든 API는 로그인(세션 쿠키 `JSESSIONID`)이 필요합니다.
+- CORS는 `http://localhost:3000`만 허용하며, 쿠키를 보낼 수 있도록 `allowCredentials`를 켭니다.
 
 ### 프론트엔드 (`:3000`)
 
@@ -45,7 +49,7 @@ npm install
 npm run dev
 ```
 
-http://localhost:3000 에서 확인할 수 있습니다. 백엔드 주소가 다르면 `NEXT_PUBLIC_API_BASE_URL`
+http://localhost:3000 에서 확인할 수 있습니다. 처음에는 `/login`으로 이동하므로 회원가입 후 사용합니다. 백엔드 주소가 다르면 `NEXT_PUBLIC_API_BASE_URL`
 환경 변수로 지정합니다(기본값 `http://localhost:8080`).
 
 ## 테스트 / 검사

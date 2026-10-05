@@ -1,6 +1,10 @@
 package demo.ai.reminder.common;
 
+import demo.ai.reminder.domain.User;
+import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.support.TestAuth;
 import jakarta.servlet.FilterChain;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.test.context.TestSecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +51,16 @@ class HttpLoggingFilterTest {
 
     @Autowired
     private HttpLoggingFilter httpLoggingFilter;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private User owner;
+
+    @BeforeEach
+    void signIn() {
+        owner = TestAuth.signIn(userRepository, "owner@example.com");
+    }
 
     @Test
     @DisplayName("요청과 응답의 전문을 로그로 남기고 응답 본문은 그대로 전달한다")
@@ -90,12 +105,33 @@ class HttpLoggingFilterTest {
         session.setAttribute("theme", "dark");
 
         mockMvc.perform(get("/api/lists").session(session)).andExpect(status().isOk());
-        mockMvc.perform(get("/api/lists")).andExpect(status().isOk());
+        // 로그인하지 않은 요청은 세션을 만들지 않는다 (401 응답 시에도 요청을 세션에 저장하지 않음).
+        TestSecurityContextHolder.clearContext();
+        mockMvc.perform(get("/api/lists")).andExpect(status().isUnauthorized());
 
         assertThat(output).contains("[Session] [id=" + session.getId() + ", ");
         assertThat(output).containsPattern("\\[Session] \\[id=[^]]*loginUser=tester");
         assertThat(output).containsPattern("\\[Session] \\[id=[^]]*theme=dark");
         assertThat(output).contains("[Session] none");
+    }
+
+    @Test
+    @DisplayName("로그인 요청 본문의 비밀번호는 로그에 가려서 남긴다")
+    void masksPasswordInRequestLog(CapturedOutput output) throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nobody@example.com\",\"password\":\"s3cret-\\\"pw\"}"))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(output).contains("\"email\":\"nobody@example.com\",\"password\":\"****\"");
+        assertThat(output).doesNotContain("s3cret");
+    }
+
+    @Test
+    @DisplayName("JSON의 password 값만 가리고 다른 필드는 그대로 둔다")
+    void maskPassword_replacesOnlyPasswordValue() {
+        assertThat(HttpLoggingFilter.maskPassword("{\"name\":\"a\", \"password\" : \"x\\\"y\", \"memo\":\"password\"}"))
+                .isEqualTo("{\"name\":\"a\", \"password\" : \"****\", \"memo\":\"password\"}");
     }
 
     @Test

@@ -1,8 +1,19 @@
+server:
+  servlet:
+    session:
+      cookie:
+        # 세션 쿠키를 JS에서 읽지 못하게 하고, 다른 사이트에서 시작된 POST 등에는 싣지 않는다 (CSRF 토큰을 쓰지 않는 전제).
+        # 브라우저마다 SameSite 기본값이 달라 명시한다. localhost:3000 → :8080은 같은 사이트라 쿠키가 전송된다.
+        http-only: true
+        same-site: lax
+
 spring:
   application:
     name: reminder
   datasource:
-    url: jdbc:h2:mem:reminderdb
+    # 재시작해도 데이터가 남도록 파일 모드로 저장한다 (backend/data/reminderdb.mv.db). 초기화하려면 파일을 지운다.
+    # 테스트는 src/test/resources/application.properties에서 in-memory DB로 바꾼다.
+    url: jdbc:h2:file:./data/reminderdb
     driver-class-name: org.h2.Driver
     username: sa
     password:

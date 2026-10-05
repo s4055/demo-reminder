@@ -4,10 +4,14 @@ import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.Tag;
+import demo.ai.reminder.domain.User;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.TagRepository;
 import demo.ai.reminder.repository.TagSummary;
+import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.support.TestAuth;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,12 +41,22 @@ class TagServiceTest {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    private User owner;
+
+    @BeforeEach
+    void signIn() {
+        owner = TestAuth.signIn(userRepository, "owner@example.com");
+    }
+
     @Test
     @DisplayName("태그 목록은 이름순이고, 태그별 미완료 리마인더 개수를 포함하며, 사용되지 않는 태그는 제외한다")
     void getTags_countsIncompleteReminders_andExcludesUnusedTags() {
-        Tag home = tagRepository.save(new Tag("집"));
-        Tag work = tagRepository.save(new Tag("회사"));
-        tagRepository.save(new Tag("안 쓰는 태그"));
+        Tag home = tagRepository.save(new Tag(owner, "집"));
+        Tag work = tagRepository.save(new Tag(owner, "회사"));
+        tagRepository.save(new Tag(owner, "안 쓰는 태그"));
         reminder("우유 사기", home);
         reminder("빨래", home);
         Reminder done = reminder("청소", home);
@@ -59,14 +73,14 @@ class TagServiceTest {
     @Test
     @DisplayName("없는 태그는 새로 만들고, 있는 태그는 재사용한다")
     void resolveTags_createsMissingTags_andReusesExisting() {
-        Tag home = tagRepository.save(new Tag("집"));
+        Tag home = tagRepository.save(new Tag(owner, "집"));
 
         List<Tag> result = tagService.resolveTags(List.of("집", "심부름"));
 
         assertThat(result).extracting(Tag::getName).containsExactly("집", "심부름");
         assertThat(result.getFirst().getId()).isEqualTo(home.getId());
         assertThat(result.get(1).getId()).isNotNull();
-        assertThat(tagRepository.findByNameIn(List.of("집", "심부름"))).hasSize(2);
+        assertThat(tagRepository.findByUserIdAndNameIn(owner.getId(), List.of("집", "심부름"))).hasSize(2);
     }
 
     @Test
@@ -86,8 +100,8 @@ class TagServiceTest {
     @Test
     @DisplayName("태그를 삭제하면 리마인더에서 떨어지고 리마인더 자체는 유지된다")
     void deleteTag_detachesFromReminders_andKeepsReminders() {
-        Tag home = tagRepository.save(new Tag("집"));
-        Tag errand = tagRepository.save(new Tag("심부름"));
+        Tag home = tagRepository.save(new Tag(owner, "집"));
+        Tag errand = tagRepository.save(new Tag(owner, "심부름"));
         Reminder milk = reminder("우유 사기", home, errand);
         entityManager.flush();
         entityManager.clear();
@@ -110,7 +124,7 @@ class TagServiceTest {
     }
 
     private Reminder reminder(String title, Tag... tags) {
-        Reminder reminder = new Reminder(title, null, null, null);
+        Reminder reminder = new Reminder(owner, title, null, null, null);
         reminder.replaceTags(List.of(tags));
         return reminderRepository.save(reminder);
     }

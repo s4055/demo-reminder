@@ -137,7 +137,7 @@ v1(Phase 1~5) 이후 `spec.md`의 "10. 향후 고려 사항"을 **작업이 단�
 | 4 | Phase 9 | 하위 작업(subtask) | 자기 참조 연관관계 + 완료/삭제 전파 + 중첩 UI |
 | 5 | Phase 10 | 반복 리마인더 | 완료 시 다음 회차 생성 규칙 + 날짜 계산 |
 | 6 | Phase 11 | 알림(브라우저) | 브라우저 권한 + 시간 기반 트리거 + 중복 알림 방지 |
-| 7 | Phase 12 | 사용자 인증/멀티 유저 + PostgreSQL | 보안 설정, 모든 데이터의 소유자 분리, DB 전환 |
+| 7 | Phase 12 | 사용자 인증/멀티 유저 + 영구 저장 | 보안 설정, 모든 데이터의 소유자 분리, H2 파일 모드 |
 | 8 | Phase 13 | 리스트 공유/협업 | 인증 전제 + 멤버/권한 모델 + 접근 제어 |
 
 ### 공통 원칙 (Phase 6~13)
@@ -283,7 +283,7 @@ v1(Phase 1~5) 이후 `spec.md`의 "10. 향후 고려 사항"을 **작업이 단�
 
 ---
 
-## Phase 12 — 사용자 인증/멀티 유저 + PostgreSQL 전환
+## Phase 12 — 사용자 인증/멀티 유저 + 영구 저장(H2 파일 모드)
 **목표**: 여러 사용자가 각자의 리스트/리마인더를 가지도록 하고, 데이터를 영구 저장한다.
 
 ### 데이터 모델
@@ -297,10 +297,11 @@ v1(Phase 1~5) 이후 `spec.md`의 "10. 향후 고려 사항"을 **작업이 단�
 - `/api/auth/**`를 제외한 모든 API는 로그인 필요 — 미인증 401, 응답은 `ApiResponse` 형식 유지 (`ResultCode`에 `UNAUTHORIZED` 추가)
 - 모든 조회/수정/삭제를 현재 사용자의 데이터로 제한 — 다른 사용자의 리소스는 404로 응답해 존재 여부를 노출하지 않음
 - CORS에 `allowCredentials` 설정 (또는 Next.js rewrites로 같은 출처 프록시)
-- PostgreSQL 전환
-  - `docker-compose.yml`로 로컬 PostgreSQL 구동
-  - 프로필 분리: 기본(`local`)은 H2 유지, `postgres` 프로필에서 PostgreSQL 사용
-  - `ddl-auto: update` 대신 Flyway 마이그레이션으로 스키마 관리
+- 영구 저장: H2를 in-memory에서 파일 모드(`jdbc:h2:file:./data/reminderdb`)로 전환
+  - 데모 프로젝트라 별도 DB 서버(PostgreSQL + docker-compose)를 둘 근거가 없어 H2를 유지한다.
+  - 스키마는 기존대로 `ddl-auto: update`로 관리한다 (호환되지 않는 변경은 DB 파일을 지우고 다시 시작).
+  - 테스트는 기존처럼 in-memory DB를 사용한다.
+  - DB 파일(`backend/data/`)은 Git에 올리지 않는다.
 
 ### 프론트엔드
 - `/login`, `/signup` 페이지 (React Hook Form + 검증 메시지)
@@ -310,7 +311,7 @@ v1(Phase 1~5) 이후 `spec.md`의 "10. 향후 고려 사항"을 **작업이 단�
 
 ### 완료 기준
 - 두 계정으로 각각 로그인했을 때 서로의 리스트/리마인더가 보이지 않는다.
-- `postgres` 프로필로 서버를 재시작해도 데이터가 유지된다.
+- 서버를 재시작해도 데이터(계정 포함)가 유지된다.
 
 ---
 
