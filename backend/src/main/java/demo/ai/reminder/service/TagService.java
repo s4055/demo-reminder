@@ -3,9 +3,9 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Tag;
+import demo.ai.reminder.dto.TagResponse;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.TagRepository;
-import demo.ai.reminder.repository.TagSummary;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,8 +28,10 @@ public class TagService {
     private final ReminderRepository reminderRepository;
     private final CurrentUser currentUser;
 
-    public List<TagSummary> getTags() {
-        return tagRepository.findAllInUseWithReminderCount(currentUser.id());
+    public List<TagResponse> getTags() {
+        return tagRepository.findAllInUseWithReminderCount(currentUser.id()).stream()
+                .map(TagResponse::from)
+                .toList();
     }
 
     /**

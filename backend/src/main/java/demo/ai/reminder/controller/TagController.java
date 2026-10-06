@@ -21,9 +21,7 @@ public class TagController {
 
     @GetMapping
     public ApiResponse<List<TagResponse>> getTags() {
-        return ApiResponse.success(tagService.getTags().stream()
-                .map(TagResponse::from)
-                .toList());
+        return ApiResponse.success(tagService.getTags());
     }
 
     @DeleteMapping("/{id}")

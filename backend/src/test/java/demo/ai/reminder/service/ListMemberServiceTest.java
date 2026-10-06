@@ -2,9 +2,9 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
-import demo.ai.reminder.domain.ListMember;
 import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.User;
+import demo.ai.reminder.dto.ListMemberResponse;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;
@@ -44,29 +44,29 @@ class ListMemberServiceTest {
         bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
         carol = userRepository.save(new User("carol@example.com", "{noop}password", "캐럴"));
         alice = TestAuth.signIn(userRepository, "alice@example.com");
-        listId = reminderListService.createList(new ReminderListRequest("장보기", null)).list().getId();
+        listId = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
     }
 
     @Test
     @DisplayName("새 리스트의 멤버는 소유자 한 명이다")
     void getMembers_ofNewList_containsOnlyOwner() {
         assertThat(listMemberService.getMembers(listId)).singleElement().satisfies(member -> {
-            assertThat(member.getUser().getId()).isEqualTo(alice.getId());
-            assertThat(member.getRole()).isEqualTo(ListRole.OWNER);
+            assertThat(member.userId()).isEqualTo(alice.getId());
+            assertThat(member.role()).isEqualTo(ListRole.OWNER);
         });
     }
 
     @Test
     @DisplayName("소유자가 이메일(대소문자 무시)로 초대하면 EDITOR 멤버로 추가되고, 멤버 목록은 소유자 다음에 초대 순으로 나온다")
     void invite_addsEditorMember() {
-        ListMember member = listMemberService.invite(listId, "  BOB@example.com ");
+        ListMemberResponse member = listMemberService.invite(listId, "  BOB@example.com ");
         listMemberService.invite(listId, "carol@example.com");
 
-        assertThat(member.getId()).isNotNull();
-        assertThat(member.getRole()).isEqualTo(ListRole.EDITOR);
-        assertThat(member.getCreatedAt()).isNotNull();
+        assertThat(member.userId()).isEqualTo(bob.getId());
+        assertThat(member.role()).isEqualTo(ListRole.EDITOR);
+        assertThat(member.joinedAt()).isNotNull();
         assertThat(listMemberService.getMembers(listId))
-                .extracting(m -> m.getUser().getId(), ListMember::getRole)
+                .extracting(ListMemberResponse::userId, ListMemberResponse::role)
                 .containsExactly(
                         tuple(alice.getId(), ListRole.OWNER),
                         tuple(bob.getId(), ListRole.EDITOR),
@@ -123,7 +123,7 @@ class ListMemberServiceTest {
 
         listMemberService.removeMember(listId, bob.getId());
 
-        assertThat(listMemberService.getMembers(listId)).extracting(m -> m.getUser().getId())
+        assertThat(listMemberService.getMembers(listId)).extracting(ListMemberResponse::userId)
                 .containsExactly(alice.getId());
         TestAuth.signIn(bob);
         assertThat(reminderListService.getLists()).isEmpty();

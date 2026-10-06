@@ -2,13 +2,13 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
-import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.User;
 import demo.ai.reminder.dto.ReminderListRequest;
+import demo.ai.reminder.dto.ReminderListResponse;
 import demo.ai.reminder.dto.ReminderRequest;
+import demo.ai.reminder.dto.ReminderResponse;
 import demo.ai.reminder.dto.ReminderUpdateRequest;
-import demo.ai.reminder.repository.ReminderListSummary;
-import demo.ai.reminder.repository.TagSummary;
+import demo.ai.reminder.dto.TagResponse;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +46,7 @@ class DataIsolationTest {
     private User alice;
     private User bob;
     private Long aliceListId;
-    private Reminder aliceReminder;
+    private ReminderResponse aliceReminder;
     private Long aliceTagId;
 
     @BeforeEach
@@ -54,11 +54,11 @@ class DataIsolationTest {
         bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
         alice = TestAuth.signIn(userRepository, "alice@example.com");
         LocalDateTime today = LocalDate.now().atTime(23, 59);
-        aliceListId = reminderListService.createList(new ReminderListRequest("앨리스 장보기", null)).list().getId();
+        aliceListId = reminderListService.createList(new ReminderListRequest("앨리스 장보기", null)).id();
         aliceReminder = reminderService.createReminder(
                 new ReminderRequest("우유", null, aliceListId, today, null, List.of("집"), null, null));
-        reminderService.toggleFlag(aliceReminder.getId());
-        aliceTagId = aliceReminder.getTags().iterator().next().getId();
+        reminderService.toggleFlag(aliceReminder.id());
+        aliceTagId = tagService.getTags().getFirst().id();
     }
 
     @Test
@@ -80,20 +80,20 @@ class DataIsolationTest {
     @Test
     @DisplayName("소유자에게는 자기 데이터가 그대로 보인다")
     void owner_seesOwnData() {
-        assertThat(reminderListService.getLists()).extracting(summary -> summary.list().getName())
+        assertThat(reminderListService.getLists()).extracting(ReminderListResponse::name)
                 .containsExactly("앨리스 장보기");
-        assertThat(reminderService.getReminders(aliceListId, null)).extracting(Reminder::getTitle)
+        assertThat(reminderService.getReminders(aliceListId, null)).extracting(ReminderResponse::title)
                 .containsExactly("우유");
-        assertThat(reminderService.getSmartReminders("flagged")).extracting(Reminder::getTitle)
+        assertThat(reminderService.getSmartReminders("flagged")).extracting(ReminderResponse::title)
                 .containsExactly("우유");
-        assertThat(tagService.getTags()).extracting(summary -> summary.tag().getName()).containsExactly("집");
+        assertThat(tagService.getTags()).extracting(TagResponse::name).containsExactly("집");
     }
 
     @Test
     @DisplayName("다른 사용자의 리스트/리마인더/태그를 조회·수정·삭제하면 404 예외가 발생한다")
     void otherUser_getsNotFound_forEveryResourceOfOwner() {
         TestAuth.signIn(bob);
-        Long reminderId = aliceReminder.getId();
+        Long reminderId = aliceReminder.id();
 
         List<Executable> attempts = List.of(
                 () -> reminderService.getReminders(aliceListId, null),
@@ -120,9 +120,9 @@ class DataIsolationTest {
         assertThat(reminderService.getReminders(aliceListId, null))
                 .singleElement()
                 .satisfies(reminder -> {
-                    assertThat(reminder.getTitle()).isEqualTo("우유");
-                    assertThat(reminder.isCompleted()).isFalse();
-                    assertThat(reminder.isFlagged()).isTrue();
+                    assertThat(reminder.title()).isEqualTo("우유");
+                    assertThat(reminder.completed()).isFalse();
+                    assertThat(reminder.flagged()).isTrue();
                 });
     }
 
@@ -130,7 +130,7 @@ class DataIsolationTest {
     @DisplayName("리스트 순서 변경에 다른 사용자의 리스트 id를 넣으면 400 예외가 발생한다")
     void reorderLists_withOtherUsersListId_throwsBadRequest() {
         TestAuth.signIn(bob);
-        Long bobListId = reminderListService.createList(new ReminderListRequest("밥 업무", null)).list().getId();
+        Long bobListId = reminderListService.createList(new ReminderListRequest("밥 업무", null)).id();
 
         assertThatThrownBy(() -> reminderListService.reorderLists(List.of(bobListId, aliceListId)))
                 .isInstanceOf(BusinessException.class)
@@ -142,12 +142,12 @@ class DataIsolationTest {
     void tags_withSameName_areSeparatedPerUser() {
         TestAuth.signIn(bob);
 
-        Reminder bobReminder = reminderService.createReminder(
+        reminderService.createReminder(
                 new ReminderRequest("빨래", null, null, null, null, List.of("집"), null, null));
 
-        Long bobTagId = bobReminder.getTags().iterator().next().getId();
+        Long bobTagId = tagService.getTags().getFirst().id();
         assertThat(bobTagId).isNotEqualTo(aliceTagId);
-        assertThat(tagService.getTags()).extracting(TagSummary::reminderCount).containsExactly(1L);
+        assertThat(tagService.getTags()).extracting(TagResponse::reminderCount).containsExactly(1L);
     }
 
     @Test
@@ -156,11 +156,11 @@ class DataIsolationTest {
         reminderService.createReminder(new ReminderRequest("앨리스 메모", null, null, null, null, null, null, null));
         TestAuth.signIn(bob);
 
-        Reminder bobReminder = reminderService.createReminder(
+        ReminderResponse bobReminder = reminderService.createReminder(
                 new ReminderRequest("밥 메모", null, null, null, null, null, null, null));
-        ReminderListSummary bobList = reminderListService.createList(new ReminderListRequest("밥 업무", null));
+        ReminderListResponse bobList = reminderListService.createList(new ReminderListRequest("밥 업무", null));
 
-        assertThat(bobReminder.getSortOrder()).isZero();
-        assertThat(bobList.list().getSortOrder()).isZero();
+        assertThat(bobReminder.sortOrder()).isZero();
+        assertThat(bobList.sortOrder()).isZero();
     }
 }

@@ -5,9 +5,9 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.Tag;
 import demo.ai.reminder.domain.User;
+import demo.ai.reminder.dto.TagResponse;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.TagRepository;
-import demo.ai.reminder.repository.TagSummary;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.persistence.EntityManager;
@@ -64,10 +64,10 @@ class TagServiceTest {
         Reminder doneAtWork = reminder("보고서", work);
         doneAtWork.toggleComplete(LocalDateTime.now());
 
-        List<TagSummary> result = tagService.getTags();
+        List<TagResponse> result = tagService.getTags();
 
-        assertThat(result).extracting(summary -> summary.tag().getName()).containsExactly("집", "회사");
-        assertThat(result).extracting(TagSummary::reminderCount).containsExactly(2L, 0L);
+        assertThat(result).extracting(TagResponse::name).containsExactly("집", "회사");
+        assertThat(result).extracting(TagResponse::reminderCount).containsExactly(2L, 0L);
     }
 
     @Test

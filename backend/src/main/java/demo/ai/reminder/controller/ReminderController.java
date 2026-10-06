@@ -36,31 +36,25 @@ public class ReminderController {
     public ApiResponse<List<ReminderResponse>> getReminders(
             @RequestParam(required = false) Long listId,
             @RequestParam(required = false) String tag) {
-        return ApiResponse.success(reminderService.getReminders(listId, tag).stream()
-                .map(ReminderResponse::from)
-                .toList());
+        return ApiResponse.success(reminderService.getReminders(listId, tag));
     }
 
     @GetMapping("/smart/{view}")
     public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable String view) {
-        return ApiResponse.success(reminderService.getSmartReminders(view).stream()
-                .map(ReminderResponse::from)
-                .toList());
+        return ApiResponse.success(reminderService.getSmartReminders(view));
     }
 
     @GetMapping("/upcoming")
     public ApiResponse<List<ReminderResponse>> getUpcomingReminders(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        return ApiResponse.success(reminderService.getUpcomingReminders(from, to).stream()
-                .map(ReminderResponse::from)
-                .toList());
+        return ApiResponse.success(reminderService.getUpcomingReminders(from, to));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReminderResponse> createReminder(@Valid @RequestBody ReminderRequest request) {
-        return ApiResponse.success(ReminderResponse.from(reminderService.createReminder(request)));
+        return ApiResponse.success(reminderService.createReminder(request));
     }
 
     @PatchMapping("/order")
@@ -71,17 +65,17 @@ public class ReminderController {
 
     @PutMapping("/{id}")
     public ApiResponse<ReminderResponse> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
-        return ApiResponse.success(ReminderResponse.from(reminderService.updateReminder(id, request)));
+        return ApiResponse.success(reminderService.updateReminder(id, request));
     }
 
     @PatchMapping("/{id}/complete")
     public ApiResponse<ReminderResponse> toggleComplete(@PathVariable Long id) {
-        return ApiResponse.success(ReminderResponse.from(reminderService.toggleComplete(id)));
+        return ApiResponse.success(reminderService.toggleComplete(id));
     }
 
     @PatchMapping("/{id}/flag")
     public ApiResponse<ReminderResponse> toggleFlag(@PathVariable Long id) {
-        return ApiResponse.success(ReminderResponse.from(reminderService.toggleFlag(id)));
+        return ApiResponse.success(reminderService.toggleFlag(id));
     }
 
     @DeleteMapping("/{id}")

@@ -6,6 +6,7 @@ import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.RepeatRule;
 import demo.ai.reminder.dto.ReminderRequest;
+import demo.ai.reminder.dto.ReminderResponse;
 import demo.ai.reminder.dto.ReminderUpdateRequest;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
@@ -39,19 +40,19 @@ public class ReminderService {
     // 리스트를 지정하면 최상위 리마인더만 표시 순서대로(하위 작업은 각 부모의 subtasks로),
     // 태그를 지정하면 그 태그가 붙은 리마인더를 생성순으로, 둘 다 없으면 전체를 생성순으로 조회한다.
     // 태그별/전체 조회에는 하위 작업도 개별 항목으로 포함된다. 모두 현재 사용자가 볼 수 있는 리마인더(본인 것 + 멤버인 리스트의 것)만 조회하며, 멤버가 아닌 리스트는 404다.
-    public List<Reminder> getReminders(Long listId, String tag) {
+    public List<ReminderResponse> getReminders(Long listId, String tag) {
         if (listId != null) {
             listAccess.memberList(listId);
-            return reminderRepository.findByListIdAndParentIsNull(listId, LIST_SORT);
+            return toResponses(reminderRepository.findByListIdAndParentIsNull(listId, LIST_SORT));
         }
         if (tag != null) {
-            return reminderRepository.findAccessibleByTagName(currentUser.id(), tag.trim(), DEFAULT_SORT);
+            return toResponses(reminderRepository.findAccessibleByTagName(currentUser.id(), tag.trim(), DEFAULT_SORT));
         }
-        return reminderRepository.findAccessible(currentUser.id(), DEFAULT_SORT);
+        return toResponses(reminderRepository.findAccessible(currentUser.id(), DEFAULT_SORT));
     }
 
-    public List<Reminder> getSmartReminders(String view) {
-        return switch (SmartView.from(view)) {
+    public List<ReminderResponse> getSmartReminders(String view) {
+        return toResponses(switch (SmartView.from(view)) {
             case TODAY -> {
                 LocalDate today = LocalDate.now();
                 yield reminderRepository.findAccessibleIncompleteDueBetween(
@@ -61,32 +62,32 @@ public class ReminderService {
             case ALL -> reminderRepository.findAccessibleIncomplete(currentUser.id(), DEFAULT_SORT);
             case FLAGGED -> reminderRepository.findAccessibleIncompleteFlagged(currentUser.id(), DEFAULT_SORT);
             case COMPLETED -> reminderRepository.findAccessibleCompleted(currentUser.id(), COMPLETED_SORT);
-        };
+        });
     }
 
     // 알림 스케줄링용. [from, to) 기간에 마감되는 미완료 리마인더를 하위 작업까지 개별 항목으로 마감일시 순으로 조회한다.
-    public List<Reminder> getUpcomingReminders(LocalDateTime from, LocalDateTime to) {
+    public List<ReminderResponse> getUpcomingReminders(LocalDateTime from, LocalDateTime to) {
         if (!from.isBefore(to)) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "from must be before to: from=" + from + ", to=" + to);
         }
-        return reminderRepository.findAccessibleIncompleteDueBetween(
-                currentUser.id(), from, to, DUE_DATE_SORT);
+        return toResponses(reminderRepository.findAccessibleIncompleteDueBetween(
+                currentUser.id(), from, to, DUE_DATE_SORT));
     }
 
     // 새 리마인더는 같은 리스트(리스트 없음도 하나의 범위)의 마지막 순서로 추가한다.
     // parentId를 지정하면 그 리마인더의 하위 작업으로 추가하며, 이때 listId는 무시하고 부모의 리스트를 따른다.
     @Transactional
-    public Reminder createReminder(ReminderRequest request) {
+    public ReminderResponse createReminder(ReminderRequest request) {
         validateRepeatRule(request.repeatRule(), request.dueAt());
         if (request.parentId() != null) {
-            return createSubtask(request);
+            return ReminderResponse.from(createSubtask(request));
         }
         ReminderList list = request.listId() == null ? null : listAccess.memberList(request.listId());
         Reminder reminder = new Reminder(currentUser.reference(),
                 request.title(), request.memo(), list, request.dueAt(), request.priority(), request.repeatRule());
         reminder.changeSortOrder(nextSortOrder(list));
         reminder.replaceTags(tagService.resolveTags(request.tagNames()));
-        return reminderRepository.save(reminder);
+        return ReminderResponse.from(reminderRepository.save(reminder));
     }
 
     private Reminder createSubtask(ReminderRequest request) {
@@ -104,13 +105,13 @@ public class ReminderService {
 
     // 태그도 요청 목록으로 교체한다 (생략하거나 null이면 모두 떨어진다).
     @Transactional
-    public Reminder updateReminder(Long id, ReminderUpdateRequest request) {
+    public ReminderResponse updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
         validateRepeatRule(request.repeatRule(), request.dueAt());
         reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority(),
                 request.repeatRule());
         reminder.replaceTags(tagService.resolveTags(request.tagNames()));
-        return reminder;
+        return toFlushedResponse(reminder);
     }
 
     // ids 순서대로 리스트의 최상위 미완료 리마인더 표시 순서를 0부터 다시 매긴다.
@@ -128,7 +129,7 @@ public class ReminderService {
     // 반복 리마인더를 완료하면 다음 회차를 저장한다. 최상위 리마인더의 다음 회차는 같은 리스트의 마지막 순서로 들어가고,
     // 하위 작업의 다음 회차는 도메인에서 같은 부모의 마지막 하위 작업으로 붙는다.
     @Transactional
-    public Reminder toggleComplete(Long id) {
+    public ReminderResponse toggleComplete(Long id) {
         Reminder reminder = findReminderOrThrow(id);
         reminder.toggleComplete(LocalDateTime.now()).ifPresent(next -> {
             if (!next.isSubtask()) {
@@ -136,14 +137,14 @@ public class ReminderService {
             }
             reminderRepository.save(next);
         });
-        return reminder;
+        return toFlushedResponse(reminder);
     }
 
     @Transactional
-    public Reminder toggleFlag(Long id) {
+    public ReminderResponse toggleFlag(Long id) {
         Reminder reminder = findReminderOrThrow(id);
         reminder.toggleFlag();
-        return reminder;
+        return toFlushedResponse(reminder);
     }
 
     // 하위 작업이 있으면 함께 삭제된다. 하위 작업을 삭제하면 부모의 하위 작업 목록에서도 떼어낸다.
@@ -154,6 +155,17 @@ public class ReminderService {
             reminder.getParent().removeSubtask(reminder);
         }
         reminderRepository.delete(reminder);
+    }
+
+    // 응답 변환은 트랜잭션 안에서 해야 지연 로딩되는 태그/하위 작업/부모를 읽을 수 있다.
+    private List<ReminderResponse> toResponses(List<Reminder> reminders) {
+        return reminders.stream().map(ReminderResponse::from).toList();
+    }
+
+    // 수정일(updatedAt)은 flush할 때 Auditing이 채우므로, 응답에 갱신된 값이 담기도록 먼저 flush한다.
+    private ReminderResponse toFlushedResponse(Reminder reminder) {
+        reminderRepository.flush();
+        return ReminderResponse.from(reminder);
     }
 
     private void validateRepeatRule(RepeatRule repeatRule, LocalDateTime dueAt) {
