@@ -27,16 +27,14 @@ public class ListMemberController {
 
     @GetMapping
     public ApiResponse<List<ListMemberResponse>> getMembers(@PathVariable Long listId) {
-        return ApiResponse.success(listMemberService.getMembers(listId).stream()
-                .map(ListMemberResponse::from)
-                .toList());
+        return ApiResponse.success(listMemberService.getMembers(listId));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ListMemberResponse> invite(@PathVariable Long listId,
                                                   @Valid @RequestBody ListMemberRequest request) {
-        return ApiResponse.success(ListMemberResponse.from(listMemberService.invite(listId, request.email())));
+        return ApiResponse.success(listMemberService.invite(listId, request.email()));
     }
 
     // userId가 본인이면 리스트에서 나간다.

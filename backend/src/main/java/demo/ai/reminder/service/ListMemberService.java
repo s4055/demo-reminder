@@ -5,6 +5,7 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListMember;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.User;
+import demo.ai.reminder.dto.ListMemberResponse;
 import demo.ai.reminder.repository.ListMemberRepository;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.security.CurrentUser;
@@ -27,13 +28,15 @@ public class ListMemberService {
     private final CurrentUser currentUser;
 
     // 소유자가 먼저, 나머지는 초대한 순서다.
-    public List<ListMember> getMembers(Long listId) {
-        return listAccess.memberList(listId).getMembers();
+    public List<ListMemberResponse> getMembers(Long listId) {
+        return listAccess.memberList(listId).getMembers().stream()
+                .map(ListMemberResponse::from)
+                .toList();
     }
 
     // 가입한 사용자만 초대할 수 있다. 이메일은 가입 때와 같이 소문자로 맞춰 찾는다.
     @Transactional
-    public ListMember invite(Long listId, String email) {
+    public ListMemberResponse invite(Long listId, String email) {
         ReminderList list = listAccess.ownedList(listId);
         String normalizedEmail = LoginUserDetailsService.normalizeEmail(email);
         User user = userRepository.findByEmail(normalizedEmail)
@@ -41,7 +44,7 @@ public class ListMemberService {
         if (listMemberRepository.existsByListIdAndUserId(listId, user.getId())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "Already a member of the list: " + normalizedEmail);
         }
-        return listMemberRepository.save(list.addMember(user));
+        return ListMemberResponse.from(listMemberRepository.save(list.addMember(user)));
     }
 
     /**

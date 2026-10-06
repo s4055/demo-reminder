@@ -3,6 +3,7 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.User;
+import demo.ai.reminder.dto.ReminderListResponse;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;
@@ -46,7 +47,7 @@ class ListOwnerBackfillTest {
                 .setParameter("listId", legacy.getId())
                 .executeUpdate();
         entityManager.clear();
-        assertThat(reminderListService.getLists()).extracting(summary -> summary.list().getId())
+        assertThat(reminderListService.getLists()).extracting(ReminderListResponse::id)
                 .containsExactly(current.getId());
 
         int restored = listOwnerBackfill.restoreOwnerMembers();
@@ -54,7 +55,7 @@ class ListOwnerBackfillTest {
         entityManager.clear();
 
         assertThat(restored).isEqualTo(1);
-        assertThat(reminderListService.getLists()).extracting(summary -> summary.list().getId())
+        assertThat(reminderListService.getLists()).extracting(ReminderListResponse::id)
                 .containsExactlyInAnyOrder(legacy.getId(), current.getId());
         assertThat(reminderListRepository.findById(legacy.getId()).orElseThrow().getMembers())
                 .singleElement()

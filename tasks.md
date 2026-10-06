@@ -117,6 +117,7 @@
 - [x] 서비스 계층 예외를 `BusinessException(ResultCode)`로 통일 (`ResponseStatusException` 직접 사용 제거, `ResultCode`에 HTTP 상태 추가, `GlobalExceptionHandler`에서 변환)
 - [x] `HttpLoggingFilter` 적용 후 `/h2-console` 로그인 불가 수정: `/h2-console` 요청은 로깅 없이 `doFilter` 후 바로 반환 (본문을 미리 읽으면 H2 로그인 폼 파라미터가 비기 때문)
 - [x] 완료일시(`completedAt`) 도입: 완료 시 기록/완료 취소 시 null, `completed` 스마트 뷰와 프론트 완료 항목을 `updatedAt` 대신 완료일시 최신순으로 정렬
+- [x] 서비스가 응답 DTO를 반환하도록 변경하고 `spring.jpa.open-in-view: false` 설정: 엔티티→DTO 변환을 트랜잭션 안으로 옮겨 컨트롤러에서 지연 로딩하지 않게 함 (수정 응답에 갱신된 `updatedAt`이 담기도록 변환 전 flush)
 
 ---
 

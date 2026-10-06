@@ -30,15 +30,13 @@ public class ReminderListController {
 
     @GetMapping
     public ApiResponse<List<ReminderListResponse>> getLists() {
-        return ApiResponse.success(reminderListService.getLists().stream()
-                .map(ReminderListResponse::from)
-                .toList());
+        return ApiResponse.success(reminderListService.getLists());
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReminderListResponse> createList(@Valid @RequestBody ReminderListRequest request) {
-        return ApiResponse.success(ReminderListResponse.from(reminderListService.createList(request)));
+        return ApiResponse.success(reminderListService.createList(request));
     }
 
     @PatchMapping("/order")
@@ -49,7 +47,7 @@ public class ReminderListController {
 
     @PutMapping("/{id}")
     public ApiResponse<ReminderListResponse> updateList(@PathVariable Long id, @Valid @RequestBody ReminderListRequest request) {
-        return ApiResponse.success(ReminderListResponse.from(reminderListService.updateList(id, request)));
+        return ApiResponse.success(reminderListService.updateList(id, request));
     }
 
     @DeleteMapping("/{id}")

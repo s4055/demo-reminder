@@ -4,7 +4,9 @@ import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.User;
 import demo.ai.reminder.dto.SignupRequest;
+import demo.ai.reminder.dto.UserResponse;
 import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.security.CurrentUser;
 import demo.ai.reminder.security.LoginUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,10 +30,11 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final CurrentUser currentUser;
 
     // 이메일은 소문자로 맞춰 저장하므로 대소문자만 다른 이메일로는 중복 가입할 수 없다.
     @Transactional
-    public User signup(SignupRequest request) {
+    public UserResponse signup(SignupRequest request) {
         String email = LoginUserDetailsService.normalizeEmail(request.email());
         if (userRepository.existsByEmail(email)) {
             throw new BusinessException(ResultCode.CONFLICT, "Email already registered: " + email);
@@ -39,7 +42,13 @@ public class AuthService {
         if (request.password().getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "password must be at most 72 bytes");
         }
-        return userRepository.save(new User(email, passwordEncoder.encode(request.password()), request.name().trim()));
+        return UserResponse.from(
+                userRepository.save(new User(email, passwordEncoder.encode(request.password()), request.name().trim())));
+    }
+
+    // 현재 로그인한 사용자 정보.
+    public UserResponse me() {
+        return UserResponse.from(currentUser.load());
     }
 
     /**
