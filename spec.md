@@ -116,3 +116,52 @@ Base path: `/api`
 - 리스트 공유/협업
 - 알림(브라우저 푸시), 반복 리마인더
 - 드래그앤드롭 순서 변경
+
+> 위 항목은 v2(plan.md Phase 6~13)에서 모두 구현되었다.
+
+## 11. v3 범위 (추가 개선)
+v2 이후 Apple Reminders 사용 경험에 가까워지도록 기능을 보강하고, 변경을 안전하게 쌓을 수 있도록 CI를 갖춘다.
+세부 계획은 `plan.md` Phase 14~19, 체크리스트는 `tasks.md`를 따른다.
+
+### In-Scope
+- **CI**: PR/`master` 푸시마다 백엔드 테스트와 프론트엔드 lint/build를 GitHub Actions로 자동 실행
+- **완료 항목 관리**: 리스트 화면에서 완료 항목 보기/숨기기, 완료 항목 일괄 삭제
+- **검색**: 제목/메모/태그로 접근 가능한 모든 리마인더 검색
+- **리스트 간 이동**: 리마인더를 다른 리스트로 옮기기 (하위 작업 함께 이동)
+- **사용자 지정 반복**: "N일/주/개월/년마다", 매주 특정 요일 반복 (예: 2주마다, 평일마다)
+- **리스트 아이콘과 그룹**: 리스트에 아이콘 지정, 여러 리스트를 그룹(폴더)으로 묶어 사이드바 정리
+
+### Out-of-Scope (v3)
+- 반복 종료 조건(종료일/횟수), "매월 첫째 월요일" 같은 서수 요일 반복
+- 그룹 간 드래그앤드롭 이동 (메뉴로 이동), 공유받은 리스트의 그룹 지정
+- 검색어 하이라이트, 전문 검색 엔진(형태소 분석 등)
+- 배포 파이프라인(CD), Docker 이미지 빌드
+
+### 데이터 모델 변경
+| 대상 | 필드 | 설명 |
+|---|---|---|
+| Reminder | repeatInterval | 반복 간격 (1~99, 기본 1) |
+| Reminder | repeatDaysOfWeek | 매주 반복할 요일 집합 (`WEEKLY`일 때만, 비어 있으면 마감일의 요일) |
+| ReminderList | icon | 아이콘 키 (선택) |
+| ReminderList | group | 소속 그룹 (선택, FK) |
+| ListGroup (신규) | id, user, name, sortOrder, createdAt | 소유자별 리스트 그룹 |
+
+### API 추가/변경
+| Method | Path | 설명 |
+|---|---|---|
+| DELETE | /api/reminders/completed?listId= | 리스트의 완료 항목 일괄 삭제 |
+| GET | /api/reminders/search?q= | 리마인더 검색 |
+| PATCH | /api/reminders/{id}/list | 리마인더를 다른 리스트로 이동 |
+| POST/PUT | /api/reminders, /api/reminders/{id} | `repeatInterval`, `repeatDaysOfWeek` 추가 |
+| POST/PUT | /api/lists, /api/lists/{id} | `icon` 추가 |
+| PATCH | /api/lists/{id}/group | 리스트의 그룹 지정/해제 |
+| GET/POST/PUT/DELETE | /api/list-groups, /api/list-groups/{id} | 리스트 그룹 CRUD |
+| PATCH | /api/list-groups/order | 그룹 순서 일괄 변경 |
+
+### 성공 기준
+- PR을 올리면 CI가 실행되고, 테스트나 빌드가 실패하면 PR에 실패로 표시된다.
+- 완료 항목을 숨기거나 일괄 삭제할 수 있고, 다른 리스트의 항목에는 영향이 없다.
+- 검색어를 입력하면 내 리스트와 공유받은 리스트의 리마인더 중 일치하는 항목만 보인다.
+- 리마인더를 다른 리스트로 옮기면 하위 작업과 함께 이동하고 양쪽 리스트 개수가 즉시 갱신된다.
+- "2주마다 월·수" 반복 리마인더를 완료하면 규칙에 맞는 다음 회차가 생성된다.
+- 리스트를 그룹으로 묶으면 사이드바에 그룹 아래 표시되고, 그룹을 삭제해도 리스트는 남는다.
