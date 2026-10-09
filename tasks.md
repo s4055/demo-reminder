@@ -295,16 +295,16 @@
 `plan.md`의 Phase 14~19를 기준으로 한다. Phase 14(CI) 이후 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 14 — CI (GitHub Actions)
-- [ ] `backend/gradlew` 실행 권한 부여 (`git update-index --chmod=+x`)
-- [ ] `.github/workflows/ci.yml` 작성 (`pull_request`→`master`, `push`→`master` 트리거)
-- [ ] backend 잡: Temurin 21 + Gradle 캐시, `./gradlew test`, 실패 시 테스트 리포트 아티팩트 업로드
-- [ ] frontend 잡: Node 24 + npm 캐시, `npm ci` → `npm run lint` → `npm run build`
-- [ ] 현재 코드에서 lint/build/test가 모두 통과하는지 확인 (실패 항목 수정)
-- [ ] README에 CI 배지와 설명 추가
-- [ ] (GitHub 수동) `master` 브랜치 보호 규칙에 필수 상태 검사 지정
+- [x] `backend/gradlew` 실행 권한 부여 (`git update-index --chmod=+x`)
+- [x] `.github/workflows/ci.yml` 작성 (`pull_request`→`master`, `push`→`master` 트리거)
+- [x] backend 잡: Temurin 21 + Gradle 캐시, `./gradlew test`, 실패 시 테스트 리포트 아티팩트 업로드
+- [x] frontend 잡: Node 24 + npm 캐시, `npm ci` → `npm run lint` → `npm run build`
+- [x] 현재 코드에서 lint/build/test가 모두 통과하는지 확인 (실패 항목 수정)
+- [x] README에 CI 배지와 설명 추가
+- [x] `master` 브랜치 보호 규칙에 필수 상태 검사 지정 (`gh api`, 관리자 우회 허용, 강제 푸시·삭제 금지)
 
 ### 완료 기준 검증
-- [ ] PR에서 두 잡이 실행되고, 일부러 실패시킨 테스트가 PR에 실패로 표시되는지 확인
+- [x] PR에서 두 잡이 실행되고, 일부러 실패시킨 테스트가 PR에 실패로 표시되는지 확인 (머지 차단·리포트 아티팩트 업로드 확인)
 
 ## Phase 15 — 완료 항목 숨기기/일괄 삭제
 ### 백엔드

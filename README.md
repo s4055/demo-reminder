@@ -1,5 +1,7 @@
 # demo-reminder
 
+[![CI](https://github.com/s4055/demo-reminder/actions/workflows/ci.yml/badge.svg)](https://github.com/s4055/demo-reminder/actions/workflows/ci.yml)
+
 Apple Reminders의 핵심 사용 경험(리스트, 리마인더, 완료 처리, 스마트 리스트)을 웹에서 재현한 데모 프로젝트입니다.
 이메일/비밀번호로 가입·로그인하며, 사용자마다 자기 리스트와 리마인더만 볼 수 있습니다. Spring Boot REST API와 Next.js 프론트엔드로 구성됩니다.
 
@@ -61,6 +63,13 @@ cd backend && ./gradlew test
 # 프론트엔드 린트 / 타입 검사 / 프로덕션 빌드
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
+
+### CI
+
+`master`로 향하는 PR과 `master` 푸시마다 GitHub Actions(`.github/workflows/ci.yml`)가 위 검사를 자동으로 실행합니다.
+
+- **Backend test**: JDK 21(Temurin)에서 `./gradlew test`, 실패하면 테스트 리포트를 아티팩트(`backend-test-report`)로 업로드
+- **Frontend lint & build**: `package.json`의 Volta Node 버전에서 `npm ci` → `npm run lint` → `npm run build`(타입 검사 포함)
 
 ## API 명세
 
