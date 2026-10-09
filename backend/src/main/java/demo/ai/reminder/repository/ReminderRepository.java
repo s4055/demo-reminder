@@ -57,6 +57,9 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
     List<Reminder> findByListIdAndParentIsNullAndCompletedFalse(Long listId);
 
+    // 하위 작업도 부모와 같은 리스트에 속하므로 함께 조회된다.
+    List<Reminder> findByListIdAndCompletedTrue(Long listId);
+
     // 아래 max 조회는 최상위 리마인더만 대상으로 하며(하위 작업은 부모 안에서 따로 순서를 매긴다),
     // 범위가 비어 있으면 -1을 돌려주므로 +1 하면 첫 순서(0)가 된다.
     @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list.id = :listId and r.parent is null")

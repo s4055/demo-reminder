@@ -254,6 +254,33 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("완료 항목 일괄 삭제는 200과 함께 삭제 개수를 반환한다")
+    void deleteCompletedReminders_returnsDeletedCount() throws Exception {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "빨래", null, home, null));
+        reminderRepository.save(new Reminder(owner, "청소", null, home, null));
+        mockMvc.perform(patch("/api/reminders/{id}/complete", done.getId()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/reminders/completed").param("listId", String.valueOf(home.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.deletedCount").value(1));
+
+        mockMvc.perform(get("/api/reminders").param("listId", String.valueOf(home.getId())))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].title").value("청소"));
+    }
+
+    @Test
+    @DisplayName("완료 항목 일괄 삭제에서 listId가 없으면 400을 반환한다")
+    void deleteCompletedReminders_withoutListId_returnsBadRequest() throws Exception {
+        mockMvc.perform(delete("/api/reminders/completed"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
     @DisplayName("존재하지 않는 리마인더를 삭제하면 404와 NOT_FOUND 응답을 반환한다")
     void deleteReminder_returnsNotFound_whenReminderDoesNotExist() throws Exception {
         mockMvc.perform(delete("/api/reminders/{id}", -1L))

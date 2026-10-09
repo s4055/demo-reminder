@@ -125,6 +125,21 @@ class SharedListAccessTest {
     }
 
     @Test
+    @DisplayName("편집자는 공유 리스트의 완료 항목을 다른 멤버가 만든 것까지 일괄 삭제할 수 있다")
+    void editor_canDeleteCompletedRemindersInSharedList() {
+        reminderService.toggleComplete(aliceReminder.id());
+        TestAuth.signIn(bob);
+        ReminderResponse bobReminder = reminderService.createReminder(
+                new ReminderRequest("빵", null, sharedListId, null, null, null, null, null));
+
+        assertThat(reminderService.deleteCompletedReminders(sharedListId).deletedCount()).isEqualTo(1);
+
+        TestAuth.signIn(alice);
+        assertThat(reminderService.getReminders(sharedListId, null)).extracting(ReminderResponse::id)
+                .containsExactly(bobReminder.id());
+    }
+
+    @Test
     @DisplayName("소유자는 편집자가 만든 리마인더도 수정/삭제할 수 있다")
     void owner_canManageEditorsReminders() {
         TestAuth.signIn(bob);
@@ -205,6 +220,7 @@ class SharedListAccessTest {
                 () -> reminderService.toggleComplete(aliceReminder.id()),
                 () -> reminderService.deleteReminder(aliceReminder.id()),
                 () -> reminderService.reorderReminders(sharedListId, List.of(aliceReminder.id())),
+                () -> reminderService.deleteCompletedReminders(sharedListId),
                 () -> reminderListService.updateList(sharedListId, new ReminderListRequest("몰래", null)),
                 () -> reminderListService.deleteList(sharedListId)
         );

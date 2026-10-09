@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ClearCompletedDialog } from "@/components/clear-completed-dialog"
 import { ReminderEditDialog } from "@/components/reminder-edit-dialog"
 import { cn } from "@/lib/utils"
 import { formatDueAt, isOverdue } from "@/lib/due-date"
@@ -45,6 +46,7 @@ import {
   useToggleReminderComplete,
   useToggleReminderFlag,
 } from "@/hooks/use-reminders"
+import { useShowCompleted } from "@/hooks/use-show-completed"
 
 type ReminderActions = {
   onEdit: (reminder: Reminder) => void
@@ -56,6 +58,8 @@ type ReminderActions = {
 // 리스트 화면에서 부모 아래에 하위 작업을 펼쳐 보여줄 때 쓰는 상태. 스마트 뷰/태그 화면에는 넘기지 않는다.
 type SubtaskView = {
   collapsed: boolean
+  // 완료된 항목 숨기기를 켠 리스트에서는 완료된 하위 작업도 숨긴다.
+  hideCompleted: boolean
   onToggleCollapsed: () => void
 }
 
@@ -91,6 +95,11 @@ export function ReminderList({ selection }: { selection: Selection }) {
   const toggleFlag = useToggleReminderFlag()
   const deleteReminder = useDeleteReminder()
   const reorderReminders = useReorderReminders()
+  // 사용자 리스트 화면에서만 미완료 항목을 드래그로 정렬하고, 완료 항목 보기/숨기기와 일괄 삭제를 제공한다.
+  // 스마트 뷰와 태그 화면에서는 여러 리스트의 항목이 섞이므로 드래그를 끄고 소속 리스트를 함께 보여준다.
+  const listId = selection.type === "list" ? selection.listId : null
+  const [showCompleted, setShowCompleted] = useShowCompleted(listId)
+  const [clearDialogOpen, setClearDialogOpen] = useState(false)
   const dndId = useId()
   const sensors = useSensors(
     // 살짝 끌어야 드래그가 시작되어 핸들 클릭과 구분된다.
@@ -152,13 +161,19 @@ export function ReminderList({ selection }: { selection: Selection }) {
     onToggleFlag: (reminder) => toggleFlag.mutate(reminder.id),
     onDelete: (reminder) => deleteReminder.mutate(reminder.id),
   }
-  // 사용자 리스트 화면에서만 미완료 항목을 드래그로 정렬한다. 미완료 항목은 서버가 준 순서(표시 순서)를 유지한다.
-  // 스마트 뷰와 태그 화면에서는 여러 리스트의 항목이 섞이므로 드래그를 끄고 소속 리스트를 함께 보여준다.
-  const listId = selection.type === "list" ? selection.listId : null
+  // 미완료 항목은 서버가 준 순서(표시 순서)를 유지한다.
   const incomplete = reminders.filter((reminder) => !reminder.completed)
   const completed = reminders
     .filter((reminder) => reminder.completed)
     .sort(byRecentCompletion)
+  // 리스트 화면의 완료 항목 수. 부모 아래에 묶여 오는 완료된 하위 작업도 센다.
+  const completedCount =
+    completed.length +
+    reminders.reduce(
+      (count, reminder) =>
+        count + reminder.subtasks.filter((subtask) => subtask.completed).length,
+      0
+    )
   const listOf = (reminder: Reminder) =>
     listId === null
       ? lists?.find((list) => list.id === reminder.listId)
@@ -170,6 +185,7 @@ export function ReminderList({ selection }: { selection: Selection }) {
       ? undefined
       : {
           collapsed: collapsedIds.has(reminder.id),
+          hideCompleted: !showCompleted,
           onToggleCollapsed: () =>
             setCollapsedIds((prev) => {
               const next = new Set(prev)
@@ -230,7 +246,29 @@ export function ReminderList({ selection }: { selection: Selection }) {
             ))}
           </ul>
         )}
-        {completed.length > 0 && (
+        {listId !== null && completedCount > 0 && (
+          <div className="flex items-center justify-between gap-2 px-1 pt-2 text-xs text-muted-foreground">
+            <span>완료된 항목 {completedCount}개</span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => setClearDialogOpen(true)}
+              >
+                지우기
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => setShowCompleted(!showCompleted)}
+                aria-pressed={showCompleted}
+              >
+                {showCompleted ? "숨기기" : "보기"}
+              </Button>
+            </div>
+          </div>
+        )}
+        {showCompleted && completed.length > 0 && (
           <ul className="flex w-full flex-col gap-1">
             {completed.map((reminder) => (
               <ReminderItem
@@ -244,6 +282,14 @@ export function ReminderList({ selection }: { selection: Selection }) {
           </ul>
         )}
       </div>
+      {listId !== null && (
+        <ClearCompletedDialog
+          listId={listId}
+          completedCount={completedCount}
+          open={clearDialogOpen}
+          onOpenChange={setClearDialogOpen}
+        />
+      )}
       {editing && editingReminder && (
         <ReminderEditDialog
           open={editing.open}
@@ -323,7 +369,10 @@ function ReminderItem({
   dragging?: boolean
   dragHandle?: ReactNode
 }) {
-  const subtasks = subtaskView ? reminder.subtasks : []
+  const allSubtasks = subtaskView ? reminder.subtasks : []
+  const subtasks = subtaskView?.hideCompleted
+    ? allSubtasks.filter((subtask) => !subtask.completed)
+    : allSubtasks
   const expanded = subtasks.length > 0 && !subtaskView?.collapsed
   const subtasksId = `reminder-${reminder.id}-subtasks`
 
@@ -360,10 +409,10 @@ function ReminderItem({
           </>
         }
         trailing={
-          subtasks.length > 0 && (
+          allSubtasks.length > 0 && (
             <span className="text-xs text-muted-foreground">
-              {subtasks.filter((subtask) => subtask.completed).length}/
-              {subtasks.length}
+              {allSubtasks.filter((subtask) => subtask.completed).length}/
+              {allSubtasks.length}
             </span>
           )
         }
