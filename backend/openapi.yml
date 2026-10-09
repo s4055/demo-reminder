@@ -456,6 +456,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/reminders/completed:
+    delete:
+      tags: [Reminders]
+      summary: 리스트의 완료 항목 일괄 삭제
+      description: |
+        해당 리스트의 완료된 리마인더를 모두 삭제하고 삭제 개수를 돌려준다.
+        완료된 최상위 리마인더는 하위 작업과 함께(미완료 하위 작업 포함) 삭제되고, 미완료 부모 아래의 완료된 하위 작업은 그 하위 작업만 삭제된다.
+        deletedCount에는 함께 삭제된 하위 작업도 포함된다. 미완료 항목과 다른 리스트의 항목은 그대로 둔다.
+        리스트 멤버(OWNER/EDITOR)면 누구나 실행할 수 있다.
+      operationId: deleteCompletedReminders
+      parameters:
+        - name: listId
+          in: query
+          required: true
+          description: 완료 항목을 지울 리스트 id
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: 삭제 성공
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedCountApiResponse"
+        "400":
+          description: listId 누락 또는 형식 오류
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: listId에 해당하는 리스트를 찾을 수 없음 (멤버가 아닌 리스트 포함)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/reminders/smart/{view}:
     get:
       tags: [Reminders]
@@ -911,6 +949,15 @@ components:
           type: string
           format: date-time
 
+    DeletedCountResponse:
+      type: object
+      required: [deletedCount]
+      properties:
+        deletedCount:
+          type: integer
+          description: 삭제된 리마인더 수 (함께 삭제된 하위 작업 포함)
+          example: 3
+
     ReminderListRequest:
       type: object
       required: [name]
@@ -1153,6 +1200,14 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/TagResponse"
+
+    DeletedCountApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/DeletedCountResponse"
 
     EmptyApiResponse:
       allOf:

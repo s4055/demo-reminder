@@ -5,6 +5,7 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.RepeatRule;
+import demo.ai.reminder.dto.DeletedCountResponse;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderResponse;
 import demo.ai.reminder.dto.ReminderUpdateRequest;
@@ -155,6 +156,25 @@ public class ReminderService {
             reminder.getParent().removeSubtask(reminder);
         }
         reminderRepository.delete(reminder);
+    }
+
+    // 리스트의 완료된 리마인더를 모두 삭제한다. 완료된 최상위 리마인더는 하위 작업과 함께 삭제되고(미완료 하위 작업 포함),
+    // 미완료 부모 아래의 완료된 하위 작업은 그 하위 작업만 삭제된다. 리스트 멤버면 누구나 할 수 있다.
+    @Transactional
+    public DeletedCountResponse deleteCompletedReminders(Long listId) {
+        listAccess.memberList(listId);
+        int deletedCount = 0;
+        for (Reminder reminder : reminderRepository.findByListIdAndCompletedTrue(listId)) {
+            if (!reminder.isSubtask()) {
+                deletedCount += 1 + reminder.getSubtasks().size();
+                reminderRepository.delete(reminder);
+            } else if (!reminder.getParent().isCompleted()) {
+                deletedCount++;
+                reminder.getParent().removeSubtask(reminder);
+                reminderRepository.delete(reminder);
+            }
+        }
+        return new DeletedCountResponse(deletedCount);
     }
 
     // 응답 변환은 트랜잭션 안에서 해야 지연 로딩되는 태그/하위 작업/부모를 읽을 수 있다.

@@ -1,6 +1,7 @@
 package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
+import demo.ai.reminder.dto.DeletedCountResponse;
 import demo.ai.reminder.dto.ReminderOrderRequest;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderResponse;
@@ -55,6 +56,12 @@ public class ReminderController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReminderResponse> createReminder(@Valid @RequestBody ReminderRequest request) {
         return ApiResponse.success(reminderService.createReminder(request));
+    }
+
+    // "/{id}"보다 구체적인 경로라 이 매핑이 우선한다.
+    @DeleteMapping("/completed")
+    public ApiResponse<DeletedCountResponse> deleteCompletedReminders(@RequestParam Long listId) {
+        return ApiResponse.success(reminderService.deleteCompletedReminders(listId));
     }
 
     @PatchMapping("/order")

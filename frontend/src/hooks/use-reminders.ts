@@ -8,6 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   createReminder,
+  deleteCompletedReminders,
   deleteReminder,
   getReminders,
   getRemindersByTag,
@@ -133,5 +134,14 @@ export function useDeleteReminder() {
   return useMutation({
     mutationFn: (id: number) => deleteReminder(id),
     onSuccess: invalidate,
+  })
+}
+
+export function useDeleteCompletedReminders() {
+  const invalidate = useInvalidateReminderQueries()
+  return useMutation({
+    mutationFn: (listId: number) => deleteCompletedReminders(listId),
+    onSuccess: invalidate,
+    meta: { errorMessage: "완료된 항목을 지우지 못했습니다." },
   })
 }

@@ -8,6 +8,7 @@ import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.RepeatRule;
 import demo.ai.reminder.domain.Tag;
 import demo.ai.reminder.domain.User;
+import demo.ai.reminder.dto.DeletedCountResponse;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderResponse;
 import demo.ai.reminder.dto.ReminderUpdateRequest;
@@ -904,6 +905,80 @@ class ReminderServiceTest {
         assertThatThrownBy(() -> reminderService.getUpcomingReminders(time.plusMinutes(1), time))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("완료 항목 일괄 삭제는 해당 리스트의 완료된 리마인더만 삭제하고 삭제 개수를 반환한다")
+    void deleteCompletedReminders_deletesOnlyCompletedRemindersOfList() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null));
+        ReminderResponse done = create("빨래", home.getId());
+        ReminderResponse todo = create("청소", home.getId());
+        ReminderResponse otherListDone = create("보고서", work.getId());
+        reminderService.toggleComplete(done.id());
+        reminderService.toggleComplete(otherListDone.id());
+        entityManager.flush();
+        entityManager.clear();
+
+        DeletedCountResponse result = reminderService.deleteCompletedReminders(home.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.deletedCount()).isEqualTo(1);
+        assertThat(reminderRepository.findById(done.id())).isEmpty();
+        assertThat(reminderRepository.findById(todo.id())).isPresent();
+        assertThat(reminderRepository.findById(otherListDone.id())).isPresent();
+    }
+
+    @Test
+    @DisplayName("완료된 부모는 하위 작업과 함께 삭제되고, 미완료 부모 아래에서는 완료된 하위 작업만 삭제된다")
+    void deleteCompletedReminders_handlesSubtasks() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderResponse doneParent = create("이사 준비", home.getId());
+        ReminderResponse reopenedSubtask = createSubtask("박스 구하기", doneParent.id());
+        ReminderResponse todoParent = create("파티 준비", home.getId());
+        ReminderResponse doneSubtask = createSubtask("초대장 보내기", todoParent.id());
+        ReminderResponse todoSubtask = createSubtask("케이크 주문", todoParent.id());
+        entityManager.flush();
+        entityManager.clear();
+        reminderService.toggleComplete(doneParent.id());
+        reminderService.toggleComplete(reopenedSubtask.id());
+        reminderService.toggleComplete(doneSubtask.id());
+        entityManager.flush();
+        entityManager.clear();
+
+        DeletedCountResponse result = reminderService.deleteCompletedReminders(home.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.deletedCount()).isEqualTo(3);
+        assertThat(reminderRepository.findById(doneParent.id())).isEmpty();
+        assertThat(reminderRepository.findById(reopenedSubtask.id())).isEmpty();
+        assertThat(reminderRepository.findById(doneSubtask.id())).isEmpty();
+        assertThat(reminderService.getReminders(home.getId(), null)).singleElement().satisfies(parent -> {
+            assertThat(parent.id()).isEqualTo(todoParent.id());
+            assertThat(parent.subtasks()).extracting(ReminderResponse::id).containsExactly(todoSubtask.id());
+        });
+    }
+
+    @Test
+    @DisplayName("완료 항목이 없으면 아무것도 삭제하지 않고 0을 반환한다")
+    void deleteCompletedReminders_returnsZero_whenNothingCompleted() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderResponse todo = create("청소", home.getId());
+
+        DeletedCountResponse result = reminderService.deleteCompletedReminders(home.getId());
+
+        assertThat(result.deletedCount()).isZero();
+        assertThat(reminderRepository.findById(todo.id())).isPresent();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 리스트의 완료 항목을 삭제하면 404 예외가 발생한다")
+    void deleteCompletedReminders_throwsNotFound_whenListDoesNotExist() {
+        assertThatThrownBy(() -> reminderService.deleteCompletedReminders(-1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 
     // 저장 직후 수정하면 시계 해상도에 따라 수정일이 같을 수 있으므로, 수정일을 과거로 돌려 두고 갱신 여부를 확인한다.

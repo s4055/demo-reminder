@@ -112,3 +112,13 @@ export function toggleReminderFlag(id: number): Promise<Reminder> {
 export function deleteReminder(id: number): Promise<void> {
   return apiRequest<void>(`/api/reminders/${id}`, { method: "DELETE" })
 }
+
+// 리스트의 완료된 리마인더를 모두 삭제한다. 완료된 리마인더의 하위 작업도 함께 삭제되며 deletedCount에 포함된다.
+export function deleteCompletedReminders(
+  listId: number
+): Promise<{ deletedCount: number }> {
+  return apiRequest<{ deletedCount: number }>(
+    `/api/reminders/completed?listId=${listId}`,
+    { method: "DELETE" }
+  )
+}
