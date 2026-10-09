@@ -301,7 +301,7 @@
 - [x] frontend 잡: Node 24 + npm 캐시, `npm ci` → `npm run lint` → `npm run build`
 - [x] 현재 코드에서 lint/build/test가 모두 통과하는지 확인 (실패 항목 수정)
 - [x] README에 CI 배지와 설명 추가
-- [ ] (GitHub 수동) `master` 브랜치 보호 규칙에 필수 상태 검사 지정
+- [x] `master` 브랜치 보호 규칙에 필수 상태 검사 지정 (`gh api`, 관리자 우회 허용, 강제 푸시·삭제 금지)
 
 ### 완료 기준 검증
 - [ ] PR에서 두 잡이 실행되고, 일부러 실패시킨 테스트가 PR에 실패로 표시되는지 확인
