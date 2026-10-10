@@ -7,7 +7,7 @@ import { RepeatSelect } from "@/components/repeat-select"
 import { Input } from "@/components/ui/input"
 import { useCreateReminder } from "@/hooks/use-reminders"
 import { toDueAtParam } from "@/lib/due-date"
-import type { RepeatRule } from "@/lib/repeat"
+import { NO_REPEAT, toRepeatFields, type Recurrence } from "@/lib/repeat"
 
 export function ReminderForm({
   listId,
@@ -21,13 +21,13 @@ export function ReminderForm({
 }) {
   const [title, setTitle] = useState("")
   const [dueAt, setDueAt] = useState<Date | undefined>(defaultDueAt)
-  const [repeatRule, setRepeatRule] = useState<RepeatRule>("NONE")
+  const [recurrence, setRecurrence] = useState<Recurrence>(NO_REPEAT)
   const createReminder = useCreateReminder()
 
   // 반복은 마감일이 있어야 하므로 마감일을 지우면 반복도 해제한다.
   function handleDueAtChange(value: Date | undefined) {
     setDueAt(value)
-    if (!value) setRepeatRule("NONE")
+    if (!value) setRecurrence(NO_REPEAT)
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -42,13 +42,13 @@ export function ReminderForm({
         listId,
         dueAt: dueAt ? toDueAtParam(dueAt) : null,
         tagNames,
-        repeatRule: dueAt ? repeatRule : "NONE",
+        ...toRepeatFields(dueAt ? recurrence : NO_REPEAT),
       },
       {
         onSuccess: () => {
           setTitle("")
           setDueAt(defaultDueAt)
-          setRepeatRule("NONE")
+          setRecurrence(NO_REPEAT)
         },
       }
     )
@@ -74,8 +74,8 @@ export function ReminderForm({
         <DueDatePicker value={dueAt} onChange={handleDueAtChange} />
         <RepeatSelect
           size="sm"
-          value={repeatRule}
-          onChange={setRepeatRule}
+          value={recurrence}
+          onChange={setRecurrence}
           disabled={!dueAt}
         />
       </div>

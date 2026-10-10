@@ -34,7 +34,7 @@ import { ReminderEditDialog } from "@/components/reminder-edit-dialog"
 import { cn } from "@/lib/utils"
 import { formatDueAt, isOverdue } from "@/lib/due-date"
 import { PRIORITY_LABELS, priorityMark } from "@/lib/priority"
-import { REPEAT_RULE_LABELS, isRepeating } from "@/lib/repeat"
+import { isRepeating, recurrenceOf, summarizeRecurrence } from "@/lib/repeat"
 import type { ReminderList as ReminderListType } from "@/lib/lists-api"
 import type { Reminder } from "@/lib/reminders-api"
 import { emptyMessage, type Selection } from "@/lib/selection"
@@ -507,7 +507,7 @@ function ReminderRow({
               <span className="flex items-center gap-1">
                 <RepeatIcon aria-hidden className="size-3" />
                 <span className="sr-only">반복:</span>
-                {REPEAT_RULE_LABELS[reminder.repeatRule]}
+                {summarizeRecurrence(recurrenceOf(reminder))}
               </span>
             )}
             {list && (

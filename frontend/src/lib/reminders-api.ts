@@ -1,7 +1,7 @@
 import { apiRequest, jsonBody } from "@/lib/api"
 import { toDueAtParam } from "@/lib/due-date"
 import type { Priority } from "@/lib/priority"
-import type { RepeatRule } from "@/lib/repeat"
+import type { DayOfWeek, RepeatRule } from "@/lib/repeat"
 import type { SmartView } from "@/lib/selection"
 
 export type Reminder = {
@@ -14,6 +14,10 @@ export type Reminder = {
   dueAt: string | null
   // 반복 주기. 반복 리마인더를 완료하면 서버가 다음 회차를 새 리마인더로 만든다.
   repeatRule: RepeatRule
+  // 반복 간격 (반복하지 않으면 1)
+  repeatInterval: number
+  // 매주 반복할 요일 (월요일부터 정렬). 비어 있으면 마감일의 요일로 반복한다.
+  repeatDaysOfWeek: DayOfWeek[]
   completedAt: string | null
   listId: number | null
   sortOrder: number
@@ -38,6 +42,10 @@ export type CreateReminderInput = {
   parentId?: number | null
   // NONE이 아니면 dueAt이 있어야 한다 (없으면 400).
   repeatRule?: RepeatRule
+  // 1~99, 생략하면 1
+  repeatInterval?: number
+  // WEEKLY일 때만 지정할 수 있다 (아니면 400).
+  repeatDaysOfWeek?: DayOfWeek[]
 }
 
 // 전체 교체 방식이라 tagNames를 빈 배열로 보내면 태그가 모두 떨어진다.
@@ -50,6 +58,10 @@ export type UpdateReminderInput = {
   tagNames: string[]
   // NONE이 아니면 dueAt이 있어야 한다 (없으면 400).
   repeatRule: RepeatRule
+  // 1~99
+  repeatInterval: number
+  // WEEKLY일 때만 지정할 수 있다 (아니면 400). 빈 배열이면 마감일의 요일로 반복한다.
+  repeatDaysOfWeek: DayOfWeek[]
 }
 
 // listId를 지정하면 최상위 리마인더만 오고, 하위 작업은 각 항목의 subtasks에 담긴다.

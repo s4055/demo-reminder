@@ -36,14 +36,19 @@ import { toDueAtParam } from "@/lib/due-date"
 import type { ReminderList } from "@/lib/lists-api"
 import { PRIORITIES, PRIORITY_LABELS, type Priority } from "@/lib/priority"
 import type { Reminder } from "@/lib/reminders-api"
-import type { RepeatRule } from "@/lib/repeat"
+import {
+  NO_REPEAT,
+  recurrenceOf,
+  toRepeatFields,
+  type Recurrence,
+} from "@/lib/repeat"
 import { cn } from "@/lib/utils"
 
 type ReminderFormValues = {
   title: string
   memo: string
   dueAt: Date | undefined
-  repeatRule: RepeatRule
+  recurrence: Recurrence
   flagged: boolean
   priority: Priority
   tagNames: string[]
@@ -98,7 +103,7 @@ function ReminderEditForm({
       title: reminder.title,
       memo: reminder.memo ?? "",
       dueAt: reminder.dueAt ? parseISO(reminder.dueAt) : undefined,
-      repeatRule: reminder.repeatRule,
+      recurrence: recurrenceOf(reminder),
       flagged: reminder.flagged,
       priority: reminder.priority,
       tagNames: reminder.tags,
@@ -137,7 +142,7 @@ function ReminderEditForm({
           flagged: values.flagged,
           priority: values.priority,
           tagNames: values.tagNames,
-          repeatRule: values.dueAt ? values.repeatRule : "NONE",
+          ...toRepeatFields(values.dueAt ? values.recurrence : NO_REPEAT),
         },
       },
       { onSuccess: () => moveIfChanged(values.listId) }
@@ -199,14 +204,14 @@ function ReminderEditForm({
                 onChange={(value) => {
                   field.onChange(value)
                   // 반복은 마감일이 있어야 하므로 마감일을 지우면 반복도 해제한다.
-                  if (!value) setValue("repeatRule", "NONE")
+                  if (!value) setValue("recurrence", NO_REPEAT)
                 }}
               />
             )}
           />
           <Controller
             control={control}
-            name="repeatRule"
+            name="recurrence"
             render={({ field }) => (
               <RepeatSelect
                 id="reminder-repeat"
