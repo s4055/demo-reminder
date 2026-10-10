@@ -25,9 +25,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -779,6 +781,89 @@ class ReminderServiceTest {
     }
 
     @Test
+    @DisplayName("간격과 요일을 지정해 생성하면 저장되고, 생략하면 간격 1·요일 없음이다")
+    void createReminder_savesRepeatIntervalAndDaysOfWeek() {
+        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 7, 0);
+
+        ReminderResponse custom = createCustomRepeating("운동", dueAt, RepeatRule.WEEKLY, 2,
+                Set.of(DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY));
+        ReminderResponse weekly = createRepeating("분리수거", null, dueAt, RepeatRule.WEEKLY);
+        entityManager.flush();
+        entityManager.clear();
+
+        ReminderResponse reloaded = reminderService.getReminders(null, null).stream()
+                .filter(reminder -> reminder.id().equals(custom.id())).findFirst().orElseThrow();
+        assertThat(reloaded.repeatInterval()).isEqualTo(2);
+        assertThat(reloaded.repeatDaysOfWeek()).containsExactly(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
+        assertThat(weekly.repeatInterval()).isEqualTo(1);
+        assertThat(weekly.repeatDaysOfWeek()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("간격이 1~99를 벗어나거나 WEEKLY가 아닌데 요일을 지정하면 생성/수정 모두 400 예외가 발생한다")
+    void createAndUpdateReminder_throwBadRequest_whenRecurrenceIsInvalid() {
+        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 7, 0);
+        ReminderResponse saved = createRepeating("운동", null, dueAt, RepeatRule.DAILY);
+
+        assertThatThrownBy(() -> createCustomRepeating("운동", dueAt, RepeatRule.DAILY, 0, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        assertThatThrownBy(() -> createCustomRepeating("운동", dueAt, RepeatRule.DAILY, 100, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        assertThatThrownBy(() -> createCustomRepeating("운동", dueAt, RepeatRule.MONTHLY, 1, Set.of(DayOfWeek.MONDAY)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        assertThatThrownBy(() -> reminderService.updateReminder(saved.id(), new ReminderUpdateRequest(
+                "운동", null, dueAt, false, null, null, RepeatRule.DAILY, 1, Set.of(DayOfWeek.MONDAY))))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        assertThatThrownBy(() -> reminderService.updateReminder(saved.id(), new ReminderUpdateRequest(
+                "운동", null, dueAt, false, null, null, RepeatRule.DAILY, 100, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("수정으로 간격과 요일을 바꿀 수 있고, 반복을 해제하면 간격 1·요일 없음이 된다")
+    void updateReminder_changesRepeatIntervalAndDaysOfWeek() {
+        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 7, 0);
+        ReminderResponse saved = createRepeating("운동", null, dueAt, RepeatRule.WEEKLY);
+
+        ReminderResponse custom = reminderService.updateReminder(saved.id(), new ReminderUpdateRequest(
+                "운동", null, dueAt, false, null, null, RepeatRule.WEEKLY, 3, Set.of(DayOfWeek.FRIDAY)));
+        assertThat(custom.repeatInterval()).isEqualTo(3);
+        assertThat(custom.repeatDaysOfWeek()).containsExactly(DayOfWeek.FRIDAY);
+
+        ReminderResponse once = reminderService.updateReminder(saved.id(),
+                new ReminderUpdateRequest("운동", null, dueAt, false, null, null, null));
+        assertThat(once.repeatRule()).isEqualTo(RepeatRule.NONE);
+        assertThat(once.repeatInterval()).isEqualTo(1);
+        assertThat(once.repeatDaysOfWeek()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("2주마다 월·수 리마인더는 월요일 회차를 완료하면 같은 주 수요일, 그 수요일을 완료하면 2주 뒤 월요일 회차가 '예정됨'에 생기고 규칙이 복사된다")
+    void toggleComplete_whenEveryTwoWeeksOnMondayAndWednesday_createsNextOccurrencesByRule() {
+        ReminderResponse monday = createCustomRepeating("운동", LocalDateTime.of(2026, 10, 5, 7, 0),
+                RepeatRule.WEEKLY, 2, Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
+
+        reminderService.toggleComplete(monday.id());
+        entityManager.flush();
+        entityManager.clear();
+        ReminderResponse wednesday = scheduledByTitle("운동").getFirst();
+        assertThat(wednesday.dueAt()).isEqualTo(LocalDateTime.of(2026, 10, 7, 7, 0));
+        assertThat(wednesday.repeatInterval()).isEqualTo(2);
+        assertThat(wednesday.repeatDaysOfWeek()).containsExactly(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
+
+        reminderService.toggleComplete(wednesday.id());
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(scheduledByTitle("운동")).extracting(ReminderResponse::dueAt)
+                .containsExactly(LocalDateTime.of(2026, 10, 19, 7, 0));
+    }
+
+    @Test
     @DisplayName("매주 반복 리마인더를 완료하면 현재 항목은 완료되고 7일 뒤 마감의 새 항목이 같은 리스트 마지막 순서로 저장된다")
     void toggleComplete_whenWeekly_savesNextOccurrenceSevenDaysLater() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
@@ -1169,6 +1254,18 @@ class ReminderServiceTest {
     private ReminderResponse createRepeating(String title, Long listId, LocalDateTime dueAt, RepeatRule repeatRule) {
         return reminderService.createReminder(
                 new ReminderRequest(title, null, listId, dueAt, null, null, null, repeatRule));
+    }
+
+    private ReminderResponse createCustomRepeating(String title, LocalDateTime dueAt, RepeatRule repeatRule,
+                                                   Integer repeatInterval, Set<DayOfWeek> repeatDaysOfWeek) {
+        return reminderService.createReminder(new ReminderRequest(
+                title, null, null, dueAt, null, null, null, repeatRule, repeatInterval, repeatDaysOfWeek));
+    }
+
+    private List<ReminderResponse> scheduledByTitle(String title) {
+        return reminderService.getSmartReminders("scheduled").stream()
+                .filter(reminder -> reminder.title().equals(title))
+                .toList();
     }
 
     private ReminderResponse create(String title, Long listId) {

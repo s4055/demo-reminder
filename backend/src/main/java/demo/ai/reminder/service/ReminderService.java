@@ -2,6 +2,7 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.Recurrence;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.RepeatRule;
@@ -16,11 +17,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -110,26 +114,27 @@ public class ReminderService {
     // parentId를 지정하면 그 리마인더의 하위 작업으로 추가하며, 이때 listId는 무시하고 부모의 리스트를 따른다.
     @Transactional
     public ReminderResponse createReminder(ReminderRequest request) {
-        validateRepeatRule(request.repeatRule(), request.dueAt());
+        Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek(),
+                request.dueAt());
         if (request.parentId() != null) {
-            return ReminderResponse.from(createSubtask(request));
+            return ReminderResponse.from(createSubtask(request, recurrence));
         }
         ReminderList list = request.listId() == null ? null : listAccess.memberList(request.listId());
         Reminder reminder = new Reminder(currentUser.reference(),
-                request.title(), request.memo(), list, request.dueAt(), request.priority(), request.repeatRule());
+                request.title(), request.memo(), list, request.dueAt(), request.priority(), recurrence);
         reminder.changeSortOrder(nextSortOrder(list));
         reminder.replaceTags(tagService.resolveTags(request.tagNames()));
         return ReminderResponse.from(reminderRepository.save(reminder));
     }
 
-    private Reminder createSubtask(ReminderRequest request) {
+    private Reminder createSubtask(ReminderRequest request, Recurrence recurrence) {
         Reminder parent = findReminderOrThrow(request.parentId());
         if (parent.isSubtask()) {
             throw new BusinessException(ResultCode.BAD_REQUEST,
                     "A subtask cannot have subtasks: " + request.parentId());
         }
         Reminder subtask = new Reminder(currentUser.reference(),
-                request.title(), request.memo(), null, request.dueAt(), request.priority(), request.repeatRule());
+                request.title(), request.memo(), null, request.dueAt(), request.priority(), recurrence);
         parent.addSubtask(subtask);
         subtask.replaceTags(tagService.resolveTags(request.tagNames()));
         return reminderRepository.save(subtask);
@@ -139,9 +144,10 @@ public class ReminderService {
     @Transactional
     public ReminderResponse updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
-        validateRepeatRule(request.repeatRule(), request.dueAt());
+        Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek(),
+                request.dueAt());
         reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority(),
-                request.repeatRule());
+                recurrence);
         reminder.replaceTags(tagService.resolveTags(request.tagNames()));
         return toFlushedResponse(reminder);
     }
@@ -235,9 +241,18 @@ public class ReminderService {
         return ReminderResponse.from(reminder);
     }
 
-    private void validateRepeatRule(RepeatRule repeatRule, LocalDateTime dueAt) {
+    // 요청의 반복 값으로 반복 규칙을 만든다. 간격을 생략하면 1이다.
+    // 마감일시 없이 반복하거나, 간격이 범위를 벗어나거나, WEEKLY가 아닌데 요일을 지정하면 400이다.
+    private Recurrence toRecurrence(RepeatRule repeatRule, Integer repeatInterval, Set<DayOfWeek> repeatDaysOfWeek,
+                                    LocalDateTime dueAt) {
         if (repeatRule != null && repeatRule.isRepeating() && dueAt == null) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "A repeating reminder requires dueAt");
+        }
+        try {
+            return new Recurrence(repeatRule, Objects.requireNonNullElse(repeatInterval, Recurrence.MIN_INTERVAL),
+                    repeatDaysOfWeek);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, e.getMessage());
         }
     }
 

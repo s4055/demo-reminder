@@ -173,6 +173,44 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("간격과 요일을 지정해 생성하면 응답에 repeatInterval과 월요일부터 정렬된 repeatDaysOfWeek가 담긴다")
+    void createReminder_returnsRepeatIntervalAndDaysOfWeek() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"운동","dueAt":"2026-10-05T07:00:00","repeatRule":"WEEKLY",
+                                 "repeatInterval":2,"repeatDaysOfWeek":["WEDNESDAY","MONDAY"]}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.repeatInterval").value(2))
+                .andExpect(jsonPath("$.data.repeatDaysOfWeek[0]").value("MONDAY"))
+                .andExpect(jsonPath("$.data.repeatDaysOfWeek[1]").value("WEDNESDAY"));
+
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.repeatInterval").value(1))
+                .andExpect(jsonPath("$.data.repeatDaysOfWeek", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("간격이 1~99를 벗어나거나, WEEKLY가 아닌데 요일을 지정하거나, 잘못된 요일 값이면 400을 반환한다")
+    void createReminder_withInvalidRecurrence_returnsBadRequest() throws Exception {
+        String[] bodies = {
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatInterval\":0}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatInterval\":100}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatDaysOfWeek\":[\"MONDAY\"]}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"WEEKLY\",\"repeatDaysOfWeek\":[\"MON\"]}",
+        };
+        for (String body : bodies) {
+            mockMvc.perform(post("/api/reminders").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+        }
+    }
+
+    @Test
     @DisplayName("지원하지 않는 repeatRule 값으로 생성하면 400을 반환한다")
     void createReminder_withUnknownRepeatRule_returnsBadRequest() throws Exception {
         mockMvc.perform(post("/api/reminders")

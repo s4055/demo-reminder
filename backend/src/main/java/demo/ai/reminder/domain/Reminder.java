@@ -1,7 +1,9 @@
 package demo.ai.reminder.domain;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -19,11 +21,14 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ColumnDefault;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -65,6 +70,19 @@ public class Reminder extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RepeatRule repeatRule;
+
+    // 반복 간격(1~99). 컬럼 추가 전에 저장된 행은 기본값 1로 채워져 예전처럼 동작한다.
+    @ColumnDefault("1")
+    @Column(nullable = false)
+    private int repeatInterval = Recurrence.MIN_INTERVAL;
+
+    // 매주 반복할 요일. WEEKLY일 때만 지정하며, 비어 있으면 마감일의 요일로 반복한다.
+    @ElementCollection
+    @CollectionTable(name = "reminder_repeat_day", joinColumns = @JoinColumn(name = "reminder_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "day_of_week", nullable = false)
+    @BatchSize(size = 100)
+    private Set<DayOfWeek> repeatDaysOfWeek = new HashSet<>();
 
     // 이 회차를 완료하면서 다음 회차를 이미 만들었는지. 완료 취소 후 다시 완료해도 다음 회차를 중복으로 만들지 않는다.
     @Column(nullable = false)
@@ -108,25 +126,38 @@ public class Reminder extends BaseTimeEntity {
 
     public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
                     RepeatRule repeatRule) {
+        this(user, title, memo, list, dueAt, priority, repeatRule == null ? null : Recurrence.of(repeatRule));
+    }
+
+    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
+                    Recurrence recurrence) {
         this.user = user;
         this.title = title;
         this.memo = memo;
         this.list = list;
         this.dueAt = dueAt;
         this.priority = priorityOrNone(priority);
-        this.repeatRule = repeatRuleOrNone(repeatRule, dueAt);
+        applyRecurrence(recurrence, dueAt);
         this.completed = false;
         this.flagged = false;
     }
 
     public void update(String title, String memo, LocalDateTime dueAt, boolean flagged, Priority priority,
-                       RepeatRule repeatRule) {
+                       Recurrence recurrence) {
         this.title = title;
         this.memo = memo;
         this.dueAt = dueAt;
         this.flagged = flagged;
         this.priority = priorityOrNone(priority);
-        this.repeatRule = repeatRuleOrNone(repeatRule, dueAt);
+        applyRecurrence(recurrence, dueAt);
+    }
+
+    public Recurrence getRecurrence() {
+        return new Recurrence(repeatRule, repeatInterval, repeatDaysOfWeek);
+    }
+
+    public Set<DayOfWeek> getRepeatDaysOfWeek() {
+        return Collections.unmodifiableSet(repeatDaysOfWeek);
     }
 
     public void replaceTags(Collection<Tag> tags) {
@@ -208,14 +239,15 @@ public class Reminder extends BaseTimeEntity {
         return createNextOccurrence();
     }
 
-    // 다음 마감일시로 소유자/제목/메모/플래그/우선순위/태그/리스트/반복 주기를 복사한 새 회차를 만든다. 하위 작업은 복사하지 않는다.
+    // 다음 마감일시로 소유자/제목/메모/플래그/우선순위/태그/리스트/반복 규칙(주기·간격·요일)을 복사한 새 회차를 만든다. 하위 작업은 복사하지 않는다.
     // 하위 작업의 다음 회차는 같은 부모의 하위 작업으로 붙인다.
     private Optional<Reminder> createNextOccurrence() {
-        if (!repeatRule.isRepeating() || nextOccurrenceCreated) {
+        Recurrence recurrence = getRecurrence();
+        if (!recurrence.isRepeating() || nextOccurrenceCreated) {
             return Optional.empty();
         }
         this.nextOccurrenceCreated = true;
-        Reminder next = new Reminder(user, title, memo, list, repeatRule.nextDueAt(dueAt), priority, repeatRule);
+        Reminder next = new Reminder(user, title, memo, list, recurrence.nextDueAt(dueAt), priority, recurrence);
         next.flagged = flagged;
         next.tags.addAll(tags);
         if (isSubtask()) {
@@ -230,12 +262,15 @@ public class Reminder extends BaseTimeEntity {
     }
 
     // 반복을 지정하지 않으면(null) '반복 안 함'으로 둔다. 마감일시 없이 반복을 설정할 수는 없다.
-    private static RepeatRule repeatRuleOrNone(RepeatRule repeatRule, LocalDateTime dueAt) {
-        RepeatRule rule = Objects.requireNonNullElse(repeatRule, RepeatRule.NONE);
+    private void applyRecurrence(Recurrence recurrence, LocalDateTime dueAt) {
+        Recurrence rule = Objects.requireNonNullElse(recurrence, Recurrence.NONE);
         if (rule.isRepeating() && dueAt == null) {
             throw new IllegalArgumentException("A repeating reminder requires a due date");
         }
-        return rule;
+        this.repeatRule = rule.rule();
+        this.repeatInterval = rule.interval();
+        this.repeatDaysOfWeek.clear();
+        this.repeatDaysOfWeek.addAll(rule.daysOfWeek());
     }
 
     // 우선순위를 지정하지 않으면(null) '없음'으로 둔다.

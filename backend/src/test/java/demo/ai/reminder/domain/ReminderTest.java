@@ -3,9 +3,11 @@ package demo.ai.reminder.domain;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -429,7 +431,7 @@ class ReminderTest {
     @Test
     @DisplayName("반복을 지정하지 않으면 '반복 안 함'으로 생성된다")
     void constructor_defaultsRepeatRuleToNone() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, Priority.NONE, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, Priority.NONE, (RepeatRule) null);
 
         assertThat(reminder.getRepeatRule()).isEqualTo(RepeatRule.NONE);
     }
@@ -441,7 +443,7 @@ class ReminderTest {
                 .isInstanceOf(IllegalArgumentException.class);
 
         Reminder reminder = new Reminder(owner, "우유 사기", null, null, LocalDateTime.of(2026, 10, 4, 9, 0));
-        assertThatThrownBy(() -> reminder.update("우유 사기", null, null, false, Priority.NONE, RepeatRule.WEEKLY))
+        assertThatThrownBy(() -> reminder.update("우유 사기", null, null, false, Priority.NONE, Recurrence.of(RepeatRule.WEEKLY)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -469,6 +471,41 @@ class ReminderTest {
             assertThat(occurrence.isCompleted()).isFalse();
             assertThat(occurrence.getCompletedAt()).isNull();
         });
+    }
+
+    @Test
+    @DisplayName("사용자 지정 반복 리마인더를 완료하면 다음 회차가 규칙에 맞는 날짜로 만들어지고 간격과 요일도 복사된다")
+    void toggleComplete_whenCustomRecurrence_copiesIntervalAndDaysToNextOccurrence() {
+        Recurrence everyTwoWeeksMonWed = new Recurrence(RepeatRule.WEEKLY, 2, Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
+        Reminder reminder = new Reminder(owner, "운동", null, null,
+                LocalDateTime.of(2026, 10, 7, 7, 0), Priority.NONE, everyTwoWeeksMonWed); // 수요일
+
+        Optional<Reminder> next = reminder.toggleComplete(LocalDateTime.of(2026, 10, 7, 8, 0));
+
+        assertThat(next).hasValueSatisfying(occurrence -> {
+            assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 19, 7, 0)); // 2주 뒤 월요일
+            assertThat(occurrence.getRecurrence()).isEqualTo(everyTwoWeeksMonWed);
+            assertThat(occurrence.getRepeatInterval()).isEqualTo(2);
+            assertThat(occurrence.getRepeatDaysOfWeek()).containsExactlyInAnyOrder(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
+        });
+    }
+
+    @Test
+    @DisplayName("update로 반복 규칙을 바꾸면 간격과 요일이 교체되고, 반복을 끄면 요일이 비워지고 간격은 1이 된다")
+    void update_replacesRecurrence() {
+        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 9, 0);
+        Reminder reminder = new Reminder(owner, "운동", null, null, dueAt, Priority.NONE,
+                new Recurrence(RepeatRule.WEEKLY, 2, Set.of(DayOfWeek.MONDAY)));
+
+        reminder.update("운동", null, dueAt, false, Priority.NONE, new Recurrence(RepeatRule.DAILY, 3, null));
+
+        assertThat(reminder.getRepeatRule()).isEqualTo(RepeatRule.DAILY);
+        assertThat(reminder.getRepeatInterval()).isEqualTo(3);
+        assertThat(reminder.getRepeatDaysOfWeek()).isEmpty();
+
+        reminder.update("운동", null, dueAt, false, Priority.NONE, null);
+
+        assertThat(reminder.getRecurrence()).isEqualTo(Recurrence.NONE);
     }
 
     @Test
