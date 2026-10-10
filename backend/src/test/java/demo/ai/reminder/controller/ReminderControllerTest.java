@@ -306,6 +306,35 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("리마인더 이동은 200과 함께 대상 리스트로 옮겨진 리마인더를 반환한다")
+    void moveReminder_returnsMovedReminder() throws Exception {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null));
+
+        mockMvc.perform(patch("/api/reminders/{id}/list", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"listId\":" + work.getId() + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.id").value(saved.getId()))
+                .andExpect(jsonPath("$.data.listId").value(work.getId()));
+    }
+
+    @Test
+    @DisplayName("리마인더 이동에서 listId가 없으면 400을 반환한다")
+    void moveReminder_withoutListId_returnsBadRequest() throws Exception {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null));
+
+        mockMvc.perform(patch("/api/reminders/{id}/list", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
     @DisplayName("존재하지 않는 리마인더를 삭제하면 404와 NOT_FOUND 응답을 반환한다")
     void deleteReminder_returnsNotFound_whenReminderDoesNotExist() throws Exception {
         mockMvc.perform(delete("/api/reminders/{id}", -1L))

@@ -13,6 +13,7 @@ import {
   getReminders,
   getRemindersByTag,
   getSmartReminders,
+  moveReminder,
   reorderReminders,
   searchReminders,
   toggleReminderComplete,
@@ -79,6 +80,17 @@ export function useUpdateReminder() {
     mutationFn: ({ id, input }: { id: number; input: UpdateReminderInput }) =>
       updateReminder(id, input),
     onSuccess: invalidate,
+  })
+}
+
+// 원래 리스트와 대상 리스트의 목록, 사이드바의 리스트별 개수가 모두 바뀌므로 리마인더 관련 쿼리를 전부 무효화한다.
+export function useMoveReminder() {
+  const invalidate = useInvalidateReminderQueries()
+  return useMutation({
+    mutationFn: ({ id, listId }: { id: number; listId: number }) =>
+      moveReminder(id, listId),
+    onSuccess: invalidate,
+    meta: { errorMessage: "리마인더를 다른 리스트로 옮기지 못했습니다." },
   })
 }
 

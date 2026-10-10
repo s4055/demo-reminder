@@ -1081,6 +1081,91 @@ class ReminderServiceTest {
         return past;
     }
 
+    @Test
+    @DisplayName("리마인더를 다른 리스트로 옮기면 하위 작업과 함께 대상 리스트의 마지막 순서가 되고 양쪽 개수가 바뀐다")
+    void moveReminder_movesWithSubtasksToEndOfTargetList_andUpdatesCounts() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null));
+        ReminderResponse moving = create("이사 준비", home.getId());
+        ReminderResponse boxes = createSubtask("박스 구하기", moving.id());
+        ReminderResponse movers = createSubtask("이삿짐센터 예약", moving.id());
+        create("청소", home.getId());
+        ReminderResponse report = create("보고서", work.getId());
+        ReminderResponse meeting = create("회의", work.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        ReminderResponse result = reminderService.moveReminder(moving.id(), work.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.listId()).isEqualTo(work.getId());
+        assertThat(result.subtasks()).extracting(ReminderResponse::listId).containsOnly(work.getId());
+        assertThat(reminderService.getReminders(work.getId(), null)).extracting(ReminderResponse::id)
+                .containsExactly(report.id(), meeting.id(), moving.id());
+        assertThat(reminderService.getReminders(work.getId(), null).get(2).subtasks())
+                .extracting(ReminderResponse::id).containsExactly(boxes.id(), movers.id());
+        assertThat(reminderRepository.findById(boxes.id()).orElseThrow().getList().getId()).isEqualTo(work.getId());
+        assertThat(reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(home.getId())).isEqualTo(1);
+        assertThat(reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(work.getId())).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("리스트 없는 리마인더도 리스트로 옮길 수 있다")
+    void moveReminder_movesReminderWithoutListIntoList() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderResponse noList = create("우유 사기", null);
+
+        ReminderResponse result = reminderService.moveReminder(noList.id(), home.getId());
+
+        assertThat(result.listId()).isEqualTo(home.getId());
+        assertThat(result.sortOrder()).isZero();
+    }
+
+    @Test
+    @DisplayName("이미 대상 리스트에 있으면 순서를 포함해 아무것도 바뀌지 않는다")
+    void moveReminder_keepsSortOrder_whenMovingToSameList() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderResponse first = create("빨래", home.getId());
+        ReminderResponse second = create("청소", home.getId());
+
+        ReminderResponse result = reminderService.moveReminder(first.id(), home.getId());
+
+        assertThat(result.sortOrder()).isEqualTo(first.sortOrder());
+        assertThat(reminderService.getReminders(home.getId(), null)).extracting(ReminderResponse::id)
+                .containsExactly(first.id(), second.id());
+    }
+
+    @Test
+    @DisplayName("하위 작업을 단독으로 옮기면 400 예외가 발생하고 그대로 남는다")
+    void moveReminder_throwsBadRequest_whenReminderIsSubtask() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null));
+        ReminderResponse parent = create("이사 준비", home.getId());
+        ReminderResponse subtask = createSubtask("박스 구하기", parent.id());
+
+        assertThatThrownBy(() -> reminderService.moveReminder(subtask.id(), work.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        assertThat(reminderRepository.findById(subtask.id()).orElseThrow().getList().getId()).isEqualTo(home.getId());
+    }
+
+    @Test
+    @DisplayName("멤버가 아닌 리스트나 없는 리스트로 옮기면 404 예외가 발생한다")
+    void moveReminder_throwsNotFound_whenTargetListIsNotAccessible() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        User other = userRepository.save(new User("other@example.com", "{noop}password", "다른 사람"));
+        ReminderList othersList = reminderListRepository.save(new ReminderList(other, "남의 리스트", null));
+        ReminderResponse reminder = create("빨래", home.getId());
+
+        assertThatThrownBy(() -> reminderService.moveReminder(reminder.id(), othersList.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+        assertThatThrownBy(() -> reminderService.moveReminder(reminder.id(), -1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+    }
+
     private ReminderResponse createRepeating(String title, Long listId, LocalDateTime dueAt, RepeatRule repeatRule) {
         return reminderService.createReminder(
                 new ReminderRequest(title, null, listId, dueAt, null, null, null, repeatRule));

@@ -158,6 +158,22 @@ public class ReminderService {
         }
     }
 
+    // 최상위 리마인더를 하위 작업과 함께 다른 리스트의 마지막 순서로 옮긴다. 대상 리스트의 멤버여야 하고(아니면 404),
+    // 하위 작업은 단독으로 옮길 수 없다(400). 이미 그 리스트에 있으면 순서도 바꾸지 않는다.
+    @Transactional
+    public ReminderResponse moveReminder(Long id, Long listId) {
+        Reminder reminder = findReminderOrThrow(id);
+        if (reminder.isSubtask()) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "A subtask cannot be moved on its own: " + id);
+        }
+        ReminderList target = listAccess.memberList(listId);
+        if (reminder.getList() != null && reminder.getList().getId().equals(target.getId())) {
+            return ReminderResponse.from(reminder);
+        }
+        reminder.moveTo(target, nextSortOrder(target));
+        return toFlushedResponse(reminder);
+    }
+
     // 반복 리마인더를 완료하면 다음 회차를 저장한다. 최상위 리마인더의 다음 회차는 같은 리스트의 마지막 순서로 들어가고,
     // 하위 작업의 다음 회차는 도메인에서 같은 부모의 마지막 하위 작업으로 붙는다.
     @Transactional

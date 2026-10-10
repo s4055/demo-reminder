@@ -104,6 +104,14 @@ export function reorderReminders(listId: number, ids: number[]): Promise<void> {
 }
 
 // 응답은 토글된 현재 리마인더뿐이다. 반복 리마인더의 다음 회차는 목록을 다시 조회해야 보인다.
+// 최상위 리마인더를 하위 작업과 함께 다른 리스트의 마지막 순서로 옮긴다. 하위 작업 단독 이동은 400, 멤버가 아닌 리스트는 404다.
+export function moveReminder(id: number, listId: number): Promise<Reminder> {
+  return apiRequest<Reminder>(
+    `/api/reminders/${id}/list`,
+    jsonBody("PATCH", { listId })
+  )
+}
+
 export function toggleReminderComplete(id: number): Promise<Reminder> {
   return apiRequest<Reminder>(`/api/reminders/${id}/complete`, {
     method: "PATCH",

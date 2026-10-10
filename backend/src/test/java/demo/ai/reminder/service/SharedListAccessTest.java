@@ -152,6 +152,31 @@ class SharedListAccessTest {
     }
 
     @Test
+    @DisplayName("편집자는 자기 리스트의 리마인더를 공유 리스트로, 공유 리스트의 리마인더를 자기 리스트로 옮길 수 있다")
+    void editor_canMoveRemindersBetweenOwnAndSharedList() {
+        TestAuth.signIn(bob);
+        Long bobListId = reminderListService.createList(new ReminderListRequest("밥의 리스트", null)).id();
+        ReminderResponse bobReminder = reminderService.createReminder(
+                new ReminderRequest("빵", null, bobListId, null, null, null, null, null));
+
+        assertThat(reminderService.moveReminder(bobReminder.id(), sharedListId).listId()).isEqualTo(sharedListId);
+        assertThat(reminderService.moveReminder(aliceReminder.id(), bobListId).listId()).isEqualTo(bobListId);
+    }
+
+    @Test
+    @DisplayName("멤버가 아닌 사용자는 자기 리마인더를 공유 리스트로 옮길 수 없다 (404)")
+    void nonMember_cannotMoveReminderIntoSharedList() {
+        TestAuth.signIn(carol);
+        Long carolListId = reminderListService.createList(new ReminderListRequest("캐럴의 리스트", null)).id();
+        ReminderResponse carolReminder = reminderService.createReminder(
+                new ReminderRequest("커피", null, carolListId, null, null, null, null, null));
+
+        assertThatThrownBy(() -> reminderService.moveReminder(carolReminder.id(), sharedListId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+    }
+
+    @Test
     @DisplayName("소유자는 편집자가 만든 리마인더도 수정/삭제할 수 있다")
     void owner_canManageEditorsReminders() {
         TestAuth.signIn(bob);
