@@ -14,6 +14,7 @@ import {
   getRemindersByTag,
   getSmartReminders,
   reorderReminders,
+  searchReminders,
   toggleReminderComplete,
   toggleReminderFlag,
   updateReminder,
@@ -39,6 +40,8 @@ function fetchReminders(selection: Selection): Promise<Reminder[]> {
       return getReminders(selection.listId)
     case "tag":
       return getRemindersByTag(selection.name)
+    case "search":
+      return searchReminders(selection.query)
     default:
       return getSmartReminders(selection.view)
   }

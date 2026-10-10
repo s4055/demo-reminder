@@ -68,6 +68,13 @@ export function getSmartReminders(view: SmartView): Promise<Reminder[]> {
   return apiRequest<Reminder[]>(`/api/reminders/smart/${view}`)
 }
 
+// 제목/메모/태그 이름에 검색어가 들어 있는 리마인더 (하위 작업 포함). 미완료 항목(마감일시 순)이 먼저, 완료 항목(완료일시 최신순)이 나중에 온다.
+export function searchReminders(query: string): Promise<Reminder[]> {
+  return apiRequest<Reminder[]>(
+    `/api/reminders/search?q=${encodeURIComponent(query)}`
+  )
+}
+
 // 마감일시가 [from, to) 에 있는 미완료 리마인더 (하위 작업 포함, 마감일시 순). 브라우저 알림 스케줄링용이다.
 export function getUpcomingReminders(from: Date, to: Date): Promise<Reminder[]> {
   const query = new URLSearchParams({

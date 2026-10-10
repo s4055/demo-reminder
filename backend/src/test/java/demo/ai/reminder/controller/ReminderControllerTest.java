@@ -254,6 +254,31 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("리마인더 검색은 200과 함께 일치하는 리마인더 목록을 반환한다")
+    void searchReminders_returnsMatchingReminders() throws Exception {
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
+        reminderRepository.save(new Reminder(owner, "보고서", null, null, null));
+
+        mockMvc.perform(get("/api/reminders/search").param("q", "우유"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].title").value("우유 사기"));
+    }
+
+    @Test
+    @DisplayName("리마인더 검색에서 q가 없거나 비어 있으면 400을 반환한다")
+    void searchReminders_withMissingOrBlankQuery_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/reminders/search"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+
+        mockMvc.perform(get("/api/reminders/search").param("q", "  "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
     @DisplayName("완료 항목 일괄 삭제는 200과 함께 삭제 개수를 반환한다")
     void deleteCompletedReminders_returnsDeletedCount() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));

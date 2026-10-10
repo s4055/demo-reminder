@@ -28,6 +28,7 @@ import {
   InboxIcon,
   PencilIcon,
   PlusIcon,
+  SearchIcon,
   Trash2Icon,
   UserPlusIcon,
   UsersIcon,
@@ -36,6 +37,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ListFormDialog } from "@/components/list-form-dialog"
 import { ListDeleteDialog } from "@/components/list-delete-dialog"
@@ -65,9 +67,14 @@ const SMART_VIEW_ICONS: Record<SmartView, LucideIcon> = {
 export function Sidebar({
   selection,
   onSelect,
+  searchText,
+  onSearchChange,
 }: {
   selection: Selection
   onSelect: (selection: Selection) => void
+  // 검색창 입력값. 검색 결과 조회(디바운스)와 이전 화면 복귀는 상위에서 처리한다.
+  searchText: string
+  onSearchChange: (text: string) => void
 }) {
   const { data: lists, isLoading, isError, refetch } = useLists()
   const reorderLists = useReorderLists()
@@ -101,6 +108,35 @@ export function Sidebar({
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-3">
+      <div role="search" className="relative">
+        <SearchIcon
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          type="search"
+          value={searchText}
+          onChange={(event) => onSearchChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") onSearchChange("")
+          }}
+          placeholder="검색"
+          aria-label="리마인더 검색"
+          maxLength={100}
+          className="pr-8 pl-8 [&::-webkit-search-cancel-button]:hidden"
+        />
+        {searchText && (
+          <button
+            type="button"
+            onClick={() => onSearchChange("")}
+            aria-label="검색어 지우기"
+            className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <XIcon className="size-4" />
+          </button>
+        )}
+      </div>
+
       <nav className="flex flex-col gap-0.5">
         {SMART_VIEWS.map(({ view, label }) => {
           const Icon = SMART_VIEW_ICONS[view]
