@@ -528,6 +528,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/reminders/search:
+    get:
+      tags: [Reminders]
+      summary: 리마인더 검색 (제목/메모/태그)
+      description: |
+        현재 사용자가 볼 수 있는 리마인더(내 리마인더 + 멤버인 리스트의 리마인더) 중 제목·메모·태그 이름에 검색어가 들어 있는 항목을 찾는다 (대소문자 무시).
+        하위 작업도 개별 항목으로 포함하며(subtasks는 리스트별 조회와 같이 채워진다), 태그가 여러 개 일치해도 한 번만 나온다.
+        정렬: 미완료 항목을 마감일시 순(마감일 없는 항목은 뒤, 같으면 생성순)으로 먼저, 그다음 완료 항목을 완료일시 최신순으로 둔다.
+      operationId: searchReminders
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 검색어. 앞뒤 공백을 뺀 1~100자이며, %와 _는 와일드카드가 아니라 문자 그대로 검색한다.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example: 우유
+      responses:
+        "200":
+          description: 검색 결과 (없으면 빈 배열)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderArrayApiResponse"
+        "400":
+          description: q 누락, 또는 공백을 뺀 길이가 0이거나 100자 초과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/reminders/upcoming:
     get:
       tags: [Reminders]

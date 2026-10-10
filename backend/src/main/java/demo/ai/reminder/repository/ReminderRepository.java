@@ -47,6 +47,17 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
     @Query("select r from Reminder r where r.completed = true and " + ACCESSIBLE)
     List<Reminder> findAccessibleCompleted(Long userId, Sort sort);
 
+    // pattern은 소문자로 바꾸고 LIKE 특수문자(\, %, _)를 \로 이스케이프한 '%검색어%'다.
+    // 태그는 조인하면 태그 수만큼 중복되므로 exists로 확인한다.
+    @Query("""
+            select r from Reminder r
+            where (lower(r.title) like :pattern escape '\\'
+                   or lower(r.memo) like :pattern escape '\\'
+                   or exists (select 1 from r.tags t where lower(t.name) like :pattern escape '\\'))
+              and
+            """ + ACCESSIBLE)
+    List<Reminder> searchAccessible(Long userId, String pattern);
+
     List<Reminder> findByListIdAndParentIsNull(Long listId, Sort sort);
 
     List<Reminder> findByTagsId(Long tagId);

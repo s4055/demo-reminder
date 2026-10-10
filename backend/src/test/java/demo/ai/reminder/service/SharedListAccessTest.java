@@ -140,6 +140,18 @@ class SharedListAccessTest {
     }
 
     @Test
+    @DisplayName("검색 결과에 공유받은 리스트의 리마인더가 포함되고, 다른 사용자의 리스트 없는 리마인더는 제외된다")
+    void searchReminders_includesSharedListReminders() {
+        reminderService.createReminder(new ReminderRequest("우유 영수증", null, null, null, null, null, null, null));
+        TestAuth.signIn(bob);
+        ReminderResponse bobReminder = reminderService.createReminder(
+                new ReminderRequest("우유 쿠폰", null, null, null, null, null, null, null));
+
+        assertThat(reminderService.searchReminders("우유")).extracting(ReminderResponse::id)
+                .containsExactlyInAnyOrder(aliceReminder.id(), bobReminder.id());
+    }
+
+    @Test
     @DisplayName("소유자는 편집자가 만든 리마인더도 수정/삭제할 수 있다")
     void owner_canManageEditorsReminders() {
         TestAuth.signIn(bob);
@@ -209,6 +221,7 @@ class SharedListAccessTest {
         assertThat(reminderListService.getLists()).isEmpty();
         assertThat(reminderService.getSmartReminders("all")).isEmpty();
         assertThat(reminderService.getReminders(null, "장보기")).isEmpty();
+        assertThat(reminderService.searchReminders("우유")).isEmpty();
         List<Executable> attempts = List.of(
                 () -> reminderService.getReminders(sharedListId, null),
                 () -> reminderService.createReminder(

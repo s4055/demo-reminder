@@ -981,6 +981,95 @@ class ReminderServiceTest {
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 
+    @Test
+    @DisplayName("검색어가 제목, 메모, 태그 이름 중 하나에 들어 있으면 검색된다")
+    void searchReminders_matchesTitleMemoAndTag() {
+        create("우유 사기", null);
+        reminderService.createReminder(new ReminderRequest("장보기", "우유랑 빵", null, null, null, null, null, null));
+        reminderService.createReminder(
+                new ReminderRequest("마트", null, null, null, null, List.of("우유팩"), null, null));
+        create("보고서 작성", null);
+
+        List<ReminderResponse> result = reminderService.searchReminders("우유");
+
+        assertThat(result).extracting(ReminderResponse::title)
+                .containsExactlyInAnyOrder("우유 사기", "장보기", "마트");
+    }
+
+    @Test
+    @DisplayName("검색은 대소문자를 구분하지 않고, 검색어 앞뒤 공백은 무시한다")
+    void searchReminders_isCaseInsensitive_andTrimsQuery() {
+        create("Buy MILK", null);
+        reminderService.createReminder(
+                new ReminderRequest("마트", null, null, null, null, List.of("Grocery"), null, null));
+
+        assertThat(reminderService.searchReminders("  milk ")).extracting(ReminderResponse::title)
+                .containsExactly("Buy MILK");
+        assertThat(reminderService.searchReminders("GROCERY")).extracting(ReminderResponse::title)
+                .containsExactly("마트");
+    }
+
+    @Test
+    @DisplayName("%와 _는 와일드카드가 아니라 문자 그대로 검색된다")
+    void searchReminders_treatsLikeWildcardsLiterally() {
+        create("할인 50% 쿠폰", null);
+        create("할인 500원", null);
+        create("file_name 정리", null);
+        create("filename 정리", null);
+
+        assertThat(reminderService.searchReminders("50%")).extracting(ReminderResponse::title)
+                .containsExactly("할인 50% 쿠폰");
+        assertThat(reminderService.searchReminders("file_")).extracting(ReminderResponse::title)
+                .containsExactly("file_name 정리");
+    }
+
+    @Test
+    @DisplayName("태그가 여러 개 일치해도 리마인더는 한 번만 나오고, 하위 작업도 개별 항목으로 검색된다")
+    void searchReminders_returnsEachReminderOnce_includingSubtasks() {
+        ReminderResponse parent = reminderService.createReminder(
+                new ReminderRequest("이사", null, null, null, null, List.of("짐싸기", "짐정리"), null, null));
+        createSubtask("짐 박스 구하기", parent.id());
+
+        assertThat(reminderService.searchReminders("짐")).extracting(ReminderResponse::title)
+                .containsExactly("이사", "짐 박스 구하기");
+    }
+
+    @Test
+    @DisplayName("미완료 항목이 마감일시 순(마감일 없는 항목은 뒤, 같으면 생성순)으로 먼저, 완료 항목이 완료일시 최신순으로 나중에 나온다")
+    void searchReminders_ordersIncompleteByDueAtThenCompletedByRecency() {
+        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 10, 9, 0);
+        ReminderResponse noDue = create("업무 A", null);
+        ReminderResponse later = createWithDueAt("업무 B", dueAt.plusDays(1));
+        ReminderResponse sooner = createWithDueAt("업무 C", dueAt);
+        ReminderResponse noDue2 = create("업무 D", null);
+        ReminderResponse completedFirst = create("업무 E", null);
+        ReminderResponse completedSecond = create("업무 F", null);
+        reminderService.toggleComplete(completedFirst.id());
+        entityManager.flush();
+        entityManager.createQuery("update Reminder r set r.completedAt = :at where r.id = :id")
+                .setParameter("at", dueAt.minusDays(1))
+                .setParameter("id", completedFirst.id())
+                .executeUpdate();
+        entityManager.clear();
+        reminderService.toggleComplete(completedSecond.id());
+
+        List<ReminderResponse> result = reminderService.searchReminders("업무");
+
+        assertThat(result).extracting(ReminderResponse::id).containsExactly(
+                sooner.id(), later.id(), noDue.id(), noDue2.id(), completedSecond.id(), completedFirst.id());
+    }
+
+    @Test
+    @DisplayName("검색어가 비어 있거나 100자를 넘으면 400 예외가 발생한다")
+    void searchReminders_throwsBadRequest_whenQueryIsBlankOrTooLong() {
+        for (String query : new String[]{"", "   ", "가".repeat(101)}) {
+            assertThatThrownBy(() -> reminderService.searchReminders(query))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        }
+        assertThat(reminderService.searchReminders("가".repeat(100))).isEmpty();
+    }
+
     // 저장 직후 수정하면 시계 해상도에 따라 수정일이 같을 수 있으므로, 수정일을 과거로 돌려 두고 갱신 여부를 확인한다.
     private LocalDateTime backdateUpdatedAt(Long reminderId) {
         LocalDateTime past = LocalDateTime.of(2026, 1, 1, 0, 0);
@@ -999,6 +1088,10 @@ class ReminderServiceTest {
 
     private ReminderResponse create(String title, Long listId) {
         return reminderService.createReminder(new ReminderRequest(title, null, listId, null, null, null, null, null));
+    }
+
+    private ReminderResponse createWithDueAt(String title, LocalDateTime dueAt) {
+        return reminderService.createReminder(new ReminderRequest(title, null, null, dueAt, null, null, null, null));
     }
 
     private ReminderResponse createSubtask(String title, Long parentId) {

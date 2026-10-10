@@ -45,6 +45,11 @@ public class ReminderController {
         return ApiResponse.success(reminderService.getSmartReminders(view));
     }
 
+    @GetMapping("/search")
+    public ApiResponse<List<ReminderResponse>> searchReminders(@RequestParam String q) {
+        return ApiResponse.success(reminderService.searchReminders(q));
+    }
+
     @GetMapping("/upcoming")
     public ApiResponse<List<ReminderResponse>> getUpcomingReminders(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,

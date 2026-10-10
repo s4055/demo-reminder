@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -32,6 +33,14 @@ public class ReminderService {
     private static final Sort LIST_SORT = Sort.by("sortOrder", "id");
     private static final Sort DUE_DATE_SORT = Sort.by("dueAt", "id");
     private static final Sort COMPLETED_SORT = Sort.by(Sort.Order.desc("completedAt"), Sort.Order.desc("id"));
+    static final int SEARCH_QUERY_MAX_LENGTH = 100;
+    private static final Comparator<Reminder> SEARCH_ORDER = Comparator
+            .comparing(Reminder::isCompleted)
+            .thenComparing(reminder -> reminder.isCompleted() ? null : reminder.getDueAt(),
+                    Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(reminder -> reminder.isCompleted() ? reminder.getCompletedAt() : null,
+                    Comparator.nullsLast(Comparator.<LocalDateTime>reverseOrder()))
+            .thenComparing(Reminder::getId);
 
     private final ReminderRepository reminderRepository;
     private final ListAccess listAccess;
@@ -64,6 +73,28 @@ public class ReminderService {
             case FLAGGED -> reminderRepository.findAccessibleIncompleteFlagged(currentUser.id(), DEFAULT_SORT);
             case COMPLETED -> reminderRepository.findAccessibleCompleted(currentUser.id(), COMPLETED_SORT);
         });
+    }
+
+    /**
+     * 제목/메모/태그 이름에 검색어가 들어 있는(대소문자 무시) 리마인더를 하위 작업까지 개별 항목으로 찾는다.
+     * 미완료 항목을 먼저 마감일시 순(마감일 없는 항목은 뒤), 같으면 생성순으로 두고, 그다음 완료 항목을 완료일시 최신순으로 둔다.
+     * 검색어는 앞뒤 공백을 뺀 1~100자이며, %와 _는 문자 그대로 검색한다.
+     */
+    public List<ReminderResponse> searchReminders(String query) {
+        String keyword = query == null ? "" : query.strip();
+        if (keyword.isEmpty() || keyword.length() > SEARCH_QUERY_MAX_LENGTH) {
+            throw new BusinessException(ResultCode.BAD_REQUEST,
+                    "Search query must be 1 to " + SEARCH_QUERY_MAX_LENGTH + " characters");
+        }
+        return reminderRepository.searchAccessible(currentUser.id(), "%" + escapeLike(keyword.toLowerCase()) + "%")
+                .stream()
+                .sorted(SEARCH_ORDER)
+                .map(ReminderResponse::from)
+                .toList();
+    }
+
+    private static String escapeLike(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     // 알림 스케줄링용. [from, to) 기간에 마감되는 미완료 리마인더를 하위 작업까지 개별 항목으로 마감일시 순으로 조회한다.

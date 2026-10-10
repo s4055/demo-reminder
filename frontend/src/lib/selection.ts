@@ -4,6 +4,8 @@ export type Selection =
   | { type: "smart"; view: SmartView }
   | { type: "list"; listId: number }
   | { type: "tag"; name: string }
+  // 사이드바 검색창의 검색 결과. query는 앞뒤 공백을 뺀 검색어다.
+  | { type: "search"; query: string }
 
 export const SMART_VIEWS: { view: SmartView; label: string }[] = [
   { view: "today", label: "오늘" },
@@ -24,6 +26,9 @@ export function emptyMessage(selection: Selection): string {
   if (selection.type === "tag") {
     return `#${selection.name} 태그가 붙은 리마인더가 없습니다.`
   }
+  if (selection.type === "search") {
+    return `“${selection.query}”와(과) 일치하는 리마인더가 없습니다.`
+  }
   switch (selection.view) {
     case "today":
       return "오늘 마감인 리마인더가 없습니다."
@@ -42,6 +47,7 @@ export function isSameSelection(a: Selection, b: Selection): boolean {
   if (a.type === "list" && b.type === "list") return a.listId === b.listId
   if (a.type === "smart" && b.type === "smart") return a.view === b.view
   if (a.type === "tag" && b.type === "tag") return a.name === b.name
+  if (a.type === "search" && b.type === "search") return a.query === b.query
   return false
 }
 
@@ -51,6 +57,8 @@ export function selectionKey(selection: Selection): string {
       return `list-${selection.listId}`
     case "tag":
       return `tag-${selection.name}`
+    case "search":
+      return `search-${selection.query}`
     default:
       return `smart-${selection.view}`
   }
