@@ -3,6 +3,7 @@
 import { useState, type KeyboardEvent } from "react"
 import { parseISO } from "date-fns"
 import { Controller, useForm, useWatch } from "react-hook-form"
+import { toast } from "sonner"
 import { DueDatePicker } from "@/components/due-date-picker"
 import { RepeatSelect } from "@/components/repeat-select"
 import { TagInput } from "@/components/tag-input"
@@ -25,8 +26,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useCreateReminder, useUpdateReminder } from "@/hooks/use-reminders"
+import { useLists } from "@/hooks/use-lists"
+import {
+  useCreateReminder,
+  useMoveReminder,
+  useUpdateReminder,
+} from "@/hooks/use-reminders"
 import { toDueAtParam } from "@/lib/due-date"
+import type { ReminderList } from "@/lib/lists-api"
 import { PRIORITIES, PRIORITY_LABELS, type Priority } from "@/lib/priority"
 import type { Reminder } from "@/lib/reminders-api"
 import type { RepeatRule } from "@/lib/repeat"
@@ -40,6 +47,8 @@ type ReminderFormValues = {
   flagged: boolean
   priority: Priority
   tagNames: string[]
+  // 소속 리스트. 리스트 없이 만든 리마인더는 null이며, 리스트로 옮길 수는 있지만 '리스트 없음'으로 되돌릴 수는 없다.
+  listId: number | null
 }
 
 export function ReminderEditDialog({
@@ -72,6 +81,8 @@ function ReminderEditForm({
   onSaved: () => void
 }) {
   const updateReminder = useUpdateReminder()
+  const moveReminder = useMoveReminder()
+  const { data: lists } = useLists()
   // 입력 연결 방식은 컴포넌트가 값을 주고받는 방식에 따라 나눈다.
   // - register: 내부가 진짜 HTML 입력 요소인 컴포넌트(Input, Textarea). ref와 onChange 이벤트(event.target.value)로 값을 읽는다.
   // - Controller(control): 진짜 입력 요소 없이 value / onChange 계열 prop으로 값을 주고받는 컴포넌트
@@ -91,10 +102,29 @@ function ReminderEditForm({
       flagged: reminder.flagged,
       priority: reminder.priority,
       tagNames: reminder.tags,
+      listId: reminder.listId,
     },
   })
 
   const dueAt = useWatch({ control, name: "dueAt" })
+
+  // 내용을 저장한 뒤 리스트가 바뀌었으면 옮긴다. 하위 작업은 부모를 따라서만 이동하므로 리스트를 바꿀 수 없다.
+  function moveIfChanged(listId: number | null) {
+    if (listId === null || listId === reminder.listId) {
+      onSaved()
+      return
+    }
+    moveReminder.mutate(
+      { id: reminder.id, listId },
+      {
+        onSuccess: () => {
+          const target = lists?.find((list) => list.id === listId)
+          toast.success(`“${target?.name ?? "리스트"}”(으)로 이동했습니다.`)
+          onSaved()
+        },
+      }
+    )
+  }
 
   function onSubmit(values: ReminderFormValues) {
     updateReminder.mutate(
@@ -110,7 +140,7 @@ function ReminderEditForm({
           repeatRule: values.dueAt ? values.repeatRule : "NONE",
         },
       },
-      { onSuccess: onSaved }
+      { onSuccess: () => moveIfChanged(values.listId) }
     )
   }
 
@@ -140,6 +170,23 @@ function ReminderEditForm({
         <Label htmlFor="reminder-memo">메모</Label>
         <Textarea id="reminder-memo" rows={3} {...register("memo")} />
       </div>
+      {reminder.parentId === null && (
+        <div className="grid gap-1.5">
+          <Label htmlFor="reminder-list">리스트</Label>
+          <Controller
+            control={control}
+            name="listId"
+            render={({ field }) => (
+              <ListSelect
+                id="reminder-list"
+                lists={lists ?? []}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+      )}
       <div className="grid gap-1.5">
         <Label>마감일 / 반복</Label>
         <div className="flex flex-wrap items-center gap-2">
@@ -228,11 +275,64 @@ function ReminderEditForm({
       {/* 하위 작업은 1단계까지만 만들 수 있으므로 최상위 리마인더에서만 보여준다. */}
       {reminder.parentId === null && <SubtaskSection parent={reminder} />}
       <DialogFooter>
-        <Button type="submit" disabled={updateReminder.isPending}>
+        <Button
+          type="submit"
+          disabled={updateReminder.isPending || moveReminder.isPending}
+        >
           저장
         </Button>
       </DialogFooter>
     </form>
+  )
+}
+
+// 리스트 이름 앞에 사이드바와 같은 색상 점을 보여준다. 리스트가 없으면(null) "리스트 없음"으로 표시한다.
+function ListSelect({
+  id,
+  lists,
+  value,
+  onChange,
+}: {
+  id: string
+  lists: ReminderList[]
+  value: number | null
+  onChange: (listId: number | null) => void
+}) {
+  const listById = new Map(lists.map((list) => [list.id, list]))
+  return (
+    <Select<number | null>
+      value={value}
+      onValueChange={(next) => onChange(next ?? value)}
+    >
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue placeholder="리스트 없음">
+          {(selected: number | null) => {
+            const list = selected === null ? undefined : listById.get(selected)
+            return list ? <ListLabel list={list} /> : "리스트 없음"
+          }}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {lists.map((list) => (
+          <SelectItem key={list.id} value={list.id}>
+            <ListLabel list={list} />
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function ListLabel({ list }: { list: ReminderList }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span
+        aria-hidden
+        className="size-2.5 shrink-0 rounded-full"
+        style={{ backgroundColor: list.color ?? "#8E8E93" }}
+      />
+      <span className="truncate">{list.name}</span>
+    </span>
   )
 }
 

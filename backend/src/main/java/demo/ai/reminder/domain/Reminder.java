@@ -168,6 +168,19 @@ public class Reminder extends BaseTimeEntity {
         return parent != null;
     }
 
+    /**
+     * 다른 리스트로 옮기고 그 리스트에서의 표시 순서를 정한다. 하위 작업도 함께 같은 리스트로 옮긴다(하위 작업 안 순서는 유지).
+     * 하위 작업은 부모를 따라서만 이동하므로 단독으로 옮길 수 없다.
+     */
+    public void moveTo(ReminderList list, int sortOrder) {
+        if (isSubtask()) {
+            throw new IllegalStateException("A subtask cannot be moved on its own");
+        }
+        this.list = list;
+        this.sortOrder = sortOrder;
+        subtasks.forEach(subtask -> subtask.list = list);
+    }
+
     public void changeSortOrder(int sortOrder) {
         this.sortOrder = sortOrder;
     }

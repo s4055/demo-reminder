@@ -2,6 +2,7 @@ package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
 import demo.ai.reminder.dto.DeletedCountResponse;
+import demo.ai.reminder.dto.ReminderMoveRequest;
 import demo.ai.reminder.dto.ReminderOrderRequest;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderResponse;
@@ -78,6 +79,11 @@ public class ReminderController {
     @PutMapping("/{id}")
     public ApiResponse<ReminderResponse> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
         return ApiResponse.success(reminderService.updateReminder(id, request));
+    }
+
+    @PatchMapping("/{id}/list")
+    public ApiResponse<ReminderResponse> moveReminder(@PathVariable Long id, @Valid @RequestBody ReminderMoveRequest request) {
+        return ApiResponse.success(reminderService.moveReminder(id, request.listId()));
     }
 
     @PatchMapping("/{id}/complete")

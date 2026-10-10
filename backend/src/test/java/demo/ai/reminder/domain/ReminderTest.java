@@ -336,6 +336,41 @@ class ReminderTest {
     }
 
     @Test
+    @DisplayName("moveTo를 호출하면 리스트와 순서가 바뀌고 하위 작업도 같은 리스트로 함께 이동한다")
+    void moveTo_changesListAndSortOrder_andMovesSubtasksTogether() {
+        ReminderList home = new ReminderList(owner, "집", null);
+        ReminderList work = new ReminderList(owner, "업무", null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, home, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null);
+        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null);
+        parent.addSubtask(boxes);
+        parent.addSubtask(movers);
+
+        parent.moveTo(work, 5);
+
+        assertThat(parent.getList()).isSameAs(work);
+        assertThat(parent.getSortOrder()).isEqualTo(5);
+        assertThat(boxes.getList()).isSameAs(work);
+        assertThat(movers.getList()).isSameAs(work);
+        assertThat(boxes.getSortOrder()).isZero();
+        assertThat(movers.getSortOrder()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("하위 작업은 단독으로 moveTo할 수 없다")
+    void moveTo_throws_whenReminderIsSubtask() {
+        ReminderList home = new ReminderList(owner, "집", null);
+        ReminderList work = new ReminderList(owner, "업무", null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, home, null);
+        Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null);
+        parent.addSubtask(subtask);
+
+        assertThatThrownBy(() -> subtask.moveTo(work, 0))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(subtask.getList()).isSameAs(home);
+    }
+
+    @Test
     @DisplayName("getSubtasks로 받은 하위 작업 목록은 직접 수정할 수 없다")
     void getSubtasks_isUnmodifiable() {
         Reminder parent = new Reminder(owner, "이사 준비", null, null, null);

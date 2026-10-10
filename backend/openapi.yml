@@ -621,6 +621,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/reminders/{id}/list:
+    patch:
+      tags: [Reminders]
+      summary: 리마인더를 다른 리스트로 이동
+      description: |
+        최상위 리마인더를 대상 리스트의 마지막 순서로 옮긴다. 하위 작업도 함께 같은 리스트로 이동하며 하위 작업 안 순서는 유지된다.
+        - 대상 리스트의 멤버(OWNER/EDITOR)여야 한다. 멤버가 아닌 리스트는 404.
+        - 하위 작업은 단독으로 옮길 수 없다(부모를 따라 이동) → 400.
+        - 이미 대상 리스트에 있으면 아무것도 바꾸지 않는다(순서 유지).
+      operationId: moveReminder
+      parameters:
+        - $ref: "#/components/parameters/ReminderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderMoveRequest"
+      responses:
+        "200":
+          description: 이동한 리마인더 (하위 작업 포함)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderApiResponse"
+        "400":
+          description: listId 누락 또는 하위 작업 단독 이동
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 리마인더 또는 대상 리스트를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/reminders/{id}/complete:
     patch:
       tags: [Reminders]
@@ -909,6 +947,16 @@ components:
             type: integer
             format: int64
           example: [12, 10, 11]
+
+    ReminderMoveRequest:
+      type: object
+      required: [listId]
+      properties:
+        listId:
+          type: integer
+          format: int64
+          description: 옮겨 갈 리스트 id (현재 사용자가 멤버인 리스트)
+          example: 3
 
     Priority:
       type: string
