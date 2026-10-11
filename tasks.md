@@ -376,23 +376,23 @@
 
 ## Phase 19 — 리스트 아이콘 + 그룹
 ### 백엔드
-- [ ] `ReminderList`에 `icon` 추가, 생성/수정 요청·응답 반영 (허용 목록 밖이면 400)
-- [ ] `ListGroup` 엔티티(id, user, name, sortOrder, createdAt)와 `ListGroupRepository`
-- [ ] `ReminderList`에 `group` FK 추가, 리스트 응답에 `groupId` 포함
-- [ ] `GET/POST/PUT/DELETE /api/list-groups` (삭제 시 소속 리스트는 그룹 해제만)
-- [ ] `PATCH /api/list-groups/order` (`ids` 불일치 400)
-- [ ] `PATCH /api/lists/{id}/group` — 소유자만, 다른 사용자의 그룹 404, `null`이면 그룹 해제
-- [ ] `openapi.yml` 갱신
-- [ ] 테스트: 아이콘 검증, 그룹 CRUD/순서, 그룹 삭제 시 리스트 유지, 소유자 외 거부, 사용자 간 격리
+- [x] `ReminderList`에 `icon` 추가, 생성/수정 요청·응답 반영 (허용 목록 밖이면 400)
+- [x] `ListGroup` 엔티티(id, user, name, sortOrder, createdAt)와 `ListGroupRepository`
+- [x] `ReminderList`에 `group` FK 추가, 리스트 응답에 `groupId` 포함
+- [x] `GET/POST/PUT/DELETE /api/list-groups` (삭제 시 소속 리스트는 그룹 해제만)
+- [x] `PATCH /api/list-groups/order` (`ids` 불일치 400)
+- [x] `PATCH /api/lists/{id}/group` — 소유자만, 다른 사용자의 그룹 404, `null`이면 그룹 해제
+- [x] `openapi.yml` 갱신
+- [x] 테스트: 아이콘 검증, 그룹 CRUD/순서, 그룹 삭제 시 리스트 유지, 소유자 외 거부, 사용자 간 격리
 
 ### 프론트엔드
-- [ ] 리스트 생성/편집 다이얼로그에 아이콘 선택 그리드
-- [ ] 사이드바 리스트 항목에 아이콘 표시
-- [ ] 그룹 API 클라이언트와 TanStack Query 훅
-- [ ] 사이드바 그룹(폴더) 표시 + 펼치기/접기 (`localStorage` 저장)
-- [ ] 그룹 생성/이름 변경/삭제 UI, 리스트 메뉴 "그룹으로 이동"
-- [ ] 그룹 순서 및 그룹 안 리스트 드래그 정렬
+- [x] 리스트 생성/편집 다이얼로그에 아이콘 선택 그리드
+- [x] 사이드바 리스트 항목에 아이콘 표시
+- [x] 그룹 API 클라이언트와 TanStack Query 훅
+- [x] 사이드바 그룹(폴더) 표시 + 펼치기/접기 (`localStorage` 저장)
+- [x] 그룹 생성/이름 변경/삭제 UI, 리스트 메뉴 "그룹으로 이동"
+- [x] 그룹 순서 및 그룹 안 리스트 드래그 정렬
 
 ### 완료 기준 검증
-- [ ] 아이콘 변경이 사이드바에 즉시 반영되는지 확인
-- [ ] 리스트를 그룹으로 묶고 접을 수 있으며, 그룹 삭제 후에도 리스트와 리마인더가 남는지 확인
+- [x] 아이콘 변경이 사이드바에 즉시 반영되는지 확인
+- [x] 리스트를 그룹으로 묶고 접을 수 있으며, 그룹 삭제 후에도 리스트와 리마인더가 남는지 확인

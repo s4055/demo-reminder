@@ -38,6 +38,14 @@ public class ReminderList extends BaseTimeEntity {
 
     private String color;
 
+    // 아이콘 키({@link ListIcon#KEYS} 중 하나). 지정하지 않으면 null이며 기본 아이콘으로 표시한다.
+    private String icon;
+
+    // 소유자의 사이드바 그룹. 그룹에 넣지 않았으면 null이다. 공유받은 멤버의 사이드바에서는 쓰지 않는다.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private ListGroup group;
+
     // 소유자의 사이드바 표시 순서. 작을수록 위에 표시된다. 공유받은 멤버의 사이드바에서는 쓰지 않는다.
     @Column(nullable = false)
     private int sortOrder;
@@ -48,20 +56,42 @@ public class ReminderList extends BaseTimeEntity {
     private List<ListMember> members = new ArrayList<>();
 
     public ReminderList(User user, String name, String color) {
-        this(user, name, color, 0);
+        this(user, name, color, null, 0);
     }
 
-    public ReminderList(User user, String name, String color, int sortOrder) {
+    public ReminderList(User user, String name, String color, String icon, int sortOrder) {
         this.user = user;
         this.name = name;
         this.color = color;
+        this.icon = validIcon(icon);
         this.sortOrder = sortOrder;
         this.members.add(new ListMember(this, user, ListRole.OWNER));
     }
 
-    public void update(String name, String color) {
+    public void update(String name, String color, String icon) {
         this.name = name;
         this.color = color;
+        this.icon = validIcon(icon);
+    }
+
+    // 그룹은 리스트 소유자의 것이어야 한다. null이면 그룹에서 뺀다.
+    public void changeGroup(ListGroup group) {
+        if (group != null && !isOwner(group.getUser())) {
+            throw new IllegalArgumentException("A list can only join a group of its owner");
+        }
+        this.group = group;
+    }
+
+    // 같은 객체이거나 저장된 같은 사용자(id 일치)인지
+    private boolean isOwner(User other) {
+        return other == user || (other.getId() != null && other.getId().equals(user.getId()));
+    }
+
+    private static String validIcon(String icon) {
+        if (!ListIcon.isAllowed(icon)) {
+            throw new IllegalArgumentException("Unknown list icon: " + icon);
+        }
+        return icon;
     }
 
     public void changeSortOrder(int sortOrder) {

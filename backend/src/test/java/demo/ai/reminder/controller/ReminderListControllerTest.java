@@ -73,6 +73,23 @@ class ReminderListControllerTest {
     }
 
     @Test
+    @DisplayName("아이콘을 지정해 리스트를 만들면 응답에 icon과 groupId(null)가 담기고, 허용되지 않은 아이콘은 400이다")
+    void createList_withIcon() throws Exception {
+        mockMvc.perform(post("/api/lists")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"장보기\",\"color\":\"#FF9500\",\"icon\":\"shopping-cart\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.icon").value("shopping-cart"))
+                .andExpect(jsonPath("$.data.groupId").doesNotExist());
+
+        mockMvc.perform(post("/api/lists")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"장보기\",\"icon\":\"rocket-ship\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
     @DisplayName("존재하지 않는 리스트를 수정하면 404와 NOT_FOUND 응답을 반환한다")
     void updateList_returnsNotFound_whenListDoesNotExist() throws Exception {
         mockMvc.perform(put("/api/lists/{id}", -1L)

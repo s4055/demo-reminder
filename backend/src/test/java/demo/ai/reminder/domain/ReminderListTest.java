@@ -20,6 +20,53 @@ class ReminderListTest {
     }
 
     @Test
+    @DisplayName("허용된 아이콘으로 만들고 update로 바꾸거나 지울 수 있다")
+    void icon_canBeSetChangedAndCleared() {
+        ReminderList list = new ReminderList(owner, "장보기", null, "shopping-cart", 0);
+        assertThat(list.getIcon()).isEqualTo("shopping-cart");
+
+        list.update("장보기", null, "gift");
+        assertThat(list.getIcon()).isEqualTo("gift");
+
+        list.update("장보기", null, null);
+        assertThat(list.getIcon()).isNull();
+    }
+
+    @Test
+    @DisplayName("허용 목록에 없는 아이콘은 지정할 수 없다")
+    void icon_throws_whenNotAllowed() {
+        assertThatThrownBy(() -> new ReminderList(owner, "장보기", null, "rocket-ship", 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        ReminderList list = new ReminderList(owner, "장보기", null);
+        assertThatThrownBy(() -> list.update("장보기", null, "unknown"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("changeGroup으로 소유자의 그룹에 넣고 null로 그룹에서 뺄 수 있다")
+    void changeGroup_setsAndClearsOwnersGroup() {
+        ReminderList list = new ReminderList(owner, "장보기", null);
+        ListGroup group = new ListGroup(owner, "생활", 0);
+
+        list.changeGroup(group);
+        assertThat(list.getGroup()).isSameAs(group);
+
+        list.changeGroup(null);
+        assertThat(list.getGroup()).isNull();
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 그룹에는 넣을 수 없다")
+    void changeGroup_throws_whenGroupBelongsToAnotherUser() {
+        ReminderList list = new ReminderList(owner, "장보기", null);
+        User other = new User("other@example.com", "password", "다른 사람");
+
+        assertThatThrownBy(() -> list.changeGroup(new ListGroup(other, "남의 그룹", 0)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(list.getGroup()).isNull();
+    }
+
+    @Test
     @DisplayName("색상 없이도 생성할 수 있다")
     void constructor_allowsNullColor() {
         ReminderList list = new ReminderList(owner, "장보기", null);
@@ -32,7 +79,7 @@ class ReminderListTest {
     void update_changesNameAndColor() {
         ReminderList list = new ReminderList(owner, "장보기", "#FF9500");
 
-        list.update("업무", "#007AFF");
+        list.update("업무", "#007AFF", null);
 
         assertThat(list.getName()).isEqualTo("업무");
         assertThat(list.getColor()).isEqualTo("#007AFF");
@@ -49,7 +96,7 @@ class ReminderListTest {
     @Test
     @DisplayName("changeSortOrder를 호출하면 표시 순서가 변경된다")
     void changeSortOrder_changesSortOrder() {
-        ReminderList list = new ReminderList(owner, "장보기", null, 3);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 3);
 
         list.changeSortOrder(1);
 

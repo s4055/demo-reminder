@@ -12,6 +12,8 @@ public interface ReminderListRepository extends JpaRepository<ReminderList, Long
     // 사용자가 소유한 리스트. 사이드바 순서 변경 대상이다.
     List<ReminderList> findByUserId(Long userId);
 
+    List<ReminderList> findByGroupId(Long groupId);
+
     // 사용자가 멤버인 모든 리스트. 소유한 리스트를 사이드바 순서대로 먼저, 공유받은 리스트를 공유받은 순서대로 뒤에 둔다.
     // 리마인더 개수는 최상위 미완료 리마인더만 센다 (하위 작업 제외).
     @Query("""

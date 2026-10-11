@@ -1,6 +1,6 @@
 "use client"
 
-import { Controller, useForm } from "react-hook-form"
+import { Controller, useForm, useWatch } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,6 +12,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCreateList, useUpdateList } from "@/hooks/use-lists"
+import {
+  LIST_ICONS,
+  LIST_ICON_KEYS,
+  isListIconKey,
+  type ListIconKey,
+} from "@/lib/list-icons"
 import type { ReminderList } from "@/lib/lists-api"
 import { cn } from "@/lib/utils"
 
@@ -30,6 +36,8 @@ const DEFAULT_COLOR = "#007AFF"
 type ListFormValues = {
   name: string
   color: string
+  // null이면 아이콘 없이 색상 점으로 표시한다.
+  icon: ListIconKey | null
 }
 
 /** list 가 있으면 수정, 없으면 새 리스트 생성 폼이 된다. */
@@ -81,11 +89,17 @@ function ListForm({
     defaultValues: {
       name: list?.name ?? "",
       color: list?.color ?? DEFAULT_COLOR,
+      icon: list && isListIconKey(list.icon) ? list.icon : null,
     },
   })
+  const color = useWatch({ control, name: "color" })
 
   function onSubmit(values: ListFormValues) {
-    const input = { name: values.name.trim(), color: values.color }
+    const input = {
+      name: values.name.trim(),
+      color: values.color,
+      icon: values.icon,
+    }
     const options = { onSuccess: onSaved }
     if (isEdit) {
       updateList.mutate({ id: list.id, input }, options)
@@ -148,11 +162,76 @@ function ListForm({
           )}
         />
       </div>
+      <div className="grid gap-1.5">
+        <Label id="list-icon-label">아이콘</Label>
+        <Controller
+          control={control}
+          name="icon"
+          render={({ field }) => (
+            <div
+              role="group"
+              aria-labelledby="list-icon-label"
+              className="grid grid-cols-8 gap-1"
+            >
+              <IconOption
+                label="아이콘 없음"
+                selected={field.value === null}
+                onSelect={() => field.onChange(null)}
+              >
+                <span
+                  className="size-3 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+              </IconOption>
+              {LIST_ICON_KEYS.map((key) => {
+                const Icon = LIST_ICONS[key]
+                return (
+                  <IconOption
+                    key={key}
+                    label={`아이콘 ${key}`}
+                    selected={field.value === key}
+                    onSelect={() => field.onChange(key)}
+                  >
+                    <Icon className="size-4" style={{ color }} />
+                  </IconOption>
+                )
+              })}
+            </div>
+          )}
+        />
+      </div>
       <DialogFooter>
         <Button type="submit" disabled={mutation.isPending}>
           {isEdit ? "저장" : "추가"}
         </Button>
       </DialogFooter>
     </form>
+  )
+}
+
+function IconOption({
+  label,
+  selected,
+  onSelect,
+  children,
+}: {
+  label: string
+  selected: boolean
+  onSelect: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-label={label}
+      aria-pressed={selected}
+      className={cn(
+        "flex aspect-square items-center justify-center rounded-md outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+        selected && "bg-muted ring-2 ring-foreground"
+      )}
+    >
+      {children}
+    </button>
   )
 }

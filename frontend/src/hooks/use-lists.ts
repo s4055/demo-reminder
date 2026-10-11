@@ -7,6 +7,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  changeListGroup,
   createList,
   deleteList,
   getListMembers,
@@ -84,6 +85,32 @@ export function useReorderLists() {
       return { previous }
     },
     onError: (_error, _ids, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(listsQueryKey, context.previous)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: listsQueryKey }) // 쿼리 캐시 무효화
+    },
+  })
+}
+
+// 메뉴에서 고르자마자 사이드바에서 옮겨 보이도록 캐시의 groupId를 먼저 바꾸고, 실패하면 되돌린다.
+export function useChangeListGroup() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, groupId }: { id: number; groupId: number | null }) =>
+      changeListGroup(id, groupId),
+    meta: { errorMessage: "리스트를 그룹으로 옮기지 못했습니다." },
+    onMutate: async ({ id, groupId }) => {
+      await queryClient.cancelQueries({ queryKey: listsQueryKey })
+      const previous = queryClient.getQueryData<ReminderList[]>(listsQueryKey)
+      queryClient.setQueryData<ReminderList[]>(listsQueryKey, (lists) =>
+        lists?.map((list) => (list.id === id ? { ...list, groupId } : list))
+      )
+      return { previous }
+    },
+    onError: (_error, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(listsQueryKey, context.previous)
       }
