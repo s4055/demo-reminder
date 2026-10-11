@@ -404,20 +404,20 @@
 `plan.md`의 Phase 20~22를 기준으로 한다. 리팩터링 Phase(20, 21)는 동작을 바꾸지 않으며, 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 20 — 문서·의존성 정리
-- [ ] `frontend/ANALYSIS.md`를 현재 구조(인증, 선택 상태, 공유/그룹/알림 훅, 폴더 구조)로 갱신
-- [ ] `shadcn`을 `devDependencies`로 이동하고 `package-lock.json` 갱신 (`globals.css`의 `shadcn/tailwind.css`는 빌드 시 번들, 런타임 JS import 없음 확인)
+- [x] `frontend/ANALYSIS.md`를 현재 구조(인증, 선택 상태, 공유/그룹/알림 훅, 폴더 구조)로 갱신
+- [x] `shadcn`을 `devDependencies`로 이동하고 `package-lock.json` 갱신 (`globals.css`의 `shadcn/tailwind.css`는 빌드 시 번들, 런타임 JS import 없음 확인)
 
 ### 완료 기준 검증
-- [ ] `npm ci` → `npm run lint` → `npm run build` 통과, 앱 기동 후 화면 정상 확인
+- [x] `npm ci` → `npm run lint` → `npm run build` 통과, 앱 기동 후 화면 정상 확인
 
 ## Phase 21 — 사이드바 컴포넌트 분리
-- [ ] `components/sidebar/` 폴더 생성, `index.tsx`에서 `Sidebar` export (import 경로 갱신)
-- [ ] 스마트 뷰, 리스트 영역, 그룹/리스트 항목, 그룹 이동 메뉴, 태그 섹션, 공통 항목을 파일별로 분리
-- [ ] 드래그 처리(ID 파싱, 순서 계산, optimistic update/복구)를 `use-sidebar-dnd.ts` 훅으로 분리
-- [ ] 각 파일 300줄 이하, `npm run lint`/`npm run build` 통과
+- [x] `components/sidebar/` 폴더 생성, `index.tsx`에서 `Sidebar` export (import 경로 갱신)
+- [x] 스마트 뷰, 리스트 영역, 그룹/리스트 항목, 그룹 이동 메뉴, 태그 섹션, 공통 항목을 파일별로 분리
+- [x] 드래그 처리(ID 파싱, 순서 계산, optimistic update/복구)를 `use-sidebar-dnd.ts` 훅으로 분리
+- [x] 각 파일 300줄 이하, `npm run lint`/`npm run build` 통과
 
 ### 완료 기준 검증
-- [ ] 스마트 뷰 선택, 리스트/그룹 드래그 정렬, 그룹 접기, 그룹으로 이동, 리스트 편집/공유/삭제, 태그 선택이 분리 전과 같은지 확인
+- [x] 스마트 뷰 선택, 리스트/그룹 드래그 정렬, 그룹 접기, 그룹으로 이동, 리스트 편집/공유/삭제, 태그 선택이 분리 전과 같은지 확인
 
 ## Phase 22 — 동시 수정 충돌 감지
 ### 백엔드
