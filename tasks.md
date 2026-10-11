@@ -396,3 +396,42 @@
 ### 완료 기준 검증
 - [x] 아이콘 변경이 사이드바에 즉시 반영되는지 확인
 - [x] 리스트를 그룹으로 묶고 접을 수 있으며, 그룹 삭제 후에도 리스트와 리마인더가 남는지 확인
+
+---
+
+# v4 — 품질 개선 (spec.md 12번)
+
+`plan.md`의 Phase 20~22를 기준으로 한다. 리팩터링 Phase(20, 21)는 동작을 바꾸지 않으며, 모든 작업은 CI가 통과한 PR로 머지한다.
+
+## Phase 20 — 문서·의존성 정리
+- [ ] `frontend/ANALYSIS.md`를 현재 구조(인증, 선택 상태, 공유/그룹/알림 훅, 폴더 구조)로 갱신
+- [ ] `shadcn`을 `devDependencies`로 이동하고 `package-lock.json` 갱신 (`globals.css`의 `shadcn/tailwind.css`는 빌드 시 번들, 런타임 JS import 없음 확인)
+
+### 완료 기준 검증
+- [ ] `npm ci` → `npm run lint` → `npm run build` 통과, 앱 기동 후 화면 정상 확인
+
+## Phase 21 — 사이드바 컴포넌트 분리
+- [ ] `components/sidebar/` 폴더 생성, `index.tsx`에서 `Sidebar` export (import 경로 갱신)
+- [ ] 스마트 뷰, 리스트 영역, 그룹/리스트 항목, 그룹 이동 메뉴, 태그 섹션, 공통 항목을 파일별로 분리
+- [ ] 드래그 처리(ID 파싱, 순서 계산, optimistic update/복구)를 `use-sidebar-dnd.ts` 훅으로 분리
+- [ ] 각 파일 300줄 이하, `npm run lint`/`npm run build` 통과
+
+### 완료 기준 검증
+- [ ] 스마트 뷰 선택, 리스트/그룹 드래그 정렬, 그룹 접기, 그룹으로 이동, 리스트 편집/공유/삭제, 태그 선택이 분리 전과 같은지 확인
+
+## Phase 22 — 동시 수정 충돌 감지
+### 백엔드
+- [ ] `Reminder`, `ReminderList`에 `@Version version` 추가, 기존 행 버전 0으로 보정
+- [ ] 리마인더/리스트 응답에 `version` 포함
+- [ ] `PUT /api/reminders/{id}`, `PUT /api/lists/{id}` 요청에 `version` 필수, 불일치 시 409
+- [ ] `ResultCode.VERSION_CONFLICT` 추가, `ObjectOptimisticLockingFailureException`도 409로 변환
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 버전 일치 시 수정·버전 증가, 불일치 409, 토글/이동 후 버전 증가, 기존 행 보정, 컨트롤러 `version` 필수 400
+
+### 프론트엔드
+- [ ] `Reminder`, `ReminderList` 타입과 수정 API에 `version` 추가
+- [ ] 리마인더 편집/리스트 편집 저장 시 `version` 전송
+- [ ] 409 `VERSION_CONFLICT` 시 토스트 + 쿼리 무효화로 최신 내용 다시 표시
+
+### 완료 기준 검증
+- [ ] 두 계정이 같은 공유 리스트의 리마인더를 동시에 편집할 때 나중 저장이 409로 거부되고 최신 내용이 반영되는지 확인

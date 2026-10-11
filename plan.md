@@ -497,6 +497,79 @@ v2까지 끝난 뒤 사용 경험을 보강한다. 이후 작업을 안전하게
 
 ---
 
+# v4 — 품질 개선 (spec.md 12번)
+
+v3까지 끝난 뒤 새 기능 대신 품질을 다듬는다. 동작이 바뀌지 않는 정리 작업부터 시작해
+프론트엔드 구조 개선, 마지막으로 API 계약이 바뀌는 동시 수정 충돌 감지 순으로 진행한다.
+
+| 순서 | Phase | 기능 | 복잡도를 결정하는 요소 |
+|---|---|---|---|
+| 1 | Phase 20 | 문서·의존성 정리 | 문서 갱신 + `package.json` 정리 |
+| 2 | Phase 21 | 사이드바 컴포넌트 분리 | 동작을 유지한 채 파일/훅 분리 (드래그 상태 공유) |
+| 3 | Phase 22 | 동시 수정 충돌 감지 | `@Version` + 요청 버전 비교 + 409 처리 UI |
+
+### 공통 원칙 (Phase 20~22)
+- v2/v3 공통 원칙을 그대로 따른다 (`openapi.yml` 갱신, 테스트 함께 작성, `ApiResponse`/`BusinessException`, CI 통과 PR로 머지).
+- 리팩터링 Phase(20, 21)는 사용자에게 보이는 동작을 바꾸지 않는다.
+
+---
+
+## Phase 20 — 문서·의존성 정리
+**목표**: 현재 코드와 어긋난 문서와 잘못 분류된 의존성을 바로잡는다.
+
+### 작업
+- `frontend/ANALYSIS.md`를 현재 기준(작성일·커밋 갱신)으로 다시 쓴다
+  - 인증 페이지(`/login`, `/signup`), 선택 상태(`selection.ts`)의 smart/list/tag/search, 공유·그룹·알림 훅, 폴더 구조와 소스 규모
+- `shadcn`(CLI)을 `dependencies`에서 `devDependencies`로 이동하고 `package-lock.json` 갱신
+  - `globals.css`의 `@import "shadcn/tailwind.css"`는 빌드 시에만 번들되므로 devDependency로 충분하다. 그 밖에 런타임 JS에서 `shadcn`을 import하지 않는지 확인 (`cn`은 런타임 의존성 유지)
+
+### 완료 기준
+- `npm ci` → `npm run lint` → `npm run build`가 통과하고, `ANALYSIS.md`의 구조 설명이 실제 파일과 일치한다.
+
+---
+
+## Phase 21 — 사이드바 컴포넌트 분리
+**목표**: 884줄인 `sidebar.tsx`를 역할별로 나눠 읽고 고치기 쉽게 한다. 동작은 바꾸지 않는다.
+
+### 구성
+- `components/sidebar/` 폴더로 이동하고 `index.tsx`(조립)에서 `Sidebar`를 export
+  - `smart-views.tsx` — 스마트 리스트 메뉴
+  - `list-section.tsx` — 그룹/리스트 영역과 `DndContext`
+  - `sortable-group.tsx`, `sortable-list-item.tsx`, `list-item-content.tsx`, `move-to-group-menu.tsx`
+  - `tag-section.tsx`, `sidebar-item.tsx`
+- 드래그 처리(`parseDragId`, 순서 계산, optimistic update/복구)를 `use-sidebar-dnd.ts` 훅으로 분리
+- 다이얼로그 열림 상태 등 여러 하위 컴포넌트가 쓰는 상태는 `index.tsx`에 두고 props로 전달
+
+### 완료 기준
+- 파일 하나가 300줄을 넘지 않는다.
+- 스마트 뷰 선택, 리스트/그룹 드래그 정렬, 그룹 접기, 그룹으로 이동, 리스트 편집/공유/삭제, 태그 선택이 분리 전과 같게 동작한다.
+
+---
+
+## Phase 22 — 동시 수정 충돌 감지
+**목표**: 공유 리스트에서 동시 편집 시 나중 저장이 앞의 변경을 조용히 덮어쓰지 않게 한다.
+
+### 데이터 모델
+- `Reminder`, `ReminderList`에 `version`(Long, `@Version`) 추가
+  - 기존 행은 컬럼 추가 시 `null`이 되므로 0으로 채운다 (기존 백필 방식과 같이 기동 시 보정 또는 컬럼 기본값)
+
+### 백엔드
+- 리마인더/리스트 응답에 `version` 포함
+- `PUT /api/reminders/{id}`, `PUT /api/lists/{id}` 요청에 `version` 필수(`@NotNull`)
+  - 서비스에서 조회한 엔티티의 버전과 요청 버전이 다르면 `BusinessException(VERSION_CONFLICT)` → 409
+  - 같은 순간의 경합으로 발생하는 `ObjectOptimisticLockingFailureException`도 `GlobalExceptionHandler`에서 409(`VERSION_CONFLICT`)로 변환
+- `ResultCode.VERSION_CONFLICT`(409) 추가 — 기존 `CONFLICT`(중복)와 구분
+- 완료/플래그 토글, 순서 변경, 이동, 그룹 지정은 버전을 받지 않는다 (버전은 증가)
+
+### 프론트엔드
+- `Reminder`, `ReminderList` 타입과 수정 API에 `version` 추가, 편집 시 열 때의 `version`을 함께 보낸다
+- 409 `VERSION_CONFLICT` 응답 시 "다른 사용자가 먼저 수정했습니다" 토스트, 해당 쿼리를 무효화해 최신 내용으로 편집 창을 다시 채운다 (입력 중 내용은 버림)
+
+### 완료 기준
+- 두 사용자가 같은 리마인더 편집 창을 열고 A가 먼저 저장하면, B의 저장은 409로 거부되고 B 화면에 A의 변경이 반영된다.
+
+---
+
 ## 참고
 - 각 Phase는 이전 Phase 위에서 빌드/실행 가능한 상태를 유지하며 순차 진행한다.
 - spec.md 3번의 Out-of-Scope 중 10번에 포함되지 않은 항목(자연어 날짜 입력, 첨부파일, 위치 기반 리마인더)과 Web Push, 실시간(WebSocket) 동기화는 이 계획 범위 밖이며 필요 시 별도 논의한다.
