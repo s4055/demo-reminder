@@ -5,6 +5,7 @@
 export const listsQueryKey = ["lists"] as const // 쿼리 캐시를 ["lists"] 선언
 export const remindersQueryKey = ["reminders"] as const // 쿼리 캐시를 ["reminders"] 선언
 export const tagsQueryKey = ["tags"] as const // 쿼리 캐시를 ["tags"] 선언
+export const listGroupsQueryKey = ["list-groups"] as const // 쿼리 캐시를 ["list-groups"] 선언
 export const meQueryKey = ["auth", "me"] as const // 쿼리 캐시를 ["auth", "me"] 선언 (로그인한 사용자)
 
 // 리스트 멤버 목록. listsQueryKey로 시작하므로 리스트를 무효화하면 함께 다시 조회된다.

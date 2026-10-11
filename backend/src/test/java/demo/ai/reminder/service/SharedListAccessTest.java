@@ -4,6 +4,7 @@ import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.User;
+import demo.ai.reminder.dto.ListGroupRequest;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.dto.ReminderListResponse;
 import demo.ai.reminder.dto.ReminderRequest;
@@ -44,6 +45,9 @@ class SharedListAccessTest {
 
     @Autowired
     private ListMemberService listMemberService;
+
+    @Autowired
+    private ListGroupService listGroupService;
 
     @Autowired
     private TagService tagService;
@@ -200,6 +204,20 @@ class SharedListAccessTest {
                 ResultCode.FORBIDDEN);
         assertResultCode(() -> reminderListService.deleteList(sharedListId), ResultCode.FORBIDDEN);
         assertResultCode(() -> reminderListService.reorderLists(List.of(sharedListId)), ResultCode.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("공유 리스트의 그룹은 소유자만 지정하고(편집자 403), 편집자의 리스트 목록에서는 groupId가 null이다")
+    void sharedList_groupIsOwnersOnly() {
+        Long aliceGroup = listGroupService.createGroup(new ListGroupRequest("가족 일")).id();
+        reminderListService.changeGroup(sharedListId, aliceGroup);
+
+        TestAuth.signIn(bob);
+        Long bobGroup = listGroupService.createGroup(new ListGroupRequest("밥의 그룹")).id();
+
+        assertResultCode(() -> reminderListService.changeGroup(sharedListId, bobGroup), ResultCode.FORBIDDEN);
+        assertThat(reminderListService.getLists()).filteredOn(list -> list.id().equals(sharedListId))
+                .singleElement().satisfies(list -> assertThat(list.groupId()).isNull());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
+import demo.ai.reminder.dto.ListGroupAssignRequest;
 import demo.ai.reminder.dto.ListOrderRequest;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.dto.ReminderListResponse;
@@ -48,6 +49,11 @@ public class ReminderListController {
     @PutMapping("/{id}")
     public ApiResponse<ReminderListResponse> updateList(@PathVariable Long id, @Valid @RequestBody ReminderListRequest request) {
         return ApiResponse.success(reminderListService.updateList(id, request));
+    }
+
+    @PatchMapping("/{id}/group")
+    public ApiResponse<ReminderListResponse> changeGroup(@PathVariable Long id, @RequestBody ListGroupAssignRequest request) {
+        return ApiResponse.success(reminderListService.changeGroup(id, request.groupId()));
     }
 
     @DeleteMapping("/{id}")

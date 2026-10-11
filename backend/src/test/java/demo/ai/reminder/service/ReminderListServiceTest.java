@@ -142,6 +142,37 @@ class ReminderListServiceTest {
     }
 
     @Test
+    @DisplayName("아이콘을 지정해 만들고 수정으로 바꾸거나 지울 수 있으며, 리스트 목록에도 담긴다")
+    void createAndUpdateList_savesIcon() {
+        ReminderListResponse created = reminderListService.createList(
+                new ReminderListRequest("장보기", "#FF9500", "shopping-cart"));
+        assertThat(created.icon()).isEqualTo("shopping-cart");
+
+        ReminderListResponse updated = reminderListService.updateList(created.id(),
+                new ReminderListRequest("장보기", "#FF9500", "gift"));
+        assertThat(updated.icon()).isEqualTo("gift");
+        assertThat(reminderListService.getLists()).filteredOn(list -> list.id().equals(created.id()))
+                .singleElement().extracting(ReminderListResponse::icon).isEqualTo("gift");
+
+        ReminderListResponse cleared = reminderListService.updateList(created.id(),
+                new ReminderListRequest("장보기", "#FF9500"));
+        assertThat(cleared.icon()).isNull();
+    }
+
+    @Test
+    @DisplayName("허용 목록에 없는 아이콘으로 만들거나 수정하면 400 예외가 발생한다")
+    void createAndUpdateList_throwBadRequest_whenIconIsNotAllowed() {
+        Long id = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
+
+        assertThatThrownBy(() -> reminderListService.createList(new ReminderListRequest("업무", null, "rocket-ship")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+        assertThatThrownBy(() -> reminderListService.updateList(id, new ReminderListRequest("업무", null, "")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+    }
+
+    @Test
     @DisplayName("존재하지 않는 리스트를 수정하면 404 예외가 발생한다")
     void updateList_throwsNotFound_whenListDoesNotExist() {
         assertThatThrownBy(() -> reminderListService.updateList(-1L, new ReminderListRequest("업무", null)))
