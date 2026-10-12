@@ -19,6 +19,11 @@ info:
     리스트 목록·스마트 뷰·태그별/전체 조회·다가오는 리마인더에도 공유받은 리스트의 리마인더가 포함된다.
     리스트 자체의 수정/삭제와 멤버 초대/제거는 소유자만 할 수 있으며, 멤버가 이를 시도하면 403(`FORBIDDEN`)으로 응답한다.
     멤버가 아닌 사용자에게는 리스트와 그 리마인더가 없는 것처럼 404로 응답한다. 리스트 없이 만든 리마인더는 만든 사용자만 볼 수 있다.
+
+    **동시 수정 충돌 감지**: 리마인더와 리스트 응답에는 `version`이 담기며, 변경이 저장될 때마다 1씩 늘어난다
+    (수정뿐 아니라 완료/플래그 토글, 순서 변경, 리스트 이동, 그룹 지정도 버전을 올린다).
+    리마인더 수정(`PUT /api/reminders/{id}`)과 리스트 수정(`PUT /api/lists/{id}`)은 편집을 시작할 때 받은 `version`을 함께 보내야 하며,
+    그 사이 다른 사용자가 먼저 저장해 버전이 달라졌으면 409(`VERSION_CONFLICT`)로 거부한다. 이때는 최신 내용을 다시 조회해 편집한다.
   version: "1.0.0"
 servers:
   - url: http://localhost:8080
@@ -171,7 +176,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderListApiResponse"
         "400":
-          description: 유효성 검증 실패 (name 누락, color 형식 오류, 허용 목록에 없는 icon 등)
+          description: 유효성 검증 실패 (name 누락, color 형식 오류, 허용 목록에 없는 icon, version 누락 등)
           content:
             application/json:
               schema:
@@ -209,7 +214,7 @@ paths:
     put:
       tags: [Lists]
       summary: 리스트 이름/색상/아이콘 수정 (소유자만)
-      description: 전체 교체 방식이다. color/icon을 생략하거나 null로 보내면 비워진다(기본 색상/아이콘). 그룹은 PATCH /api/lists/{id}/group으로 바꾼다.
+      description: 전체 교체 방식이다. color/icon을 생략하거나 null로 보내면 비워진다(기본 색상/아이콘). 그룹은 PATCH /api/lists/{id}/group으로 바꾼다. version은 필수이며 현재 버전과 다르면 409(VERSION_CONFLICT)다.
       operationId: updateList
       parameters:
         - $ref: "#/components/parameters/ListId"
@@ -218,7 +223,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ReminderListRequest"
+              $ref: "#/components/schemas/ReminderListUpdateRequest"
       responses:
         "200":
           description: 수정된 리스트
@@ -240,6 +245,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
     delete:
       tags: [Lists]
       summary: 리스트 삭제 (소유자만, 다른 멤버가 만든 것을 포함한 소속 리마인더와 멤버 정보도 함께 삭제)
@@ -843,7 +850,7 @@ paths:
     put:
       tags: [Reminders]
       summary: 리마인더 수정 (제목/메모/마감일시/플래그/우선순위/태그/반복 전체 교체)
-      description: 요청 본문의 값으로 제목, 메모, 마감일시, 플래그, 우선순위, 태그, 반복 규칙(주기·간격·요일)을 교체한다. memo/dueAt을 생략하거나 null로 보내면 비워지고, priority/repeatRule을 생략하거나 null로 보내면 NONE이 되며, repeatInterval을 생략하면 1, repeatDaysOfWeek를 생략하면 요일 지정이 없어지고, tagNames를 생략하거나 null로 보내면 태그가 모두 떨어진다. flagged는 필수다. 완료 상태와 소속 리스트는 변경되지 않는다(리스트 이동은 PATCH /api/reminders/{id}/list). dueAt 없이 반복을 지정하면 400.
+      description: 요청 본문의 값으로 제목, 메모, 마감일시, 플래그, 우선순위, 태그, 반복 규칙(주기·간격·요일)을 교체한다. memo/dueAt을 생략하거나 null로 보내면 비워지고, priority/repeatRule을 생략하거나 null로 보내면 NONE이 되며, repeatInterval을 생략하면 1, repeatDaysOfWeek를 생략하면 요일 지정이 없어지고, tagNames를 생략하거나 null로 보내면 태그가 모두 떨어진다. flagged는 필수다. 완료 상태와 소속 리스트는 변경되지 않는다(리스트 이동은 PATCH /api/reminders/{id}/list). dueAt 없이 반복을 지정하면 400. version은 필수이며 현재 버전과 다르면(편집 중 다른 사용자가 먼저 저장) 409(VERSION_CONFLICT)다.
       operationId: updateReminder
       parameters:
         - $ref: "#/components/parameters/ReminderId"
@@ -861,7 +868,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderApiResponse"
         "400":
-          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule/요일 값, 빈 태그 이름이나 50자를 넘는 태그 이름, 1~99를 벗어난 repeatInterval 등), dueAt 없이 반복을 지정한 경우, 또는 WEEKLY가 아닌데 repeatDaysOfWeek를 지정한 경우
+          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule/요일 값, 빈 태그 이름이나 50자를 넘는 태그 이름, 1~99를 벗어난 repeatInterval, version 누락 등), dueAt 없이 반복을 지정한 경우, 또는 WEEKLY가 아닌데 repeatDaysOfWeek를 지정한 경우
           content:
             application/json:
               schema:
@@ -872,6 +879,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
     delete:
       tags: [Reminders]
       summary: 리마인더 삭제
@@ -953,6 +962,15 @@ components:
             resultMsg: 로그인이 필요합니다.
             data: null
 
+    VersionConflict:
+      description: 편집을 시작한 뒤 다른 사용자가 먼저 저장해 요청한 version이 현재 버전과 다름 (동시 저장 경합 포함). 최신 내용을 다시 조회해 편집한다.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            resultCode: VERSION_CONFLICT
+            resultMsg: "Reminder 1 was modified by someone else: requested version 0, current version 1"
     OwnerOnly:
       description: 리스트 멤버지만 소유자가 아님 (리스트 수정/삭제와 멤버 관리는 소유자만 할 수 있다)
       content:
@@ -1045,7 +1063,7 @@ components:
 
     ReminderUpdateRequest:
       type: object
-      required: [title, flagged]
+      required: [title, flagged, version]
       properties:
         title:
           type: string
@@ -1078,6 +1096,11 @@ components:
           $ref: "#/components/schemas/RepeatInterval"
         repeatDaysOfWeek:
           $ref: "#/components/schemas/RepeatDaysOfWeek"
+        version:
+          type: integer
+          format: int64
+          description: 편집을 시작할 때 받은 리마인더의 version. 현재 버전과 다르면 409(VERSION_CONFLICT)
+          example: 0
 
     TagNames:
       type: array
@@ -1226,6 +1249,10 @@ components:
           description: 하위 작업 목록 (부모 안의 순서대로). 하위 작업 자신의 subtasks는 항상 빈 배열이다.
           items:
             $ref: "#/components/schemas/ReminderResponse"
+        version:
+          type: integer
+          format: int64
+          description: 동시 수정 충돌 감지용 버전. 변경이 저장될 때마다 1씩 늘어나며, 수정 요청에 그대로 보낸다.
         createdAt:
           type: string
           format: date-time
@@ -1257,6 +1284,27 @@ components:
           example: "#FF9500"
         icon:
           $ref: "#/components/schemas/ListIcon"
+
+    ReminderListUpdateRequest:
+      type: object
+      required: [name, version]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: 장보기
+        color:
+          type: string
+          nullable: true
+          pattern: "^#[0-9a-fA-F]{6}$"
+          example: "#FF9500"
+        icon:
+          $ref: "#/components/schemas/ListIcon"
+        version:
+          type: integer
+          format: int64
+          description: 편집을 시작할 때 받은 리스트의 version. 현재 버전과 다르면 409(VERSION_CONFLICT)
+          example: 0
 
     ListIcon:
       type: string
@@ -1336,6 +1384,10 @@ components:
           format: int64
           description: 소유자를 포함한 멤버 수. 2 이상이면 공유된 리스트다.
           example: 2
+        version:
+          type: integer
+          format: int64
+          description: 동시 수정 충돌 감지용 버전. 변경이 저장될 때마다 1씩 늘어나며(그룹 지정·순서 변경 포함), 수정 요청에 그대로 보낸다.
         createdAt:
           type: string
           format: date-time
@@ -1402,7 +1454,7 @@ components:
       properties:
         resultCode:
           type: string
-          enum: [SUCCESS, BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, METHOD_NOT_ALLOWED, INTERNAL_SERVER_ERROR]
+          enum: [SUCCESS, BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, VERSION_CONFLICT, METHOD_NOT_ALLOWED, INTERNAL_SERVER_ERROR]
           description: |
             - `SUCCESS`: 성공
             - `BAD_REQUEST`: 유효성 검증 실패, 본문 형식 오류, 지원하지 않는 값 등 4xx 요청 오류
@@ -1410,6 +1462,7 @@ components:
             - `FORBIDDEN`: 리스트 멤버지만 소유자 권한이 필요한 작업 (403)
             - `NOT_FOUND`: 대상을 찾을 수 없음 (다른 사용자의 리소스, 멤버가 아닌 리스트 포함)
             - `CONFLICT`: 이미 존재하는 대상 (예: 가입된 이메일, 409)
+            - `VERSION_CONFLICT`: 편집 중 다른 사용자가 먼저 수정해 요청한 version이 현재 버전과 다름 (409)
             - `METHOD_NOT_ALLOWED`: 지원하지 않는 HTTP 메서드
             - `INTERNAL_SERVER_ERROR`: 서버 오류
           example: SUCCESS

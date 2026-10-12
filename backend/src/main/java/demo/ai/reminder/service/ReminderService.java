@@ -141,9 +141,11 @@ public class ReminderService {
     }
 
     // 태그도 요청 목록으로 교체한다 (생략하거나 null이면 모두 떨어진다).
+    // 요청 버전이 현재 버전과 다르면(편집 중 다른 사용자가 먼저 수정) 409다.
     @Transactional
     public ReminderResponse updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
+        Versions.verify(reminder.getVersion(), request.version(), "Reminder " + id);
         Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek(),
                 request.dueAt());
         reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority(),

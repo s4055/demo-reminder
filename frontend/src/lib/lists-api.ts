@@ -18,6 +18,8 @@ export type ReminderList = {
   role: ListRole
   // 소유자를 포함한 멤버 수. 2 이상이면 공유된 리스트다.
   memberCount: number
+  // 동시 수정 충돌 감지용 버전. 변경이 저장될 때마다(그룹 지정/순서 변경 포함) 1씩 늘어난다.
+  version: number
   createdAt: string
   updatedAt: string
 }
@@ -45,6 +47,9 @@ export type ReminderListInput = {
   icon?: string | null
 }
 
+// 편집을 시작할 때 받은 version. 그 사이 다른 변경이 먼저 저장되었으면 409(VERSION_CONFLICT)로 거부된다.
+export type UpdateReminderListInput = ReminderListInput & { version: number }
+
 export function getLists(): Promise<ReminderList[]> {
   return apiRequest<ReminderList[]>("/api/lists")
 }
@@ -55,7 +60,7 @@ export function createList(input: ReminderListInput): Promise<ReminderList> {
 
 export function updateList(
   id: number,
-  input: ReminderListInput
+  input: UpdateReminderListInput
 ): Promise<ReminderList> {
   return apiRequest<ReminderList>(`/api/lists/${id}`, jsonBody("PUT", input))
 }

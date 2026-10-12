@@ -22,6 +22,14 @@ export class ApiError extends Error {
   }
 }
 
+// 편집하는 동안 다른 사용자가 먼저 저장해 수정이 거부된 경우(409 VERSION_CONFLICT)
+export function isVersionConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.resultCode === "VERSION_CONFLICT"
+}
+
+export const VERSION_CONFLICT_MESSAGE =
+  "다른 사용자가 먼저 수정했습니다. 최신 내용을 불러왔습니다."
+
 // 로그인이 풀린 상태(401)로 일반 API를 호출했을 때 실행할 동작. Providers에서 로그인 페이지 이동을 등록한다.
 // /api/auth/** 의 401(로그인 실패, 비로그인 상태의 me 조회)은 각 화면이 직접 처리하므로 제외한다.
 let unauthorizedHandler: (() => void) | undefined

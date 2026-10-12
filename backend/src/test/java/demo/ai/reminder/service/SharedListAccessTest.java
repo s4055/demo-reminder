@@ -6,6 +6,7 @@ import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.User;
 import demo.ai.reminder.dto.ListGroupRequest;
 import demo.ai.reminder.dto.ReminderListRequest;
+import demo.ai.reminder.dto.ReminderListUpdateRequest;
 import demo.ai.reminder.dto.ReminderListResponse;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderResponse;
@@ -115,7 +116,7 @@ class SharedListAccessTest {
         ReminderResponse subtask = reminderService.createReminder(
                 new ReminderRequest("통밀", null, null, null, null, null, aliceReminder.id(), null));
         reminderService.updateReminder(aliceReminder.id(),
-                new ReminderUpdateRequest("저지방 우유", null, today, false, null, null, null));
+                new ReminderUpdateRequest("저지방 우유", null, today, false, null, null, null, 0L));
         reminderService.toggleFlag(aliceReminder.id());
         reminderService.reorderReminders(sharedListId, List.of(bobReminder.id(), aliceReminder.id()));
         reminderService.toggleComplete(subtask.id());
@@ -200,7 +201,7 @@ class SharedListAccessTest {
     void editor_cannotChangeTheListItself() {
         TestAuth.signIn(bob);
 
-        assertResultCode(() -> reminderListService.updateList(sharedListId, new ReminderListRequest("바꿈", null)),
+        assertResultCode(() -> reminderListService.updateList(sharedListId, new ReminderListUpdateRequest("바꿈", null, 0L)),
                 ResultCode.FORBIDDEN);
         assertResultCode(() -> reminderListService.deleteList(sharedListId), ResultCode.FORBIDDEN);
         assertResultCode(() -> reminderListService.reorderLists(List.of(sharedListId)), ResultCode.BAD_REQUEST);
@@ -272,12 +273,12 @@ class SharedListAccessTest {
                 () -> reminderService.createReminder(
                         new ReminderRequest("몰래", null, null, null, null, null, aliceReminder.id(), null)),
                 () -> reminderService.updateReminder(aliceReminder.id(),
-                        new ReminderUpdateRequest("몰래", null, null, false, null, null, null)),
+                        new ReminderUpdateRequest("몰래", null, null, false, null, null, null, 0L)),
                 () -> reminderService.toggleComplete(aliceReminder.id()),
                 () -> reminderService.deleteReminder(aliceReminder.id()),
                 () -> reminderService.reorderReminders(sharedListId, List.of(aliceReminder.id())),
                 () -> reminderService.deleteCompletedReminders(sharedListId),
-                () -> reminderListService.updateList(sharedListId, new ReminderListRequest("몰래", null)),
+                () -> reminderListService.updateList(sharedListId, new ReminderListUpdateRequest("몰래", null, 0L)),
                 () -> reminderListService.deleteList(sharedListId)
         );
         for (Executable attempt : attempts) {

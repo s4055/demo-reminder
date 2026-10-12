@@ -108,10 +108,36 @@ class ReminderControllerTest {
 
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"우유 사기\",\"flagged\":false,\"priority\":\"LOW\"}"))
+                        .content("{\"title\":\"우유 사기\",\"flagged\":false,\"priority\":\"LOW\",\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.priority").value("LOW"));
+    }
+
+    @Test
+    @DisplayName("리마인더 수정은 version이 필수이며, 생략하면 400이고 지난 버전이면 409와 VERSION_CONFLICT다")
+    void updateReminder_requiresCurrentVersion() throws Exception {
+        Reminder saved = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null));
+
+        mockMvc.perform(put("/api/reminders/{id}", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"저지방 우유\",\"flagged\":false}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+        mockMvc.perform(put("/api/reminders/{id}", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"저지방 우유\",\"flagged\":false,\"version\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("저지방 우유"))
+                .andExpect(jsonPath("$.data.version").value(1));
+        mockMvc.perform(put("/api/reminders/{id}", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"두유\",\"flagged\":false,\"version\":0}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.resultCode").value("VERSION_CONFLICT"));
+        mockMvc.perform(get("/api/reminders"))
+                .andExpect(jsonPath("$.data[0].title").value("저지방 우유"))
+                .andExpect(jsonPath("$.data[0].version").value(1));
     }
 
     @Test
@@ -482,7 +508,7 @@ class ReminderControllerTest {
 
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"우유 사기\",\"flagged\":false,\"tagNames\":[\"급함\"]}"))
+                        .content("{\"title\":\"우유 사기\",\"flagged\":false,\"tagNames\":[\"급함\"],\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.tags", contains("급함")));
     }

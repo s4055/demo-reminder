@@ -17,11 +17,13 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OptimisticLock;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -111,10 +113,18 @@ public class Reminder extends BaseTimeEntity {
     private Reminder parent;
 
     // 하위 작업. 부모를 삭제하면 함께 삭제되고, sortOrder는 부모 안에서의 순서다.
+    // 하위 작업은 각자 버전을 가지므로 추가/삭제해도 부모의 버전은 올리지 않는다 (편집 창에서 하위 작업을 추가한 뒤 부모를 저장할 수 있어야 한다).
+    @OptimisticLock(excluded = true)
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC, id ASC")
     @BatchSize(size = 100)
     private List<Reminder> subtasks = new ArrayList<>();
+
+    // 동시 수정 충돌 감지용 버전. 변경이 저장될 때마다 1씩 늘어난다. 컬럼 추가 전에 저장된 행은 기본값 0으로 채워진다.
+    @Version
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private Long version;
 
     public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt) {
         this(user, title, memo, list, dueAt, Priority.NONE);

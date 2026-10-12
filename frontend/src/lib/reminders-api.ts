@@ -27,6 +27,8 @@ export type Reminder = {
   parentId: number | null
   // 하위 작업 (부모 안의 순서대로). 하위 작업 자신은 항상 빈 배열이다.
   subtasks: Reminder[]
+  // 동시 수정 충돌 감지용 버전. 변경이 저장될 때마다 1씩 늘어나며, 수정할 때 편집을 시작한 시점의 값을 보낸다.
+  version: number
   createdAt: string
   updatedAt: string
 }
@@ -62,6 +64,8 @@ export type UpdateReminderInput = {
   repeatInterval: number
   // WEEKLY일 때만 지정할 수 있다 (아니면 400). 빈 배열이면 마감일의 요일로 반복한다.
   repeatDaysOfWeek: DayOfWeek[]
+  // 편집을 시작할 때 받은 version. 그 사이 다른 사용자가 먼저 저장했으면 409(VERSION_CONFLICT)로 거부된다.
+  version: number
 }
 
 // listId를 지정하면 최상위 리마인더만 오고, 하위 작업은 각 항목의 subtasks에 담긴다.

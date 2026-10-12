@@ -17,6 +17,7 @@ public record ReminderListResponse(
         long reminderCount,
         ListRole role,
         long memberCount,
+        Long version,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -33,6 +34,7 @@ public record ReminderListResponse(
                 summary.reminderCount(),
                 summary.role(),
                 summary.memberCount(),
+                summary.list().getVersion(),
                 summary.list().getCreatedAt(),
                 summary.list().getUpdatedAt()
         );

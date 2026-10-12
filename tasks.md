@@ -421,17 +421,17 @@
 
 ## Phase 22 — 동시 수정 충돌 감지
 ### 백엔드
-- [ ] `Reminder`, `ReminderList`에 `@Version version` 추가, 기존 행 버전 0으로 보정
-- [ ] 리마인더/리스트 응답에 `version` 포함
-- [ ] `PUT /api/reminders/{id}`, `PUT /api/lists/{id}` 요청에 `version` 필수, 불일치 시 409
-- [ ] `ResultCode.VERSION_CONFLICT` 추가, `ObjectOptimisticLockingFailureException`도 409로 변환
-- [ ] `openapi.yml` 갱신
-- [ ] 테스트: 버전 일치 시 수정·버전 증가, 불일치 409, 토글/이동 후 버전 증가, 기존 행 보정, 컨트롤러 `version` 필수 400
+- [x] `Reminder`, `ReminderList`에 `@Version version` 추가, 기존 행 버전 0으로 보정
+- [x] 리마인더/리스트 응답에 `version` 포함
+- [x] `PUT /api/reminders/{id}`, `PUT /api/lists/{id}` 요청에 `version` 필수, 불일치 시 409
+- [x] `ResultCode.VERSION_CONFLICT` 추가, `ObjectOptimisticLockingFailureException`도 409로 변환
+- [x] `openapi.yml` 갱신
+- [x] 테스트: 버전 일치 시 수정·버전 증가, 불일치 409, 토글/이동 후 버전 증가, 기존 행 보정, 컨트롤러 `version` 필수 400
 
 ### 프론트엔드
-- [ ] `Reminder`, `ReminderList` 타입과 수정 API에 `version` 추가
-- [ ] 리마인더 편집/리스트 편집 저장 시 `version` 전송
-- [ ] 409 `VERSION_CONFLICT` 시 토스트 + 쿼리 무효화로 최신 내용 다시 표시
+- [x] `Reminder`, `ReminderList` 타입과 수정 API에 `version` 추가
+- [x] 리마인더 편집/리스트 편집 저장 시 `version` 전송
+- [x] 409 `VERSION_CONFLICT` 시 토스트 + 쿼리 무효화로 최신 내용 다시 표시
 
 ### 완료 기준 검증
-- [ ] 두 계정이 같은 공유 리스트의 리마인더를 동시에 편집할 때 나중 저장이 409로 거부되고 최신 내용이 반영되는지 확인
+- [x] 두 계정이 같은 공유 리스트의 리마인더를 동시에 편집할 때 나중 저장이 409로 거부되고 최신 내용이 반영되는지 확인

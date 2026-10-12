@@ -110,7 +110,7 @@ class ListMemberControllerTest {
                 .andExpect(jsonPath("$.resultCode").value("FORBIDDEN"));
         mockMvc.perform(put("/api/lists/{id}", list.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"바꿈\"}"))
+                        .content("{\"name\":\"바꿈\",\"version\":0}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.resultCode").value("FORBIDDEN"));
         mockMvc.perform(delete("/api/lists/{id}", list.getId()))

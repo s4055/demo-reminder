@@ -5,6 +5,7 @@ import demo.ai.reminder.dto.ListGroupAssignRequest;
 import demo.ai.reminder.dto.ListOrderRequest;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.dto.ReminderListResponse;
+import demo.ai.reminder.dto.ReminderListUpdateRequest;
 import demo.ai.reminder.service.ReminderListService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +48,7 @@ public class ReminderListController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<ReminderListResponse> updateList(@PathVariable Long id, @Valid @RequestBody ReminderListRequest request) {
+    public ApiResponse<ReminderListResponse> updateList(@PathVariable Long id, @Valid @RequestBody ReminderListUpdateRequest request) {
         return ApiResponse.success(reminderListService.updateList(id, request));
     }
 

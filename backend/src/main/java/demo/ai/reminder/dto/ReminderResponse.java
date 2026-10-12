@@ -26,6 +26,7 @@ public record ReminderResponse(
         List<String> tags,
         Long parentId,
         List<ReminderResponse> subtasks,
+        Long version,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -49,6 +50,7 @@ public record ReminderResponse(
                 reminder.getTags().stream().map(Tag::getName).sorted().toList(),
                 reminder.getParent() != null ? reminder.getParent().getId() : null,
                 reminder.getSubtasks().stream().map(ReminderResponse::from).toList(),
+                reminder.getVersion(),
                 reminder.getCreatedAt(),
                 reminder.getUpdatedAt()
         );
