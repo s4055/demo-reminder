@@ -29,9 +29,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { useLists } from "@/hooks/use-lists"
 import {
   useCreateReminder,
+  useFetchLatestReminder,
   useMoveReminder,
   useUpdateReminder,
 } from "@/hooks/use-reminders"
+import { isVersionConflict } from "@/lib/api"
 import { toDueAtParam } from "@/lib/due-date"
 import type { ReminderList } from "@/lib/lists-api"
 import { PRIORITIES, PRIORITY_LABELS, type Priority } from "@/lib/priority"
@@ -54,6 +56,19 @@ type ReminderFormValues = {
   tagNames: string[]
   // 소속 리스트. 리스트 없이 만든 리마인더는 null이며, 리스트로 옮길 수는 있지만 '리스트 없음'으로 되돌릴 수는 없다.
   listId: number | null
+}
+
+function formValuesOf(reminder: Reminder): ReminderFormValues {
+  return {
+    title: reminder.title,
+    memo: reminder.memo ?? "",
+    dueAt: reminder.dueAt ? parseISO(reminder.dueAt) : undefined,
+    recurrence: recurrenceOf(reminder),
+    flagged: reminder.flagged,
+    priority: reminder.priority,
+    tagNames: reminder.tags,
+    listId: reminder.listId,
+  }
 }
 
 export function ReminderEditDialog({
@@ -87,7 +102,11 @@ function ReminderEditForm({
 }) {
   const updateReminder = useUpdateReminder()
   const moveReminder = useMoveReminder()
+  const fetchLatestReminder = useFetchLatestReminder()
   const { data: lists } = useLists()
+  // 폼을 채운 시점의 리마인더. 목록이 주기적으로 다시 조회되어 reminder가 바뀌어도, 저장할 때는 편집을 시작한 시점의
+  // version을 보내야 그 사이 다른 사용자가 저장한 변경을 덮어쓰지 않는다 (다르면 409).
+  const [base, setBase] = useState(reminder)
   // 입력 연결 방식은 컴포넌트가 값을 주고받는 방식에 따라 나눈다.
   // - register: 내부가 진짜 HTML 입력 요소인 컴포넌트(Input, Textarea). ref와 onChange 이벤트(event.target.value)로 값을 읽는다.
   // - Controller(control): 진짜 입력 요소 없이 value / onChange 계열 prop으로 값을 주고받는 컴포넌트
@@ -97,25 +116,31 @@ function ReminderEditForm({
     handleSubmit,
     control,
     setValue,
+    reset,
     formState: { errors },
-  } = useForm<ReminderFormValues>({
-    defaultValues: {
-      title: reminder.title,
-      memo: reminder.memo ?? "",
-      dueAt: reminder.dueAt ? parseISO(reminder.dueAt) : undefined,
-      recurrence: recurrenceOf(reminder),
-      flagged: reminder.flagged,
-      priority: reminder.priority,
-      tagNames: reminder.tags,
-      listId: reminder.listId,
-    },
-  })
+  } = useForm<ReminderFormValues>({ defaultValues: formValuesOf(reminder) })
 
   const dueAt = useWatch({ control, name: "dueAt" })
 
+  // 다른 사용자가 먼저 저장해 거부되면(409) 최신 내용과 version으로 폼을 다시 채운다 (입력 중이던 내용은 버린다).
+  // 그 사이 삭제되었으면 창을 닫는다. 다시 불러오지 못하면 그대로 두며, 다시 저장하면 또 409가 되어 다시 시도한다.
+  async function reloadLatest() {
+    try {
+      const latest = await fetchLatestReminder(reminder.id)
+      if (!latest) {
+        onSaved()
+        return
+      }
+      setBase(latest)
+      reset(formValuesOf(latest))
+    } catch {
+      // 전역 토스트로 충돌은 이미 알렸다.
+    }
+  }
+
   // 내용을 저장한 뒤 리스트가 바뀌었으면 옮긴다. 하위 작업은 부모를 따라서만 이동하므로 리스트를 바꿀 수 없다.
   function moveIfChanged(listId: number | null) {
-    if (listId === null || listId === reminder.listId) {
+    if (listId === null || listId === base.listId) {
       onSaved()
       return
     }
@@ -143,9 +168,15 @@ function ReminderEditForm({
           priority: values.priority,
           tagNames: values.tagNames,
           ...toRepeatFields(values.dueAt ? values.recurrence : NO_REPEAT),
+          version: base.version,
         },
       },
-      { onSuccess: () => moveIfChanged(values.listId) }
+      {
+        onSuccess: () => moveIfChanged(values.listId),
+        onError: (error) => {
+          if (isVersionConflict(error)) reloadLatest()
+        },
+      }
     )
   }
 

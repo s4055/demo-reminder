@@ -19,6 +19,7 @@ import {
   updateList,
   type ReminderList,
   type ReminderListInput,
+  type UpdateReminderListInput,
 } from "@/lib/lists-api"
 import {
   SYNC_INTERVAL_MS,
@@ -57,12 +58,25 @@ export function useCreateList() {
 export function useUpdateList() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, input }: { id: number; input: ReminderListInput }) =>
+    mutationFn: ({ id, input }: { id: number; input: UpdateReminderListInput }) =>
       updateList(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: listsQueryKey }) // 쿼리 캐시 무효화
     },
   })
+}
+
+// 수정이 버전 충돌(409)로 거부되었을 때 편집 창을 다시 채울 최신 리스트를 가져온다.
+// 리스트 목록을 다시 조회해 캐시(사이드바)도 함께 갱신하며, 그 사이 삭제되었으면 undefined다.
+export function useFetchLatestList() {
+  const queryClient = useQueryClient()
+  return async (id: number) => {
+    const lists = await queryClient.fetchQuery({
+      queryKey: listsQueryKey,
+      queryFn: getLists,
+    })
+    return lists.find((list) => list.id === id)
+  }
 }
 
 // 드롭 즉시 사이드바 순서를 바꾸고(optimistic update), 실패하면 원래 순서로 되돌린다.

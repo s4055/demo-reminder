@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,7 +12,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useCreateList, useUpdateList } from "@/hooks/use-lists"
+import {
+  useCreateList,
+  useFetchLatestList,
+  useUpdateList,
+} from "@/hooks/use-lists"
+import { isVersionConflict } from "@/lib/api"
 import {
   LIST_ICONS,
   LIST_ICON_KEYS,
@@ -40,6 +46,14 @@ type ListFormValues = {
   icon: ListIconKey | null
 }
 
+function formValuesOf(list: ReminderList | undefined): ListFormValues {
+  return {
+    name: list?.name ?? "",
+    color: list?.color ?? DEFAULT_COLOR,
+    icon: list && isListIconKey(list.icon) ? list.icon : null,
+  }
+}
+
 /** list 가 있으면 수정, 없으면 새 리스트 생성 폼이 된다. */
 export function ListFormDialog({
   open,
@@ -62,6 +76,7 @@ export function ListFormDialog({
             onOpenChange(false)
             onSaved?.(saved)
           }}
+          onClose={() => onOpenChange(false)}
         />
       </DialogContent>
     </Dialog>
@@ -71,28 +86,44 @@ export function ListFormDialog({
 function ListForm({
   list,
   onSaved,
+  onClose,
 }: {
   list?: ReminderList
   onSaved: (list: ReminderList) => void
+  onClose: () => void
 }) {
   const isEdit = list !== undefined
   const createList = useCreateList()
   const updateList = useUpdateList()
   const mutation = isEdit ? updateList : createList
+  const fetchLatestList = useFetchLatestList()
+  // 폼을 채운 시점의 version. 저장할 때 보내 그 사이 다른 변경이 먼저 저장되었으면 409로 거부되게 한다.
+  const [version, setVersion] = useState(list?.version)
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
-  } = useForm<ListFormValues>({
-    defaultValues: {
-      name: list?.name ?? "",
-      color: list?.color ?? DEFAULT_COLOR,
-      icon: list && isListIconKey(list.icon) ? list.icon : null,
-    },
-  })
+  } = useForm<ListFormValues>({ defaultValues: formValuesOf(list) })
   const color = useWatch({ control, name: "color" })
+
+  // 다른 변경이 먼저 저장되어 거부되면(409) 최신 내용과 version으로 폼을 다시 채운다 (입력 중이던 내용은 버린다).
+  // 그 사이 삭제되었으면 창을 닫는다. 다시 불러오지 못하면 그대로 두며, 다시 저장하면 또 409가 되어 다시 시도한다.
+  async function reloadLatest(id: number) {
+    try {
+      const latest = await fetchLatestList(id)
+      if (!latest) {
+        onClose()
+        return
+      }
+      setVersion(latest.version)
+      reset(formValuesOf(latest))
+    } catch {
+      // 전역 토스트로 충돌은 이미 알렸다.
+    }
+  }
 
   function onSubmit(values: ListFormValues) {
     const input = {
@@ -102,7 +133,15 @@ function ListForm({
     }
     const options = { onSuccess: onSaved }
     if (isEdit) {
-      updateList.mutate({ id: list.id, input }, options)
+      updateList.mutate(
+        { id: list.id, input: { ...input, version: version ?? list.version } },
+        {
+          ...options,
+          onError: (error) => {
+            if (isVersionConflict(error)) reloadLatest(list.id)
+          },
+        }
+      )
     } else {
       createList.mutate(input, options)
     }
