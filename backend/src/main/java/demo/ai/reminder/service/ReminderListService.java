@@ -8,6 +8,7 @@ import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.ReminderListRequest;
 import demo.ai.reminder.dto.ReminderListResponse;
+import demo.ai.reminder.dto.ReminderListUpdateRequest;
 import demo.ai.reminder.repository.ListGroupRepository;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderListSummary;
@@ -51,9 +52,11 @@ public class ReminderListService {
     }
 
     // 소유자만 수정할 수 있다. icon을 생략하면 기본 아이콘(null)이 된다.
+    // 요청 버전이 현재 버전과 다르면(편집 중 다른 변경이 먼저 저장됨) 409다.
     @Transactional
-    public ReminderListResponse updateList(Long id, ReminderListRequest request) {
+    public ReminderListResponse updateList(Long id, ReminderListUpdateRequest request) {
         ReminderList list = listAccess.ownedList(id);
+        Versions.verify(list.getVersion(), request.version(), "List " + id);
         validateIcon(request.icon());
         list.update(request.name(), request.color(), request.icon());
         return toOwnedResponse(list);

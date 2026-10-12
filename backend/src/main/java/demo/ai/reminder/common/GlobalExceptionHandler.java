@@ -5,6 +5,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -40,6 +41,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ResultCode resultCode = ex.getResultCode();
         return ResponseEntity.status(resultCode.getStatus())
                 .body(ApiResponse.error(resultCode, ex.getMessage()));
+    }
+
+    // 버전 검증을 통과한 뒤 같은 순간에 다른 요청이 먼저 저장하면 flush 시점에 낙관적 락 실패가 난다. 버전 불일치와 같은 409로 응답한다.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailure(ObjectOptimisticLockingFailureException ex) {
+        log.info("Optimistic locking failure: {}", ex.getMessage());
+        ResultCode resultCode = ResultCode.VERSION_CONFLICT;
+        return ResponseEntity.status(resultCode.getStatus())
+                .body(ApiResponse.error(resultCode, resultCode.getDefaultMessage()));
     }
 
     @ExceptionHandler(Exception.class)

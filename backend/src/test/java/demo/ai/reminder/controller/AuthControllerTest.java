@@ -144,7 +144,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data", hasSize(0)));
         mockMvc.perform(put("/api/lists/{id}", aliceListId).session(bob)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"가로채기\"}"))
+                        .content("{\"name\":\"가로채기\",\"version\":0}"))
                 .andExpect(status().isNotFound());
         mockMvc.perform(get("/api/lists").session(alice))
                 .andExpect(jsonPath("$.data[0].name").value("앨리스 장보기"));

@@ -7,6 +7,7 @@ import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.Tag;
 import demo.ai.reminder.domain.User;
 import demo.ai.reminder.dto.ReminderListRequest;
+import demo.ai.reminder.dto.ReminderListUpdateRequest;
 import demo.ai.reminder.dto.ReminderListResponse;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
@@ -109,7 +110,7 @@ class ReminderListServiceTest {
         LocalDateTime updatedAt = backdateUpdatedAt(saved.getId());
         LocalDateTime createdAt = reminderListRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
 
-        ReminderListResponse response = reminderListService.updateList(saved.getId(), new ReminderListRequest("업무", null));
+        ReminderListResponse response = reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", null, 0L));
 
         ReminderList result = reminderListRepository.findById(saved.getId()).orElseThrow();
         assertThat(result.getCreatedAt()).isEqualTo(createdAt);
@@ -134,7 +135,7 @@ class ReminderListServiceTest {
         ReminderList saved = reminderListRepository.save(new ReminderList(owner, "장보기", "#FF9500"));
         reminderRepository.save(new Reminder(owner, "우유 사기", null, saved, null));
 
-        ReminderListResponse result = reminderListService.updateList(saved.getId(), new ReminderListRequest("업무", "#007AFF"));
+        ReminderListResponse result = reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", "#007AFF", 0L));
 
         assertThat(result.name()).isEqualTo("업무");
         assertThat(result.color()).isEqualTo("#007AFF");
@@ -149,13 +150,13 @@ class ReminderListServiceTest {
         assertThat(created.icon()).isEqualTo("shopping-cart");
 
         ReminderListResponse updated = reminderListService.updateList(created.id(),
-                new ReminderListRequest("장보기", "#FF9500", "gift"));
+                new ReminderListUpdateRequest("장보기", "#FF9500", "gift", 0L));
         assertThat(updated.icon()).isEqualTo("gift");
         assertThat(reminderListService.getLists()).filteredOn(list -> list.id().equals(created.id()))
                 .singleElement().extracting(ReminderListResponse::icon).isEqualTo("gift");
 
         ReminderListResponse cleared = reminderListService.updateList(created.id(),
-                new ReminderListRequest("장보기", "#FF9500"));
+                new ReminderListUpdateRequest("장보기", "#FF9500", updated.version()));
         assertThat(cleared.icon()).isNull();
     }
 
@@ -167,7 +168,7 @@ class ReminderListServiceTest {
         assertThatThrownBy(() -> reminderListService.createList(new ReminderListRequest("업무", null, "rocket-ship")))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
-        assertThatThrownBy(() -> reminderListService.updateList(id, new ReminderListRequest("업무", null, "")))
+        assertThatThrownBy(() -> reminderListService.updateList(id, new ReminderListUpdateRequest("업무", null, "", 0L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
     }
@@ -175,7 +176,7 @@ class ReminderListServiceTest {
     @Test
     @DisplayName("존재하지 않는 리스트를 수정하면 404 예외가 발생한다")
     void updateList_throwsNotFound_whenListDoesNotExist() {
-        assertThatThrownBy(() -> reminderListService.updateList(-1L, new ReminderListRequest("업무", null)))
+        assertThatThrownBy(() -> reminderListService.updateList(-1L, new ReminderListUpdateRequest("업무", null, 0L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
@@ -228,7 +229,7 @@ class ReminderListServiceTest {
                 .filteredOn(list -> list.id().equals(home.getId()))
                 .extracting(ReminderListResponse::reminderCount)
                 .containsExactly(2L);
-        assertThat(reminderListService.updateList(home.getId(), new ReminderListRequest("우리 집", null)).reminderCount())
+        assertThat(reminderListService.updateList(home.getId(), new ReminderListUpdateRequest("우리 집", null, 0L)).reminderCount())
                 .isEqualTo(2L);
     }
 

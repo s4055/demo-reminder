@@ -11,9 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OptimisticLock;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,9 +54,17 @@ public class ReminderList extends BaseTimeEntity {
     private int sortOrder;
 
     // 리스트를 삭제하면 멤버도 함께 삭제된다.
+    // 멤버 초대/제거는 리스트 편집 내용(이름/색상/아이콘)이 아니므로 리스트 버전을 올리지 않는다.
+    @OptimisticLock(excluded = true)
     @OneToMany(mappedBy = "list", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private List<ListMember> members = new ArrayList<>();
+
+    // 동시 수정 충돌 감지용 버전. 변경이 저장될 때마다 1씩 늘어난다. 컬럼 추가 전에 저장된 행은 기본값 0으로 채워진다.
+    @Version
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private Long version;
 
     public ReminderList(User user, String name, String color) {
         this(user, name, color, null, 0);

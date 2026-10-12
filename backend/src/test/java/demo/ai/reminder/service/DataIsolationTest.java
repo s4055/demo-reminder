@@ -4,6 +4,7 @@ import demo.ai.reminder.common.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.User;
 import demo.ai.reminder.dto.ReminderListRequest;
+import demo.ai.reminder.dto.ReminderListUpdateRequest;
 import demo.ai.reminder.dto.ReminderListResponse;
 import demo.ai.reminder.dto.ReminderRequest;
 import demo.ai.reminder.dto.ReminderResponse;
@@ -98,7 +99,7 @@ class DataIsolationTest {
         List<Executable> attempts = List.of(
                 () -> reminderService.getReminders(aliceListId, null),
                 () -> reminderService.updateReminder(reminderId,
-                        new ReminderUpdateRequest("가로채기", null, null, false, null, null, null)),
+                        new ReminderUpdateRequest("가로채기", null, null, false, null, null, null, 0L)),
                 () -> reminderService.toggleComplete(reminderId),
                 () -> reminderService.toggleFlag(reminderId),
                 () -> reminderService.deleteReminder(reminderId),
@@ -107,7 +108,7 @@ class DataIsolationTest {
                         new ReminderRequest("끼워넣기", null, aliceListId, null, null, null, null, null)),
                 () -> reminderService.createReminder(
                         new ReminderRequest("하위 작업", null, null, null, null, null, reminderId, null)),
-                () -> reminderListService.updateList(aliceListId, new ReminderListRequest("가로채기", null)),
+                () -> reminderListService.updateList(aliceListId, new ReminderListUpdateRequest("가로채기", null, 0L)),
                 () -> reminderListService.deleteList(aliceListId),
                 () -> tagService.deleteTag(aliceTagId));
         for (Executable attempt : attempts) {

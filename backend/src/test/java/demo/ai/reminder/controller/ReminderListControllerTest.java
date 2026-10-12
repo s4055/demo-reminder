@@ -94,10 +94,36 @@ class ReminderListControllerTest {
     void updateList_returnsNotFound_whenListDoesNotExist() throws Exception {
         mockMvc.perform(put("/api/lists/{id}", -1L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"업무\"}"))
+                        .content("{\"name\":\"업무\",\"version\":0}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.resultCode").value("NOT_FOUND"))
                 .andExpect(jsonPath("$.resultMsg").value("List not found: -1"));
+    }
+
+    @Test
+    @DisplayName("리스트 수정은 version이 필수이며, 생략하면 400이고 지난 버전이면 409와 VERSION_CONFLICT다")
+    void updateList_requiresCurrentVersion() throws Exception {
+        ReminderList list = reminderListRepository.saveAndFlush(new ReminderList(owner, "장보기", null));
+
+        mockMvc.perform(put("/api/lists/{id}", list.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"마트\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+        mockMvc.perform(put("/api/lists/{id}", list.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"마트\",\"version\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("마트"))
+                .andExpect(jsonPath("$.data.version").value(1));
+        mockMvc.perform(put("/api/lists/{id}", list.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"시장\",\"version\":0}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.resultCode").value("VERSION_CONFLICT"));
+        mockMvc.perform(get("/api/lists"))
+                .andExpect(jsonPath("$.data[0].name").value("마트"))
+                .andExpect(jsonPath("$.data[0].version").value(1));
     }
 
     @Test

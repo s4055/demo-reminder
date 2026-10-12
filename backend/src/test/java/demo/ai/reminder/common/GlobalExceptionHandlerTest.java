@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -191,6 +192,16 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("동시 저장 경합으로 인한 낙관적 락 실패는 409와 VERSION_CONFLICT로 변환된다")
+    void optimisticLockingFailure_isConvertedToVersionConflict() throws Exception {
+        mockMvc.perform(get("/test/optimistic-lock"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.resultCode").value("VERSION_CONFLICT"))
+                .andExpect(jsonPath("$.resultMsg").value("다른 사용자가 먼저 수정했습니다."))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     @DisplayName("예상하지 못한 예외는 500과 INTERNAL_SERVER_ERROR로 변환되고 내부 메시지를 노출하지 않는다")
     void unexpectedException_isConvertedToInternalServerError_withoutLeakingMessage() throws Exception {
         mockMvc.perform(get("/test/unexpected"))
@@ -234,6 +245,11 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/required-param")
         void requiredParam(@RequestParam String name) {
+        }
+
+        @GetMapping("/test/optimistic-lock")
+        void optimisticLock() {
+            throw new ObjectOptimisticLockingFailureException("Reminder", 1L);
         }
 
         @GetMapping("/test/unexpected")
