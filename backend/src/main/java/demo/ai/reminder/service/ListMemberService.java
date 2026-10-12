@@ -5,7 +5,7 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListMember;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.User;
-import demo.ai.reminder.dto.ListMemberResponse;
+import demo.ai.reminder.dto.response.ListMemberResponse;
 import demo.ai.reminder.repository.ListMemberRepository;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.security.CurrentUser;

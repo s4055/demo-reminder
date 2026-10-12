@@ -3,7 +3,7 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.User;
-import demo.ai.reminder.dto.ReminderListResponse;
+import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;

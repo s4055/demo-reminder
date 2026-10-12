@@ -1,11 +1,11 @@
 package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
-import demo.ai.reminder.dto.ListGroupAssignRequest;
-import demo.ai.reminder.dto.ListOrderRequest;
-import demo.ai.reminder.dto.ReminderListRequest;
-import demo.ai.reminder.dto.ReminderListResponse;
-import demo.ai.reminder.dto.ReminderListUpdateRequest;
+import demo.ai.reminder.dto.request.ListGroupAssignRequest;
+import demo.ai.reminder.dto.request.ListOrderRequest;
+import demo.ai.reminder.dto.request.ReminderListRequest;
+import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
+import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.service.ReminderListService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

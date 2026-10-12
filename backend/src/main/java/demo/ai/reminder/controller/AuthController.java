@@ -1,9 +1,9 @@
 package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
-import demo.ai.reminder.dto.LoginRequest;
-import demo.ai.reminder.dto.SignupRequest;
-import demo.ai.reminder.dto.UserResponse;
+import demo.ai.reminder.dto.request.LoginRequest;
+import demo.ai.reminder.dto.request.SignupRequest;
+import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

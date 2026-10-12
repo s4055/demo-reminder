@@ -1,7 +1,7 @@
 package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
-import demo.ai.reminder.dto.TagResponse;
+import demo.ai.reminder.dto.response.TagResponse;
 import demo.ai.reminder.service.TagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;

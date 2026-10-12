@@ -1,4 +1,4 @@
-package demo.ai.reminder.dto;
+package demo.ai.reminder.dto.response;
 
 import demo.ai.reminder.domain.User;
 

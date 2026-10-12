@@ -5,7 +5,7 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.Tag;
 import demo.ai.reminder.domain.User;
-import demo.ai.reminder.dto.TagResponse;
+import demo.ai.reminder.dto.response.TagResponse;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.TagRepository;
 import demo.ai.reminder.repository.UserRepository;
