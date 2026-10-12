@@ -1,8 +1,8 @@
 package demo.ai.reminder.controller;
 
 import demo.ai.reminder.common.ApiResponse;
-import demo.ai.reminder.dto.ListMemberRequest;
-import demo.ai.reminder.dto.ListMemberResponse;
+import demo.ai.reminder.dto.request.ListMemberRequest;
+import demo.ai.reminder.dto.response.ListMemberResponse;
 import demo.ai.reminder.service.ListMemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

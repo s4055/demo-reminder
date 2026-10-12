@@ -1,4 +1,4 @@
-package demo.ai.reminder.dto;
+package demo.ai.reminder.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 
