@@ -1,5 +1,6 @@
-package demo.ai.reminder.common;
+package demo.ai.reminder.exception;
 
+import demo.ai.reminder.common.ResultCode;
 import lombok.Getter;
 
 /**

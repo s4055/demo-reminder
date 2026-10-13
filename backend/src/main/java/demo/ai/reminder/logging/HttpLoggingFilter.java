@@ -1,4 +1,4 @@
-package demo.ai.reminder.common;
+package demo.ai.reminder.logging;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -35,7 +36,8 @@ import java.util.stream.Stream;
  * 요청 로그를 체인 실행 전에 남기기 위해 요청 본문은 {@link CachedBodyRequestWrapper}로 미리 읽어 두고,
  * 캐싱된 응답 본문은 {@code copyBodyToResponse()}로 반드시 클라이언트에 돌려준다.
  * <p>
- * {@code /h2-console} 요청은 로깅하지 않고 그대로 통과시킨다.
+ * H2 콘솔 경로({@code spring.h2.console.path}, 기본값 {@code /h2-console}) 요청은 로깅하지 않고 그대로 통과시킨다.
+ * 경로는 설정에서 주입받으므로 application.yml에서 콘솔 경로를 바꿔도 필터가 함께 따라간다.
  */
 @Slf4j
 @Component
@@ -44,12 +46,16 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     public static final String REQUEST_ID = "request_id";
 
-    private static final String H2_CONSOLE_PATH = "/h2-console";
-
     // "password": "..." 형태 (이스케이프된 따옴표 포함)
     private static final Pattern PASSWORD_FIELD = Pattern.compile("(\"password\"\\s*:\\s*)\"(?:[^\"\\\\]|\\\\.)*\"");
 
     private static final String MASK = "****";
+
+    private final String h2ConsolePath;
+
+    public HttpLoggingFilter(@Value("${spring.h2.console.path:/h2-console}") String h2ConsolePath) {
+        this.h2ConsolePath = h2ConsolePath;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -88,7 +94,7 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     private boolean isH2ConsoleRequest(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
-        return path.equals(H2_CONSOLE_PATH) || path.startsWith(H2_CONSOLE_PATH + "/");
+        return path.equals(h2ConsolePath) || path.startsWith(h2ConsolePath + "/");
     }
 
     private String requestHeaders(HttpServletRequest request) {

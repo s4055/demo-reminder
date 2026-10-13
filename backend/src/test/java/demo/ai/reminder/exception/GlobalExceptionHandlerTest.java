@@ -1,6 +1,8 @@
-package demo.ai.reminder.common;
+package demo.ai.reminder.exception;
 
+import demo.ai.reminder.common.ResultCode;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -71,51 +73,45 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("ResponseStatusException(404)은 404와 NOT_FOUND, 예외 사유를 담은 응답으로 변환된다")
-    void responseStatusException_notFound_isConvertedToNotFound() throws Exception {
-        mockMvc.perform(get("/test/status/404"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.resultCode").value("NOT_FOUND"))
-                .andExpect(jsonPath("$.resultMsg").value("reason-404"))
+    @DisplayName("ResponseStatusException(4xx)은 원래 상태 코드와 예외 사유를 유지하고 BAD_REQUEST로 변환된다")
+    void responseStatusException_clientError_fallsBackToBadRequest() throws Exception {
+        mockMvc.perform(get("/test/status/418"))
+                .andExpect(status().is(418))
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value("reason-418"))
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test
-    @DisplayName("ResponseStatusException(400)은 400과 BAD_REQUEST 응답으로 변환된다")
-    void responseStatusException_badRequest_isConvertedToBadRequest() throws Exception {
-        mockMvc.perform(get("/test/status/400"))
-                .andExpect(status().isBadRequest())
+    @DisplayName("상태 코드로 결과 코드를 역조회하지 않으므로 ResponseStatusException(404, 401, 409)도 BAD_REQUEST로 변환된다")
+    void responseStatusException_doesNotLookUpResultCodeByStatus() throws Exception {
+        mockMvc.perform(get("/test/status/404"))
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.resultMsg").value("reason-400"));
-    }
-
-    @Test
-    @DisplayName("별도 매핑이 없는 4xx 상태는 원래 상태 코드를 유지하고 BAD_REQUEST로 변환된다")
-    void responseStatusException_otherClientError_fallsBackToBadRequest() throws Exception {
-        mockMvc.perform(get("/test/status/418"))
-                .andExpect(status().is(418))
-                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.resultMsg").value("reason-418"));
-    }
-
-    @Test
-    @DisplayName("401, 409 ResponseStatusException은 각각 UNAUTHORIZED, CONFLICT로 변환된다")
-    void responseStatusException_unauthorizedAndConflict_mapToTheirResultCodes() throws Exception {
+                .andExpect(jsonPath("$.resultMsg").value("reason-404"));
         mockMvc.perform(get("/test/status/401"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.resultCode").value("UNAUTHORIZED"));
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
         mockMvc.perform(get("/test/status/409"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.resultCode").value("CONFLICT"));
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
     }
 
     @Test
-    @DisplayName("사유 없는 ResponseStatusException은 ResultCode의 기본 메시지를 사용한다")
+    @DisplayName("사유 없는 ResponseStatusException은 변환된 ResultCode의 기본 메시지를 사용한다")
     void responseStatusException_withoutReason_usesDefaultMessage() throws Exception {
         mockMvc.perform(get("/test/status-without-reason"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.resultCode").value("NOT_FOUND"))
-                .andExpect(jsonPath("$.resultMsg").value("대상을 찾을 수 없습니다."));
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value("잘못된 요청입니다."));
+    }
+
+    @Test
+    @DisplayName("요청 파라미터의 메서드 검증(@Min 등) 실패는 400과 BAD_REQUEST로 변환된다")
+    void handlerMethodValidation_onParameter_isConvertedToBadRequest() throws Exception {
+        mockMvc.perform(get("/test/method-validation").param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
     }
 
     @Test
@@ -245,6 +241,10 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/required-param")
         void requiredParam(@RequestParam String name) {
+        }
+
+        @GetMapping("/test/method-validation")
+        void methodValidation(@RequestParam @Min(1) int size) {
         }
 
         @GetMapping("/test/optimistic-lock")

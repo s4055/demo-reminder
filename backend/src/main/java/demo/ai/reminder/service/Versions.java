@@ -1,6 +1,6 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.common.BusinessException;
+import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 
 // 수정 요청의 버전 검증 (동시 수정 충돌 감지)

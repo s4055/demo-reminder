@@ -3,10 +3,12 @@ package demo.ai.reminder.common;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 
 /**
  * API 응답의 resultCode. 응답 본문에는 enum 이름이 그대로 내려간다.
+ * <p>
+ * 결과 코드는 예외를 던지거나 처리하는 쪽이 정해서 쓴다. HTTP 상태로부터 결과 코드를 역으로 찾지 않는다
+ * (같은 상태를 쓰는 코드가 여럿일 수 있다. 예: CONFLICT, VERSION_CONFLICT).
  */
 @Getter
 @RequiredArgsConstructor
@@ -24,23 +26,4 @@ public enum ResultCode {
 
     private final HttpStatus status;
     private final String defaultMessage;
-
-    public static ResultCode fromStatus(HttpStatusCode status) {
-        if (status.isSameCodeAs(HttpStatus.UNAUTHORIZED)) {
-            return UNAUTHORIZED;
-        }
-        if (status.isSameCodeAs(HttpStatus.FORBIDDEN)) {
-            return FORBIDDEN;
-        }
-        if (status.isSameCodeAs(HttpStatus.NOT_FOUND)) {
-            return NOT_FOUND;
-        }
-        if (status.isSameCodeAs(HttpStatus.CONFLICT)) {
-            return CONFLICT;
-        }
-        if (status.isSameCodeAs(HttpStatus.METHOD_NOT_ALLOWED)) {
-            return METHOD_NOT_ALLOWED;
-        }
-        return status.is4xxClientError() ? BAD_REQUEST : INTERNAL_SERVER_ERROR;
-    }
 }

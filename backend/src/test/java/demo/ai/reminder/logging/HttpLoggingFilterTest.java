@@ -1,4 +1,4 @@
-package demo.ai.reminder.common;
+package demo.ai.reminder.logging;
 
 import demo.ai.reminder.domain.User;
 import demo.ai.reminder.repository.UserRepository;
