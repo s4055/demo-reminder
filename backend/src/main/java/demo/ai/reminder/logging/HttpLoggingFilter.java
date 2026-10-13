@@ -1,4 +1,4 @@
-package demo.ai.reminder.common;
+package demo.ai.reminder.logging;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

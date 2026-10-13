@@ -1,6 +1,6 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.common.BusinessException;
+import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListGroup;
 import demo.ai.reminder.dto.request.ListGroupRequest;

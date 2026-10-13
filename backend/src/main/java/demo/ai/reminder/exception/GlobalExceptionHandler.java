@@ -1,5 +1,7 @@
-package demo.ai.reminder.common;
+package demo.ai.reminder.exception;
 
+import demo.ai.reminder.common.ApiResponse;
+import demo.ai.reminder.common.ResultCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;

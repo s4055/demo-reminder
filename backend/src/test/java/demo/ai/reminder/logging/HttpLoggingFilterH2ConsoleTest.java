@@ -1,4 +1,4 @@
-package demo.ai.reminder.common;
+package demo.ai.reminder.logging;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

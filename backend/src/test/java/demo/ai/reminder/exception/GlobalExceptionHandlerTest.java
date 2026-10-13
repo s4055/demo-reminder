@@ -1,5 +1,6 @@
-package demo.ai.reminder.common;
+package demo.ai.reminder.exception;
 
+import demo.ai.reminder.common.ResultCode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;
