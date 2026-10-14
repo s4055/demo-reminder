@@ -2,6 +2,7 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.DomainException;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.Tag;
@@ -166,11 +167,9 @@ class ReminderListServiceTest {
         Long id = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
 
         assertThatThrownBy(() -> reminderListService.createList(new ReminderListRequest("업무", null, "rocket-ship")))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
         assertThatThrownBy(() -> reminderListService.updateList(id, new ReminderListUpdateRequest("업무", null, "", 0L)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test

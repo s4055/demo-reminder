@@ -2,6 +2,7 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.DomainException;
 import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
@@ -616,8 +617,7 @@ class ReminderServiceTest {
         ReminderResponse subtask = createSubtask("박스 구하기", parent.id());
 
         assertThatThrownBy(() -> createSubtask("테이프 사기", subtask.id()))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test
@@ -750,8 +750,7 @@ class ReminderServiceTest {
     void createReminder_throwsBadRequest_whenRepeatingWithoutDueAt() {
         assertThatThrownBy(() -> reminderService.createReminder(
                 new ReminderRequest("분리수거", null, null, null, null, null, null, RepeatRule.DAILY)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test
@@ -761,8 +760,7 @@ class ReminderServiceTest {
 
         assertThatThrownBy(() -> reminderService.updateReminder(saved.id(),
                 new ReminderUpdateRequest("분리수거", null, null, false, null, null, RepeatRule.WEEKLY, 0L)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test
@@ -806,22 +804,17 @@ class ReminderServiceTest {
         ReminderResponse saved = createRepeating("운동", null, dueAt, RepeatRule.DAILY);
 
         assertThatThrownBy(() -> createCustomRepeating("운동", dueAt, RepeatRule.DAILY, 0, null))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
         assertThatThrownBy(() -> createCustomRepeating("운동", dueAt, RepeatRule.DAILY, 100, null))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
         assertThatThrownBy(() -> createCustomRepeating("운동", dueAt, RepeatRule.MONTHLY, 1, Set.of(DayOfWeek.MONDAY)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
         assertThatThrownBy(() -> reminderService.updateReminder(saved.id(), new ReminderUpdateRequest(
                 "운동", null, dueAt, false, null, null, RepeatRule.DAILY, 1, Set.of(DayOfWeek.MONDAY), 0L)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
         assertThatThrownBy(() -> reminderService.updateReminder(saved.id(), new ReminderUpdateRequest(
                 "운동", null, dueAt, false, null, null, RepeatRule.DAILY, 100, null, 0L)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test

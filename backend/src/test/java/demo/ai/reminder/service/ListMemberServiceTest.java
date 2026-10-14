@@ -2,6 +2,7 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.DomainException;
 import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.User;
 import demo.ai.reminder.dto.request.ReminderListRequest;
@@ -155,7 +156,7 @@ class ListMemberServiceTest {
     @Test
     @DisplayName("소유자는 리스트에서 나갈 수 없다 (400)")
     void removeMember_ownerSelf_throwsBadRequest() {
-        assertResultCode(() -> listMemberService.removeMember(listId, alice.getId()), ResultCode.BAD_REQUEST);
+        assertThatThrownBy(() -> listMemberService.removeMember(listId, alice.getId())).isInstanceOf(DomainException.class);
         assertThat(listMemberService.getMembers(listId)).hasSize(1);
     }
 

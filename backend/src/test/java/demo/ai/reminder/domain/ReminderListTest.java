@@ -36,10 +36,10 @@ class ReminderListTest {
     @DisplayName("허용 목록에 없는 아이콘은 지정할 수 없다")
     void icon_throws_whenNotAllowed() {
         assertThatThrownBy(() -> new ReminderList(owner, "장보기", null, "rocket-ship", 0))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
         ReminderList list = new ReminderList(owner, "장보기", null);
         assertThatThrownBy(() -> list.update("장보기", null, "unknown"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test
@@ -62,7 +62,7 @@ class ReminderListTest {
         User other = new User("other@example.com", "password", "다른 사람");
 
         assertThatThrownBy(() -> list.changeGroup(new ListGroup(other, "남의 그룹", 0)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
         assertThat(list.getGroup()).isNull();
     }
 
@@ -146,7 +146,7 @@ class ReminderListTest {
         ReminderList list = new ReminderList(owner, "장보기", null);
         ListMember ownerMember = list.getMembers().getFirst();
 
-        assertThatThrownBy(() -> list.removeMember(ownerMember)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> list.removeMember(ownerMember)).isInstanceOf(DomainException.class);
         assertThat(list.getMembers()).containsExactly(ownerMember);
     }
 

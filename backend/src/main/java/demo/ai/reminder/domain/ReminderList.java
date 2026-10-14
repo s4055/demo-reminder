@@ -88,7 +88,7 @@ public class ReminderList extends BaseTimeEntity {
     // 그룹은 리스트 소유자의 것이어야 한다. null이면 그룹에서 뺀다.
     public void changeGroup(ListGroup group) {
         if (group != null && !isOwner(group.getUser())) {
-            throw new IllegalArgumentException("A list can only join a group of its owner");
+            throw new DomainException("A list can only join a group of its owner");
         }
         this.group = group;
     }
@@ -100,7 +100,7 @@ public class ReminderList extends BaseTimeEntity {
 
     private static String validIcon(String icon) {
         if (!ListIcon.isAllowed(icon)) {
-            throw new IllegalArgumentException("Unknown list icon: " + icon);
+            throw new DomainException("Unknown list icon: " + icon);
         }
         return icon;
     }
@@ -123,7 +123,7 @@ public class ReminderList extends BaseTimeEntity {
     // 소유자는 리스트를 떠나거나 제거될 수 없다. 리스트를 없애려면 리스트를 삭제한다.
     public void removeMember(ListMember member) {
         if (member.isOwner()) {
-            throw new IllegalStateException("The owner cannot be removed from the list");
+            throw new DomainException("The owner cannot leave or be removed from the list");
         }
         members.remove(member);
     }
