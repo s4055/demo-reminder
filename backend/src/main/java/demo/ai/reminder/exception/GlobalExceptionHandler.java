@@ -2,6 +2,7 @@ package demo.ai.reminder.exception;
 
 import demo.ai.reminder.common.ApiResponse;
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.DomainException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.ConversionNotSupportedException;
 import org.springframework.beans.TypeMismatchException;
@@ -47,6 +48,8 @@ import java.util.stream.Collectors;
  *       별도 핸들러가 없으면 {@link #handleUnexpected}에서 500으로 응답한다.</li>
  *   <li>서비스 계층은 {@link BusinessException}을 던지고, {@link #handleBusiness}가
  *       예외에 담긴 ResultCode의 상태 코드와 예외 메시지로 응답한다.</li>
+ *   <li>도메인은 HTTP를 모르므로 규칙 위반을 {@link DomainException}으로 던지고, {@link #handleDomain}이 400으로 바꾼다.
+ *       IllegalArgumentException/IllegalStateException은 라이브러리도 던지는 범용 예외라 400으로 매핑하지 않고 500으로 둔다.</li>
  * </ul>
  */
 @Slf4j
@@ -56,6 +59,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
         ResultCode resultCode = ex.getResultCode();
+        return ResponseEntity.status(resultCode.getStatus())
+                .body(ApiResponse.error(resultCode, ex.getMessage()));
+    }
+
+    @ExceptionHandler(DomainException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDomain(DomainException ex) {
+        ResultCode resultCode = ResultCode.BAD_REQUEST;
         return ResponseEntity.status(resultCode.getStatus())
                 .body(ApiResponse.error(resultCode, ex.getMessage()));
     }

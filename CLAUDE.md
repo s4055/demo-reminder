@@ -17,6 +17,7 @@
 ### 엔티티
 
 - 필드는 생성자 또는 의도가 드러나는 도메인 메서드를 통해서만 변경한다.
+- 도메인 규칙 위반은 `domain.DomainException`으로 던진다(`GlobalExceptionHandler`가 400으로 변환). 도메인은 `BusinessException`/`ResultCode`에 의존하지 않으며, 서비스는 도메인이 이미 검증하는 규칙을 중복 검사하지 않는다. 일어나면 안 되는 호출(프로그래밍 오류)은 `IllegalStateException` 등 표준 예외로 던져 500으로 드러낸다.
 - JPA용 기본 생성자는 `@NoArgsConstructor(access = AccessLevel.PROTECTED)`로 제한해 외부에서 빈 객체를 생성하지 못하게 한다.
 - `createdAt`/`updatedAt`은 도메인 코드에서 직접 넣지 않고 Spring Data JPA Auditing이 관리하도록 한다. 엔티티는 공통 상위 클래스 `BaseTimeEntity`(`@MappedSuperclass`, `@EntityListeners(AuditingEntityListener.class)`, `@CreatedDate`/`@LastModifiedDate`)를 상속하고 필드를 개별 선언하지 않으며(`@EnableJpaAuditing`은 `JpaAuditingConfig`에 선언), `createdAt`은 `@Column(updatable = false)`로 수정 불가 처리한다.
 

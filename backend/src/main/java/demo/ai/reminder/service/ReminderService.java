@@ -114,8 +114,7 @@ public class ReminderService {
     // parentId를 지정하면 그 리마인더의 하위 작업으로 추가하며, 이때 listId는 무시하고 부모의 리스트를 따른다.
     @Transactional
     public ReminderResponse createReminder(ReminderRequest request) {
-        Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek(),
-                request.dueAt());
+        Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek());
         if (request.parentId() != null) {
             return ReminderResponse.from(createSubtask(request, recurrence));
         }
@@ -129,10 +128,6 @@ public class ReminderService {
 
     private Reminder createSubtask(ReminderRequest request, Recurrence recurrence) {
         Reminder parent = findReminderOrThrow(request.parentId());
-        if (parent.isSubtask()) {
-            throw new BusinessException(ResultCode.BAD_REQUEST,
-                    "A subtask cannot have subtasks: " + request.parentId());
-        }
         Reminder subtask = new Reminder(currentUser.reference(),
                 request.title(), request.memo(), null, request.dueAt(), request.priority(), recurrence);
         parent.addSubtask(subtask);
@@ -146,8 +141,7 @@ public class ReminderService {
     public ReminderResponse updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
         Versions.verify(reminder.getVersion(), request.version(), "Reminder " + id);
-        Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek(),
-                request.dueAt());
+        Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek());
         reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority(),
                 recurrence);
         reminder.replaceTags(tagService.resolveTags(request.tagNames()));
@@ -171,6 +165,7 @@ public class ReminderService {
     @Transactional
     public ReminderResponse moveReminder(Long id, Long listId) {
         Reminder reminder = findReminderOrThrow(id);
+        // 같은 리스트로 옮기는 요청은 아래에서 도메인을 거치지 않고 끝나므로, 하위 작업 검사는 여기서 먼저 한다.
         if (reminder.isSubtask()) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "A subtask cannot be moved on its own: " + id);
         }
@@ -244,18 +239,10 @@ public class ReminderService {
     }
 
     // 요청의 반복 값으로 반복 규칙을 만든다. 간격을 생략하면 1이다.
-    // 마감일시 없이 반복하거나, 간격이 범위를 벗어나거나, WEEKLY가 아닌데 요일을 지정하면 400이다.
-    private Recurrence toRecurrence(RepeatRule repeatRule, Integer repeatInterval, Set<DayOfWeek> repeatDaysOfWeek,
-                                    LocalDateTime dueAt) {
-        if (repeatRule != null && repeatRule.isRepeating() && dueAt == null) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "A repeating reminder requires dueAt");
-        }
-        try {
-            return new Recurrence(repeatRule, Objects.requireNonNullElse(repeatInterval, Recurrence.MIN_INTERVAL),
-                    repeatDaysOfWeek);
-        } catch (IllegalArgumentException e) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, e.getMessage());
-        }
+    // 마감일시 없이 반복하거나, 간격이 범위를 벗어나거나, WEEKLY가 아닌데 요일을 지정하면 도메인이 DomainException(400)을 던진다.
+    private Recurrence toRecurrence(RepeatRule repeatRule, Integer repeatInterval, Set<DayOfWeek> repeatDaysOfWeek) {
+        return new Recurrence(repeatRule, Objects.requireNonNullElse(repeatInterval, Recurrence.MIN_INTERVAL),
+                repeatDaysOfWeek);
     }
 
     private int nextSortOrder(ReminderList list) {

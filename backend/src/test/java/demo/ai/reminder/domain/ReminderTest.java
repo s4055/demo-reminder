@@ -320,7 +320,7 @@ class ReminderTest {
         parent.addSubtask(subtask);
 
         assertThatThrownBy(() -> subtask.addSubtask(new Reminder(owner, "테이프 사기", null, null, null)))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test
@@ -368,7 +368,7 @@ class ReminderTest {
         parent.addSubtask(subtask);
 
         assertThatThrownBy(() -> subtask.moveTo(work, 0))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(DomainException.class);
         assertThat(subtask.getList()).isSameAs(home);
     }
 
@@ -440,11 +440,11 @@ class ReminderTest {
     @DisplayName("마감일시 없이 반복을 설정하면 예외가 발생한다")
     void constructorAndUpdate_rejectRepeatWithoutDueAt() {
         assertThatThrownBy(() -> new Reminder(owner, "우유 사기", null, null, null, Priority.NONE, RepeatRule.DAILY))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
 
         Reminder reminder = new Reminder(owner, "우유 사기", null, null, LocalDateTime.of(2026, 10, 4, 9, 0));
         assertThatThrownBy(() -> reminder.update("우유 사기", null, null, false, Priority.NONE, Recurrence.of(RepeatRule.WEEKLY)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test

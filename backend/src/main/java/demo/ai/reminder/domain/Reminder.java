@@ -188,7 +188,7 @@ public class Reminder extends BaseTimeEntity {
      */
     public void addSubtask(Reminder subtask) {
         if (isSubtask()) {
-            throw new IllegalStateException("A subtask cannot have subtasks");
+            throw new DomainException("A subtask cannot have subtasks");
         }
         int lastSortOrder = subtasks.stream().mapToInt(Reminder::getSortOrder).max().orElse(-1);
         subtask.parent = this;
@@ -215,7 +215,7 @@ public class Reminder extends BaseTimeEntity {
      */
     public void moveTo(ReminderList list, int sortOrder) {
         if (isSubtask()) {
-            throw new IllegalStateException("A subtask cannot be moved on its own");
+            throw new DomainException("A subtask cannot be moved on its own");
         }
         this.list = list;
         this.sortOrder = sortOrder;
@@ -275,7 +275,7 @@ public class Reminder extends BaseTimeEntity {
     private void applyRecurrence(Recurrence recurrence, LocalDateTime dueAt) {
         Recurrence rule = Objects.requireNonNullElse(recurrence, Recurrence.NONE);
         if (rule.isRepeating() && dueAt == null) {
-            throw new IllegalArgumentException("A repeating reminder requires a due date");
+            throw new DomainException("A repeating reminder requires a due date");
         }
         this.repeatRule = rule.rule();
         this.repeatInterval = rule.interval();

@@ -24,10 +24,10 @@ public record Recurrence(RepeatRule rule, int interval, Set<DayOfWeek> daysOfWee
                 ? Set.of()
                 : Collections.unmodifiableSet(EnumSet.copyOf(daysOfWeek));
         if (interval < MIN_INTERVAL || interval > MAX_INTERVAL) {
-            throw new IllegalArgumentException("Repeat interval must be " + MIN_INTERVAL + " to " + MAX_INTERVAL + ": " + interval);
+            throw new DomainException("Repeat interval must be " + MIN_INTERVAL + " to " + MAX_INTERVAL + ": " + interval);
         }
         if (!daysOfWeek.isEmpty() && rule != RepeatRule.WEEKLY) {
-            throw new IllegalArgumentException("Days of week can only be set for a weekly repeat: " + rule);
+            throw new DomainException("Days of week can only be set for a weekly repeat: " + rule);
         }
         if (!rule.isRepeating()) {
             interval = MIN_INTERVAL;

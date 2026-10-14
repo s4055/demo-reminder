@@ -95,9 +95,9 @@ class RecurrenceTest {
     @DisplayName("간격이 1~99를 벗어나면 만들 수 없다")
     void constructor_throws_whenIntervalOutOfRange() {
         assertThatThrownBy(() -> new Recurrence(RepeatRule.DAILY, 0, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
         assertThatThrownBy(() -> new Recurrence(RepeatRule.DAILY, 100, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
         assertThat(new Recurrence(RepeatRule.DAILY, 99, null).interval()).isEqualTo(99);
     }
 
@@ -105,9 +105,9 @@ class RecurrenceTest {
     @DisplayName("WEEKLY가 아닌데 요일을 지정하면 만들 수 없다")
     void constructor_throws_whenDaysOfWeekWithoutWeekly() {
         assertThatThrownBy(() -> new Recurrence(RepeatRule.DAILY, 1, Set.of(MONDAY)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
         assertThatThrownBy(() -> new Recurrence(RepeatRule.NONE, 1, Set.of(MONDAY)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainException.class);
     }
 
     @Test

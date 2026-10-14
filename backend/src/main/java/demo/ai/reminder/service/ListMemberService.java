@@ -60,9 +60,6 @@ public class ListMemberService {
         }
         ListMember target = leaving ? me : listMemberRepository.findByListIdAndUserId(listId, userId)
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "Member not found: " + userId));
-        if (target.isOwner()) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "The owner cannot leave or be removed: " + listId);
-        }
         me.getList().removeMember(target);
     }
 }

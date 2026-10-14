@@ -1,6 +1,7 @@
 package demo.ai.reminder.exception;
 
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.DomainException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -42,6 +43,25 @@ class GlobalExceptionHandlerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(new ThrowingController())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
+    }
+
+    @Test
+    @DisplayName("DomainException은 400과 BAD_REQUEST, 예외 메시지를 담은 응답으로 변환된다")
+    void domainException_isConvertedToBadRequest() throws Exception {
+        mockMvc.perform(get("/test/domain"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value("domain rule violated"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("IllegalArgumentException은 도메인 규칙 위반으로 보지 않고 500과 기본 메시지로 응답한다")
+    void illegalArgumentException_isNotTreatedAsDomainRuleViolation() throws Exception {
+        mockMvc.perform(get("/test/illegal-argument"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.resultCode").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.resultMsg").value("서버 오류가 발생했습니다."));
     }
 
     @Test
@@ -250,6 +270,16 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/optimistic-lock")
         void optimisticLock() {
             throw new ObjectOptimisticLockingFailureException("Reminder", 1L);
+        }
+
+        @GetMapping("/test/domain")
+        void domain() {
+            throw new DomainException("domain rule violated");
+        }
+
+        @GetMapping("/test/illegal-argument")
+        void illegalArgument() {
+            throw new IllegalArgumentException("library detail");
         }
 
         @GetMapping("/test/unexpected")

@@ -3,7 +3,6 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListGroup;
-import demo.ai.reminder.domain.ListIcon;
 import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.request.ReminderListRequest;
@@ -44,7 +43,6 @@ public class ReminderListService {
     // 새 리스트는 사이드바 맨 아래(마지막 순서)에 추가하고, 만든 사용자가 OWNER 멤버가 된다.
     @Transactional
     public ReminderListResponse createList(ReminderListRequest request) {
-        validateIcon(request.icon());
         int sortOrder = reminderListRepository.findMaxSortOrder(currentUser.id()) + 1;
         ReminderList list = reminderListRepository.save(
                 new ReminderList(currentUser.reference(), request.name(), request.color(), request.icon(), sortOrder));
@@ -57,7 +55,6 @@ public class ReminderListService {
     public ReminderListResponse updateList(Long id, ReminderListUpdateRequest request) {
         ReminderList list = listAccess.ownedList(id);
         Versions.verify(list.getVersion(), request.version(), "List " + id);
-        validateIcon(request.icon());
         list.update(request.name(), request.color(), request.icon());
         return toOwnedResponse(list);
     }
@@ -90,12 +87,6 @@ public class ReminderListService {
         return ReminderListResponse.from(new ReminderListSummary(list,
                 reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(list.getId()),
                 ListRole.OWNER, list.getMembers().size()));
-    }
-
-    private void validateIcon(String icon) {
-        if (!ListIcon.isAllowed(icon)) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "Unknown list icon: " + icon);
-        }
     }
 
     // 소유자만 삭제할 수 있다. 다른 멤버가 만든 리마인더와 멤버 정보도 함께 삭제된다.
