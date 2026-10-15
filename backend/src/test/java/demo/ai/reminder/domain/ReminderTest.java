@@ -434,7 +434,7 @@ class ReminderTest {
     void constructor_defaultsRepeatRuleToNone() {
         Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
 
-        assertThat(reminder.getRepeatRule()).isEqualTo(RepeatRule.NONE);
+        assertThat(reminder.getRecurrence().rule()).isEqualTo(RepeatRule.NONE);
     }
 
     @Test
@@ -467,7 +467,7 @@ class ReminderTest {
             assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 11, 20, 0));
             assertThat(occurrence.getPriority()).isEqualTo(Priority.HIGH);
             assertThat(occurrence.isFlagged()).isTrue();
-            assertThat(occurrence.getRepeatRule()).isEqualTo(RepeatRule.WEEKLY);
+            assertThat(occurrence.getRecurrence().rule()).isEqualTo(RepeatRule.WEEKLY);
             assertThat(occurrence.getTags()).extracting(Tag::getName).containsExactly("집안일");
             assertThat(occurrence.isCompleted()).isFalse();
             assertThat(occurrence.getCompletedAt()).isNull();
@@ -486,8 +486,8 @@ class ReminderTest {
         assertThat(next).hasValueSatisfying(occurrence -> {
             assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 19, 7, 0)); // 2주 뒤 월요일
             assertThat(occurrence.getRecurrence()).isEqualTo(everyTwoWeeksMonWed);
-            assertThat(occurrence.getRepeatInterval()).isEqualTo(2);
-            assertThat(occurrence.getRepeatDaysOfWeek()).containsExactlyInAnyOrder(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
+            assertThat(occurrence.getRecurrence().interval()).isEqualTo(2);
+            assertThat(occurrence.getRecurrence().daysOfWeek()).containsExactlyInAnyOrder(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
         });
     }
 
@@ -500,9 +500,9 @@ class ReminderTest {
 
         reminder.update("운동", null, dueAt, false, Priority.NONE, new Recurrence(RepeatRule.DAILY, 3, null));
 
-        assertThat(reminder.getRepeatRule()).isEqualTo(RepeatRule.DAILY);
-        assertThat(reminder.getRepeatInterval()).isEqualTo(3);
-        assertThat(reminder.getRepeatDaysOfWeek()).isEmpty();
+        assertThat(reminder.getRecurrence().rule()).isEqualTo(RepeatRule.DAILY);
+        assertThat(reminder.getRecurrence().interval()).isEqualTo(3);
+        assertThat(reminder.getRecurrence().daysOfWeek()).isEmpty();
 
         reminder.update("운동", null, dueAt, false, Priority.NONE, null);
 
