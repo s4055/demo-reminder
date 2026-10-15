@@ -185,8 +185,15 @@ public class Reminder extends BaseTimeEntity {
         subtasks.add(subtask);
     }
 
-    public void removeSubtask(Reminder subtask) {
-        subtasks.remove(subtask);
+    /**
+     * 부모의 하위 작업 목록에서 빠지고 부모와의 연결을 끊는다. 최상위 리마인더이면 아무것도 하지 않는다.
+     */
+    public void detachFromParent() {
+        if (parent == null) {
+            return;
+        }
+        parent.subtasks.remove(this);
+        this.parent = null;
     }
 
     public List<Reminder> getSubtasks() {

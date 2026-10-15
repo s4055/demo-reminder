@@ -202,9 +202,7 @@ public class ReminderService {
     @Transactional
     public void deleteReminder(Long id) {
         Reminder reminder = findReminderOrThrow(id);
-        if (reminder.isSubtask()) {
-            reminder.getParent().removeSubtask(reminder);
-        }
+        reminder.detachFromParent();
         reminderRepository.delete(reminder);
     }
 
@@ -220,7 +218,7 @@ public class ReminderService {
                 reminderRepository.delete(reminder);
             } else if (!reminder.getParent().isCompleted()) {
                 deletedCount++;
-                reminder.getParent().removeSubtask(reminder);
+                reminder.detachFromParent();
                 reminderRepository.delete(reminder);
             }
         }

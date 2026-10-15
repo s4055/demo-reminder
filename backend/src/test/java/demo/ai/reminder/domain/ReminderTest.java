@@ -325,17 +325,32 @@ class ReminderTest {
     }
 
     @Test
-    @DisplayName("removeSubtask를 호출하면 해당 하위 작업만 목록에서 빠진다")
-    void removeSubtask_removesOnlyGivenSubtask() {
+    @DisplayName("하위 작업을 부모에서 떼어내면 부모 목록에서 그 하위 작업만 빠지고 부모와의 연결도 끊긴다")
+    void detachFromParent_removesFromParentAndClearsParent() {
         Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
         Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
         Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null);
         parent.addSubtask(boxes);
         parent.addSubtask(movers);
 
-        parent.removeSubtask(boxes);
+        boxes.detachFromParent();
 
         assertThat(parent.getSubtasks()).containsExactly(movers);
+        assertThat(boxes.getParent()).isNull();
+        assertThat(boxes.isSubtask()).isFalse();
+    }
+
+    @Test
+    @DisplayName("최상위 리마인더를 부모에서 떼어내도 아무것도 바뀌지 않는다")
+    void detachFromParent_doesNothing_whenTopLevel() {
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        parent.addSubtask(boxes);
+
+        parent.detachFromParent();
+
+        assertThat(parent.getParent()).isNull();
+        assertThat(parent.getSubtasks()).containsExactly(boxes);
     }
 
     @Test
