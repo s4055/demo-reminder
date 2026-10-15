@@ -126,19 +126,7 @@ public class Reminder extends BaseTimeEntity {
     @Column(nullable = false)
     private Long version;
 
-    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt) {
-        this(user, title, memo, list, dueAt, Priority.NONE);
-    }
-
-    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority) {
-        this(user, title, memo, list, dueAt, priority, RepeatRule.NONE);
-    }
-
-    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
-                    RepeatRule repeatRule) {
-        this(user, title, memo, list, dueAt, priority, repeatRule == null ? null : Recurrence.of(repeatRule));
-    }
-
+    // 우선순위나 반복을 지정하지 않으면(null) 각각 '없음', '반복 안 함'으로 둔다.
     public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
                     Recurrence recurrence) {
         this.user = user;

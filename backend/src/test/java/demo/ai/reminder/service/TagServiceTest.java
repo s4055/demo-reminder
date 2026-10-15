@@ -124,7 +124,7 @@ class TagServiceTest {
     }
 
     private Reminder reminder(String title, Tag... tags) {
-        Reminder reminder = new Reminder(owner, title, null, null, null);
+        Reminder reminder = new Reminder(owner, title, null, null, null, null, null);
         reminder.replaceTags(List.of(tags));
         return reminderRepository.save(reminder);
     }

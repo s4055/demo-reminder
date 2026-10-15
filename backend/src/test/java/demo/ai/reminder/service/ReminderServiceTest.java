@@ -67,7 +67,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("전체 리마인더 목록을 조회한다")
     void getReminders_returnsAllReminders() {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getReminders(null, null);
 
@@ -79,8 +79,8 @@ class ReminderServiceTest {
     void getReminders_returnsOnlyRemindersOfGivenList() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", "#FF9500"));
         ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", "#007AFF"));
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null));
-        reminderRepository.save(new Reminder(owner, "보고서 작성", null, work, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
+        reminderRepository.save(new Reminder(owner, "보고서 작성", null, work, null, null, null));
 
         List<ReminderResponse> result = reminderService.getReminders(shopping.getId(), null);
 
@@ -91,8 +91,8 @@ class ReminderServiceTest {
     @DisplayName("listId를 지정하지 않으면 리스트와 상관없이 전체를 조회한다")
     void getReminders_returnsRemindersOfAllListsAndWithoutList_whenListIdIsNull() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null));
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null));
-        reminderRepository.save(new Reminder(owner, "보고서 작성", null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
+        reminderRepository.save(new Reminder(owner, "보고서 작성", null, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getReminders(null, null);
 
@@ -134,7 +134,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하는 리마인더의 완료 상태를 토글한다")
     void toggleComplete_flipsCompletedState_whenReminderExists() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         ReminderResponse result = reminderService.toggleComplete(saved.getId());
 
@@ -144,7 +144,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("완료 토글 시 완료일시가 기록되고, 다시 토글하면 비워진다")
     void toggleComplete_recordsAndClearsCompletedAt() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
         LocalDateTime before = LocalDateTime.now();
 
         ReminderResponse completed = reminderService.toggleComplete(saved.getId());
@@ -189,7 +189,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("리마인더를 수정하면 수정일은 갱신되고 생성일은 유지된다")
     void updateReminder_refreshesUpdatedAt_andKeepsCreatedAt() {
-        Reminder saved = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null));
+        Reminder saved = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null));
         LocalDateTime updatedAt = backdateUpdatedAt(saved.getId());
         LocalDateTime createdAt = reminderRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
 
@@ -203,9 +203,9 @@ class ReminderServiceTest {
     @Test
     @DisplayName("수정/완료/플래그 토글의 응답에는 갱신된 수정일이 담긴다")
     void mutatingMethods_returnRefreshedUpdatedAt() {
-        Long toUpdate = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null)).getId();
-        Long toComplete = reminderRepository.saveAndFlush(new Reminder(owner, "계란 사기", null, null, null)).getId();
-        Long toFlag = reminderRepository.saveAndFlush(new Reminder(owner, "빵 사기", null, null, null)).getId();
+        Long toUpdate = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null)).getId();
+        Long toComplete = reminderRepository.saveAndFlush(new Reminder(owner, "계란 사기", null, null, null, null, null)).getId();
+        Long toFlag = reminderRepository.saveAndFlush(new Reminder(owner, "빵 사기", null, null, null, null, null)).getId();
         LocalDateTime past = backdateUpdatedAt(toUpdate);
         backdateUpdatedAt(toComplete);
         backdateUpdatedAt(toFlag);
@@ -224,7 +224,7 @@ class ReminderServiceTest {
     @DisplayName("존재하는 리마인더의 제목, 메모, 마감일시, 플래그를 수정한다")
     void updateReminder_changesEditableFields_whenReminderExists() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null));
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
         LocalDateTime dueAt = LocalDate.now().atTime(18, 30);
 
         ReminderResponse result = reminderService.updateReminder(
@@ -241,7 +241,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("수정한 마감일시와 플래그는 스마트 뷰 조회에 반영된다")
     void updateReminder_isReflectedInSmartViews() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         reminderService.updateReminder(
                 saved.getId(), new ReminderUpdateRequest("우유 사기", null, LocalDate.now().atTime(9, 0), true, null, null, null, 0L));
@@ -270,7 +270,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("리마인더를 수정하면 우선순위가 변경되어 저장된다")
     void updateReminder_savesChangedPriority() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, Priority.LOW));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, Priority.LOW, null));
 
         reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, false, Priority.MEDIUM, null, null, 0L));
         reminderRepository.flush();
@@ -281,7 +281,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("수정 요청에서 우선순위를 생략하면 없음(NONE)으로 바뀐다")
     void updateReminder_resetsPriorityToNone_whenPriorityIsOmitted() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, Priority.HIGH));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, Priority.HIGH, null));
 
         ReminderResponse result = reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, false, null, null, null, 0L));
 
@@ -299,7 +299,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하는 리마인더의 플래그 상태를 토글한다")
     void toggleFlag_flipsFlaggedState_whenReminderExists() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         ReminderResponse result = reminderService.toggleFlag(saved.getId());
 
@@ -318,12 +318,12 @@ class ReminderServiceTest {
     @DisplayName("today 뷰는 마감일이 오늘인 미완료 리마인더만 조회한다")
     void getSmartReminders_today_returnsIncompleteRemindersDueToday() {
         LocalDate today = LocalDate.now();
-        reminderRepository.save(new Reminder(owner, "오늘 아침", null, null, today.atTime(0, 0)));
-        reminderRepository.save(new Reminder(owner, "오늘 저녁", null, null, today.atTime(23, 59)));
-        reminderRepository.save(new Reminder(owner, "어제", null, null, today.minusDays(1).atTime(23, 59)));
-        reminderRepository.save(new Reminder(owner, "내일", null, null, today.plusDays(1).atStartOfDay()));
-        reminderRepository.save(new Reminder(owner, "마감 없음", null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "오늘 완료", null, null, today.atTime(12, 0)));
+        reminderRepository.save(new Reminder(owner, "오늘 아침", null, null, today.atTime(0, 0), null, null));
+        reminderRepository.save(new Reminder(owner, "오늘 저녁", null, null, today.atTime(23, 59), null, null));
+        reminderRepository.save(new Reminder(owner, "어제", null, null, today.minusDays(1).atTime(23, 59), null, null));
+        reminderRepository.save(new Reminder(owner, "내일", null, null, today.plusDays(1).atStartOfDay(), null, null));
+        reminderRepository.save(new Reminder(owner, "마감 없음", null, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "오늘 완료", null, null, today.atTime(12, 0), null, null));
         done.toggleComplete(LocalDateTime.now());
 
         List<ReminderResponse> result = reminderService.getSmartReminders("today");
@@ -335,10 +335,10 @@ class ReminderServiceTest {
     @DisplayName("scheduled 뷰는 마감일이 설정된 모든 미완료 리마인더를 마감일 순으로 조회한다")
     void getSmartReminders_scheduled_returnsIncompleteRemindersWithDueAt() {
         LocalDate today = LocalDate.now();
-        reminderRepository.save(new Reminder(owner, "다음주", null, null, today.plusDays(7).atTime(9, 0)));
-        reminderRepository.save(new Reminder(owner, "오늘", null, null, today.atTime(9, 0)));
-        reminderRepository.save(new Reminder(owner, "마감 없음", null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, today.atTime(10, 0)));
+        reminderRepository.save(new Reminder(owner, "다음주", null, null, today.plusDays(7).atTime(9, 0), null, null));
+        reminderRepository.save(new Reminder(owner, "오늘", null, null, today.atTime(9, 0), null, null));
+        reminderRepository.save(new Reminder(owner, "마감 없음", null, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, today.atTime(10, 0), null, null));
         done.toggleComplete(LocalDateTime.now());
 
         List<ReminderResponse> result = reminderService.getSmartReminders("scheduled");
@@ -349,8 +349,8 @@ class ReminderServiceTest {
     @Test
     @DisplayName("all 뷰는 모든 미완료 리마인더를 조회한다")
     void getSmartReminders_all_returnsAllIncompleteReminders() {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null, null, null));
         done.toggleComplete(LocalDateTime.now());
 
         List<ReminderResponse> result = reminderService.getSmartReminders("all");
@@ -361,12 +361,12 @@ class ReminderServiceTest {
     @Test
     @DisplayName("flagged 뷰는 플래그가 지정된 미완료 리마인더만 조회한다")
     void getSmartReminders_flagged_returnsFlaggedIncompleteReminders() {
-        Reminder flagged = reminderRepository.save(new Reminder(owner, "중요", null, null, null));
+        Reminder flagged = reminderRepository.save(new Reminder(owner, "중요", null, null, null, null, null));
         flagged.toggleFlag();
-        Reminder flaggedDone = reminderRepository.save(new Reminder(owner, "중요하지만 완료", null, null, null));
+        Reminder flaggedDone = reminderRepository.save(new Reminder(owner, "중요하지만 완료", null, null, null, null, null));
         flaggedDone.toggleFlag();
         flaggedDone.toggleComplete(LocalDateTime.now());
-        reminderRepository.save(new Reminder(owner, "일반", null, null, null));
+        reminderRepository.save(new Reminder(owner, "일반", null, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getSmartReminders("flagged");
 
@@ -376,8 +376,8 @@ class ReminderServiceTest {
     @Test
     @DisplayName("completed 뷰는 완료된 리마인더만 조회한다")
     void getSmartReminders_completed_returnsCompletedReminders() {
-        reminderRepository.save(new Reminder(owner, "미완료", null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null));
+        reminderRepository.save(new Reminder(owner, "미완료", null, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null, null, null));
         done.toggleComplete(LocalDateTime.now());
 
         List<ReminderResponse> result = reminderService.getSmartReminders("completed");
@@ -388,8 +388,8 @@ class ReminderServiceTest {
     @Test
     @DisplayName("completed 뷰는 생성 순서와 관계없이 완료일시 최신순으로 조회한다")
     void getSmartReminders_completed_ordersByCompletedAtDesc() {
-        Reminder first = reminderRepository.save(new Reminder(owner, "먼저 생성", null, null, null));
-        Reminder second = reminderRepository.save(new Reminder(owner, "나중 생성", null, null, null));
+        Reminder first = reminderRepository.save(new Reminder(owner, "먼저 생성", null, null, null, null, null));
+        Reminder second = reminderRepository.save(new Reminder(owner, "나중 생성", null, null, null, null, null));
         second.toggleComplete(LocalDateTime.of(2026, 9, 30, 9, 0));
         first.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
 
@@ -401,8 +401,8 @@ class ReminderServiceTest {
     @Test
     @DisplayName("완료된 리마인더를 수정해도 completed 뷰의 순서는 바뀌지 않는다")
     void getSmartReminders_completed_orderIsNotAffectedByUpdate() {
-        Reminder older = reminderRepository.save(new Reminder(owner, "먼저 완료", null, null, null));
-        Reminder newer = reminderRepository.save(new Reminder(owner, "나중 완료", null, null, null));
+        Reminder older = reminderRepository.save(new Reminder(owner, "먼저 완료", null, null, null, null, null));
+        Reminder newer = reminderRepository.save(new Reminder(owner, "나중 완료", null, null, null, null, null));
         older.toggleComplete(LocalDateTime.of(2026, 9, 30, 9, 0));
         newer.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
         reminderRepository.flush();
@@ -417,7 +417,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("스마트 뷰 이름은 대소문자를 구분하지 않는다")
     void getSmartReminders_isCaseInsensitive() {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getSmartReminders("ALL");
 
@@ -435,7 +435,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하는 리마인더를 삭제한다")
     void deleteReminder_deletesReminder_whenReminderExists() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         reminderService.deleteReminder(saved.getId());
 
@@ -937,11 +937,11 @@ class ReminderServiceTest {
     void getUpcomingReminders_includesFromAndExcludesTo_sortedByDueAt() {
         LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
         LocalDateTime to = from.plusMinutes(2);
-        reminderRepository.save(new Reminder(owner, "직전", null, null, from.minusSeconds(1)));
-        reminderRepository.save(new Reminder(owner, "마지막", null, null, to.minusSeconds(1)));
-        reminderRepository.save(new Reminder(owner, "시작", null, null, from));
-        reminderRepository.save(new Reminder(owner, "끝", null, null, to));
-        reminderRepository.save(new Reminder(owner, "마감일 없음", null, null, null));
+        reminderRepository.save(new Reminder(owner, "직전", null, null, from.minusSeconds(1), null, null));
+        reminderRepository.save(new Reminder(owner, "마지막", null, null, to.minusSeconds(1), null, null));
+        reminderRepository.save(new Reminder(owner, "시작", null, null, from, null, null));
+        reminderRepository.save(new Reminder(owner, "끝", null, null, to, null, null));
+        reminderRepository.save(new Reminder(owner, "마감일 없음", null, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getUpcomingReminders(from, to);
 
@@ -952,9 +952,9 @@ class ReminderServiceTest {
     @DisplayName("다가오는 리마인더 조회는 완료된 항목을 제외한다")
     void getUpcomingReminders_excludesCompleted() {
         LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
-        Reminder done = reminderRepository.save(new Reminder(owner, "완료함", null, null, from.plusMinutes(1)));
+        Reminder done = reminderRepository.save(new Reminder(owner, "완료함", null, null, from.plusMinutes(1), null, null));
         done.toggleComplete(LocalDateTime.of(2026, 10, 4, 20, 0));
-        reminderRepository.save(new Reminder(owner, "남음", null, null, from.plusMinutes(1)));
+        reminderRepository.save(new Reminder(owner, "남음", null, null, from.plusMinutes(1), null, null));
 
         assertThat(reminderService.getUpcomingReminders(from, from.plusMinutes(2)))
                 .extracting(ReminderResponse::title).containsExactly("남음");
