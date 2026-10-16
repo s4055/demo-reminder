@@ -42,7 +42,7 @@ public interface ReminderListRepository extends JpaRepository<ReminderList, Long
     @Query(MEMBER_SUMMARY + "and l.id = :listId")
     Optional<ReminderListSummary> findSummary(Long userId, Long listId);
 
-    // 리스트가 없으면 -1을 돌려주므로 +1 하면 첫 순서(0)가 된다.
-    @Query("select coalesce(max(l.sortOrder), -1) from ReminderList l where l.user.id = :userId")
-    int findMaxSortOrder(Long userId);
+    // 새 리스트가 받을 마지막 순서. 리스트가 없으면 첫 순서(0)다.
+    @Query("select coalesce(max(l.sortOrder), -1) + 1 from ReminderList l where l.user.id = :userId")
+    int findNextSortOrder(Long userId);
 }

@@ -36,6 +36,9 @@ class DataIsolationTest {
     private ReminderService reminderService;
 
     @Autowired
+    private ReminderQueryService reminderQueryService;
+
+    @Autowired
     private ReminderListService reminderListService;
 
     @Autowired
@@ -68,13 +71,13 @@ class DataIsolationTest {
         TestAuth.signIn(bob);
 
         assertThat(reminderListService.getLists()).isEmpty();
-        assertThat(reminderService.getReminders(null, null)).isEmpty();
-        assertThat(reminderService.getReminders(null, "집")).isEmpty();
+        assertThat(reminderQueryService.getReminders(null, null)).isEmpty();
+        assertThat(reminderQueryService.getReminders(null, "집")).isEmpty();
         for (String view : List.of("today", "scheduled", "all", "flagged", "completed")) {
-            assertThat(reminderService.getSmartReminders(view)).as(view).isEmpty();
+            assertThat(reminderQueryService.getSmartReminders(view)).as(view).isEmpty();
         }
         LocalDateTime now = LocalDateTime.now();
-        assertThat(reminderService.getUpcomingReminders(now.minusDays(1), now.plusDays(1))).isEmpty();
+        assertThat(reminderQueryService.getUpcomingReminders(now.minusDays(1), now.plusDays(1))).isEmpty();
         assertThat(tagService.getTags()).isEmpty();
     }
 
@@ -83,9 +86,9 @@ class DataIsolationTest {
     void owner_seesOwnData() {
         assertThat(reminderListService.getLists()).extracting(ReminderListResponse::name)
                 .containsExactly("앨리스 장보기");
-        assertThat(reminderService.getReminders(aliceListId, null)).extracting(ReminderResponse::title)
+        assertThat(reminderQueryService.getReminders(aliceListId, null)).extracting(ReminderResponse::title)
                 .containsExactly("우유");
-        assertThat(reminderService.getSmartReminders("flagged")).extracting(ReminderResponse::title)
+        assertThat(reminderQueryService.getSmartReminders("flagged")).extracting(ReminderResponse::title)
                 .containsExactly("우유");
         assertThat(tagService.getTags()).extracting(TagResponse::name).containsExactly("집");
     }
@@ -97,7 +100,7 @@ class DataIsolationTest {
         Long reminderId = aliceReminder.id();
 
         List<Executable> attempts = List.of(
-                () -> reminderService.getReminders(aliceListId, null),
+                () -> reminderQueryService.getReminders(aliceListId, null),
                 () -> reminderService.updateReminder(reminderId,
                         new ReminderUpdateRequest("가로채기", null, null, false, null, null, null, 0L)),
                 () -> reminderService.toggleComplete(reminderId),
@@ -118,7 +121,7 @@ class DataIsolationTest {
         }
 
         TestAuth.signIn(alice);
-        assertThat(reminderService.getReminders(aliceListId, null))
+        assertThat(reminderQueryService.getReminders(aliceListId, null))
                 .singleElement()
                 .satisfies(reminder -> {
                     assertThat(reminder.title()).isEqualTo("우유");

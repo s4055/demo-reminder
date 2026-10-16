@@ -35,15 +35,13 @@ public class ListMemberService {
     }
 
     // 가입한 사용자만 초대할 수 있다. 이메일은 가입 때와 같이 소문자로 맞춰 찾는다.
+    // 이미 멤버인 사용자를 초대하면 도메인이 DomainException(400)을 던진다.
     @Transactional
     public ListMemberResponse invite(Long listId, String email) {
         ReminderList list = listAccess.ownedList(listId);
         String normalizedEmail = LoginUserDetailsService.normalizeEmail(email);
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "User not found: " + normalizedEmail));
-        if (listMemberRepository.existsByListIdAndUserId(listId, user.getId())) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "Already a member of the list: " + normalizedEmail);
-        }
         return ListMemberResponse.from(listMemberRepository.save(list.addMember(user)));
     }
 

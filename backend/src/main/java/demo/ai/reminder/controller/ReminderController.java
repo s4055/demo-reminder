@@ -7,6 +7,7 @@ import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
+import demo.ai.reminder.service.ReminderQueryService;
 import demo.ai.reminder.service.ReminderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,29 +34,30 @@ import java.util.List;
 public class ReminderController {
 
     private final ReminderService reminderService;
+    private final ReminderQueryService reminderQueryService;
 
     @GetMapping
     public ApiResponse<List<ReminderResponse>> getReminders(
             @RequestParam(required = false) Long listId,
             @RequestParam(required = false) String tag) {
-        return ApiResponse.success(reminderService.getReminders(listId, tag));
+        return ApiResponse.success(reminderQueryService.getReminders(listId, tag));
     }
 
     @GetMapping("/smart/{view}")
     public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable String view) {
-        return ApiResponse.success(reminderService.getSmartReminders(view));
+        return ApiResponse.success(reminderQueryService.getSmartReminders(view));
     }
 
     @GetMapping("/search")
     public ApiResponse<List<ReminderResponse>> searchReminders(@RequestParam String q) {
-        return ApiResponse.success(reminderService.searchReminders(q));
+        return ApiResponse.success(reminderQueryService.searchReminders(q));
     }
 
     @GetMapping("/upcoming")
     public ApiResponse<List<ReminderResponse>> getUpcomingReminders(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        return ApiResponse.success(reminderService.getUpcomingReminders(from, to));
+        return ApiResponse.success(reminderQueryService.getUpcomingReminders(from, to));
     }
 
     @PostMapping

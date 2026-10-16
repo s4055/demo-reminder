@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,9 @@ class ListMemberServiceTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     private User alice;
     private User bob;
@@ -81,12 +85,16 @@ class ListMemberServiceTest {
     }
 
     @Test
-    @DisplayName("이미 멤버인 사용자(소유자 본인 포함)를 초대하면 400이다")
-    void invite_existingMember_throwsBadRequest() {
+    @DisplayName("이미 멤버인 사용자(소유자 본인 포함)를 초대하면 도메인 예외(400)가 발생한다")
+    void invite_existingMember_throwsDomainException() {
         listMemberService.invite(listId, "bob@example.com");
+        entityManager.flush();
+        entityManager.clear();
 
-        assertResultCode(() -> listMemberService.invite(listId, "bob@example.com"), ResultCode.BAD_REQUEST);
-        assertResultCode(() -> listMemberService.invite(listId, "alice@example.com"), ResultCode.BAD_REQUEST);
+        assertThatThrownBy(() -> listMemberService.invite(listId, "bob@example.com"))
+                .isInstanceOf(DomainException.class);
+        assertThatThrownBy(() -> listMemberService.invite(listId, "alice@example.com"))
+                .isInstanceOf(DomainException.class);
     }
 
     @Test

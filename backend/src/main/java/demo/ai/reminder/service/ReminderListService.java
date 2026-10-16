@@ -16,9 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,7 +39,7 @@ public class ReminderListService {
     // 새 리스트는 사이드바 맨 아래(마지막 순서)에 추가하고, 만든 사용자가 OWNER 멤버가 된다.
     @Transactional
     public ReminderListResponse createList(ReminderListRequest request) {
-        int sortOrder = reminderListRepository.findMaxSortOrder(currentUser.id()) + 1;
+        int sortOrder = reminderListRepository.findNextSortOrder(currentUser.id());
         ReminderList list = reminderListRepository.save(
                 new ReminderList(currentUser.reference(), request.name(), request.color(), request.icon(), sortOrder));
         return toResponse(list);
@@ -72,12 +69,8 @@ public class ReminderListService {
     // ids 순서대로 현재 사용자가 소유한 리스트의 표시 순서를 0부터 다시 매긴다. 공유받은 리스트는 대상이 아니다.
     @Transactional
     public void reorderLists(List<Long> ids) {
-        Map<Long, ReminderList> lists = reminderListRepository.findByUserId(currentUser.id()).stream()
-                .collect(Collectors.toMap(ReminderList::getId, Function.identity()));
-        SortOrders.validateIds(ids, lists.keySet(), "list");
-        for (int i = 0; i < ids.size(); i++) {
-            lists.get(ids.get(i)).changeSortOrder(i);
-        }
+        SortOrders.reorder(ids, reminderListRepository.findByUserId(currentUser.id()),
+                ReminderList::getId, ReminderList::changeSortOrder, "list");
     }
 
     // 리스트 목록과 같은 요약 쿼리로 응답을 만들어 개수/역할 규칙을 한 곳에 둔다.
