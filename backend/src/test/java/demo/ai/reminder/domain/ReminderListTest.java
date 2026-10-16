@@ -157,14 +157,4 @@ class ReminderListTest {
 
         assertThatThrownBy(() -> list.getMembers().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
-
-    @Test
-    @DisplayName("restoreOwnerMember는 멤버가 이미 있으면 아무것도 하지 않는다")
-    void restoreOwnerMember_doesNothingWhenMembersExist() {
-        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
-
-        list.restoreOwnerMember();
-
-        assertThat(list.getMembers()).hasSize(1);
-    }
 }

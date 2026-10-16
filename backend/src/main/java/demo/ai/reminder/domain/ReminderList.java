@@ -123,13 +123,4 @@ public class ReminderList extends BaseTimeEntity {
         }
         members.remove(member);
     }
-
-    /**
-     * 공유 기능 이전에 만든 리스트에는 멤버가 없으므로, 소유자를 OWNER 멤버로 채운다. 이미 멤버가 있으면 아무것도 하지 않는다.
-     */
-    public void restoreOwnerMember() {
-        if (members.isEmpty()) {
-            members.add(new ListMember(this, user, ListRole.OWNER));
-        }
-    }
 }

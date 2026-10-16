@@ -3,14 +3,12 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListGroup;
-import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.request.ReminderListRequest;
 import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.repository.ListGroupRepository;
 import demo.ai.reminder.repository.ReminderListRepository;
-import demo.ai.reminder.repository.ReminderListSummary;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +32,7 @@ public class ReminderListService {
     private final CurrentUser currentUser;
 
     // 소유한 리스트와 공유받은 리스트를 모두 조회한다.
+    // 표시 순서(소유한 리스트를 사이드바 순서대로 먼저, 공유받은 리스트를 뒤에)는 저장소 쿼리가 정한다.
     public List<ReminderListResponse> getLists() {
         return reminderListRepository.findAllWithReminderCount(currentUser.id()).stream()
                 .map(ReminderListResponse::from)
@@ -46,7 +45,7 @@ public class ReminderListService {
         int sortOrder = reminderListRepository.findMaxSortOrder(currentUser.id()) + 1;
         ReminderList list = reminderListRepository.save(
                 new ReminderList(currentUser.reference(), request.name(), request.color(), request.icon(), sortOrder));
-        return ReminderListResponse.from(new ReminderListSummary(list, 0, ListRole.OWNER, 1));
+        return toResponse(list);
     }
 
     // 소유자만 수정할 수 있다. icon을 생략하면 기본 아이콘(null)이 된다.
@@ -56,7 +55,7 @@ public class ReminderListService {
         ReminderList list = listAccess.ownedList(id);
         Versions.verify(list.getVersion(), request.version(), "List " + id);
         list.update(request.name(), request.color(), request.icon());
-        return toOwnedResponse(list);
+        return toResponse(list);
     }
 
     // 리스트를 자기 그룹에 넣거나(groupId) 그룹에서 뺀다(null). 리스트 소유자만 할 수 있고(편집자 403, 비멤버 404),
@@ -67,7 +66,7 @@ public class ReminderListService {
         ListGroup group = groupId == null ? null : listGroupRepository.findByIdAndUserId(groupId, currentUser.id())
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List group not found: " + groupId));
         list.changeGroup(group);
-        return toOwnedResponse(list);
+        return toResponse(list);
     }
 
     // ids 순서대로 현재 사용자가 소유한 리스트의 표시 순서를 0부터 다시 매긴다. 공유받은 리스트는 대상이 아니다.
@@ -81,19 +80,19 @@ public class ReminderListService {
         }
     }
 
-    // 소유자의 리스트 응답. 갱신된 수정일(updatedAt)이 담기도록 flush한 뒤 변환한다.
-    private ReminderListResponse toOwnedResponse(ReminderList list) {
+    // 리스트 목록과 같은 요약 쿼리로 응답을 만들어 개수/역할 규칙을 한 곳에 둔다.
+    // 갱신된 수정일(updatedAt)과 새 리스트/멤버가 반영되도록 flush한 뒤 조회한다.
+    private ReminderListResponse toResponse(ReminderList list) {
         reminderListRepository.flush();
-        return ReminderListResponse.from(new ReminderListSummary(list,
-                reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(list.getId()),
-                ListRole.OWNER, list.getMembers().size()));
+        return ReminderListResponse.from(reminderListRepository.findSummary(currentUser.id(), list.getId())
+                .orElseThrow(() -> new IllegalStateException("No membership for an accessed list: " + list.getId())));
     }
 
     // 소유자만 삭제할 수 있다. 다른 멤버가 만든 리마인더와 멤버 정보도 함께 삭제된다.
     @Transactional
     public void deleteList(Long id) {
         ReminderList list = listAccess.ownedList(id);
-        reminderRepository.deleteAllByListId(id);
+        reminderRepository.deleteAllByList(list);
         reminderListRepository.delete(list);
     }
 }

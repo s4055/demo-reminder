@@ -1,6 +1,7 @@
 package demo.ai.reminder.repository;
 
 import demo.ai.reminder.domain.Reminder;
+import demo.ai.reminder.domain.ReminderList;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,7 +12,8 @@ import java.util.Optional;
 
 // 사용자가 볼 수 있는 리마인더는 리스트에 속하면 그 리스트의 멤버인 경우, 리스트가 없으면 본인이 만든 경우다 (ACCESSIBLE).
 // 공유받은 리스트의 리마인더는 누가 만들었든 모든 멤버가 볼 수 있다.
-// 리스트(listId) 기준 조회는 서비스에서 리스트 멤버인지 먼저 확인한 뒤 호출한다.
+// 리스트 기준 조회는 리스트 ID가 아니라 ReminderList를 받는다. 서비스는 접근 권한을 확인한 ListAccess가 돌려준
+// 리스트를 넘겨야 하므로, 권한 확인 없이는 호출할 수 없다.
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
     String ACCESSIBLE = """
@@ -58,23 +60,21 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
             """ + ACCESSIBLE)
     List<Reminder> searchAccessible(Long userId, String pattern);
 
-    List<Reminder> findByListIdAndParentIsNull(Long listId, Sort sort);
-
     List<Reminder> findByTagsId(Long tagId);
 
-    long countByListIdAndParentIsNullAndCompletedFalse(Long listId);
+    List<Reminder> findByListAndParentIsNull(ReminderList list, Sort sort);
 
-    void deleteAllByListId(Long listId);
+    void deleteAllByList(ReminderList list);
 
-    List<Reminder> findByListIdAndParentIsNullAndCompletedFalse(Long listId);
+    List<Reminder> findByListAndParentIsNullAndCompletedFalse(ReminderList list);
 
     // 하위 작업도 부모와 같은 리스트에 속하므로 함께 조회된다.
-    List<Reminder> findByListIdAndCompletedTrue(Long listId);
+    List<Reminder> findByListAndCompletedTrue(ReminderList list);
 
     // 아래 max 조회는 최상위 리마인더만 대상으로 하며(하위 작업은 부모 안에서 따로 순서를 매긴다),
     // 범위가 비어 있으면 -1을 돌려주므로 +1 하면 첫 순서(0)가 된다.
-    @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list.id = :listId and r.parent is null")
-    int findMaxSortOrderInList(Long listId);
+    @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list = :list and r.parent is null")
+    int findMaxSortOrderInList(ReminderList list);
 
     // '리스트 없음'은 사용자마다 따로 순서를 매긴다.
     @Query("""

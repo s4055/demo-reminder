@@ -1184,8 +1184,10 @@ class ReminderServiceTest {
         assertThat(reminderService.getReminders(work.getId(), null).get(2).subtasks())
                 .extracting(ReminderResponse::id).containsExactly(boxes.id(), movers.id());
         assertThat(reminderRepository.findById(boxes.id()).orElseThrow().getList().getId()).isEqualTo(work.getId());
-        assertThat(reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(home.getId())).isEqualTo(1);
-        assertThat(reminderRepository.countByListIdAndParentIsNullAndCompletedFalse(work.getId())).isEqualTo(3);
+        assertThat(reminderListRepository.findSummary(owner.getId(), home.getId()).orElseThrow().reminderCount())
+                .isEqualTo(1);
+        assertThat(reminderListRepository.findSummary(owner.getId(), work.getId()).orElseThrow().reminderCount())
+                .isEqualTo(3);
     }
 
     @Test

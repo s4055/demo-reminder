@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 // 리스트 접근 권한은 멤버(ListMember) 여부로 판단한다. 소유자도 OWNER 멤버다.
 public interface ReminderListRepository extends JpaRepository<ReminderList, Long> {
@@ -14,9 +15,9 @@ public interface ReminderListRepository extends JpaRepository<ReminderList, Long
 
     List<ReminderList> findByGroupId(Long groupId);
 
-    // 사용자가 멤버인 모든 리스트. 소유한 리스트를 사이드바 순서대로 먼저, 공유받은 리스트를 공유받은 순서대로 뒤에 둔다.
+    // 사용자가 멤버인 리스트의 요약. 리스트 응답의 개수와 역할은 모두 여기서 계산해, 목록과 생성/수정 응답이 같은 규칙을 따른다.
     // 리마인더 개수는 최상위 미완료 리마인더만 센다 (하위 작업 제외).
-    @Query("""
+    String MEMBER_SUMMARY = """
             select new demo.ai.reminder.repository.ReminderListSummary(
                 l,
                 (select count(r) from Reminder r where r.list = l and r.parent is null and r.completed = false),
@@ -25,6 +26,11 @@ public interface ReminderListRepository extends JpaRepository<ReminderList, Long
             )
             from ListMember m join m.list l
             where m.user.id = :userId
+            """;
+
+    // 사용자가 멤버인 모든 리스트. 사이드바 표시 순서도 여기서 정한다:
+    // 소유한 리스트를 사이드바 순서대로 먼저, 공유받은 리스트를 공유받은 순서대로 뒤에 둔다.
+    @Query(MEMBER_SUMMARY + """
             order by
                 case when m.role = demo.ai.reminder.domain.ListRole.OWNER then 0 else 1 end,
                 case when m.role = demo.ai.reminder.domain.ListRole.OWNER then l.sortOrder else 0 end,
@@ -32,11 +38,11 @@ public interface ReminderListRepository extends JpaRepository<ReminderList, Long
             """)
     List<ReminderListSummary> findAllWithReminderCount(Long userId);
 
+    // 사용자가 멤버인 리스트 하나의 요약. 멤버가 아니면 비어 있다.
+    @Query(MEMBER_SUMMARY + "and l.id = :listId")
+    Optional<ReminderListSummary> findSummary(Long userId, Long listId);
+
     // 리스트가 없으면 -1을 돌려주므로 +1 하면 첫 순서(0)가 된다.
     @Query("select coalesce(max(l.sortOrder), -1) from ReminderList l where l.user.id = :userId")
     int findMaxSortOrder(Long userId);
-
-    // 공유 기능 이전에 만들어져 멤버(소유자 포함)가 하나도 없는 리스트
-    @Query("select l from ReminderList l where not exists (select 1 from ListMember m where m.list = l)")
-    List<ReminderList> findWithoutMembers();
 }

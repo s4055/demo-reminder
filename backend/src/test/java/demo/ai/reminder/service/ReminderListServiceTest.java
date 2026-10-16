@@ -3,6 +3,7 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.DomainException;
+import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.Tag;
@@ -230,6 +231,39 @@ class ReminderListServiceTest {
                 .containsExactly(2L);
         assertThat(reminderListService.updateList(home.getId(), new ReminderListUpdateRequest("우리 집", null, 0L)).reminderCount())
                 .isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("공유된 리스트를 수정한 응답의 리마인더 개수, 역할, 멤버 수는 리스트 목록과 같다")
+    void updateList_returnsSameCountsAndRoleAsGetLists() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
+        home.addMember(userRepository.save(new User("editor@example.com", "password", "편집자")));
+        reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "청소", null, home, null, null, null));
+        done.toggleComplete(LocalDateTime.now());
+        entityManager.flush();
+        entityManager.clear();
+
+        ReminderListResponse updated = reminderListService.updateList(home.getId(),
+                new ReminderListUpdateRequest("우리 집", null, 0L));
+        ReminderListResponse listed = reminderListService.getLists().stream()
+                .filter(list -> list.id().equals(home.getId()))
+                .findFirst().orElseThrow();
+
+        assertThat(updated.reminderCount()).isEqualTo(1L).isEqualTo(listed.reminderCount());
+        assertThat(updated.memberCount()).isEqualTo(2L).isEqualTo(listed.memberCount());
+        assertThat(updated.role()).isEqualTo(ListRole.OWNER).isEqualTo(listed.role());
+    }
+
+    @Test
+    @DisplayName("멤버가 아닌 사용자에게는 리스트 요약이 조회되지 않는다")
+    void findSummary_isEmptyForNonMember() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
+        User stranger = userRepository.save(new User("stranger@example.com", "password", "남"));
+        entityManager.flush();
+
+        assertThat(reminderListRepository.findSummary(owner.getId(), home.getId())).isPresent();
+        assertThat(reminderListRepository.findSummary(stranger.getId(), home.getId())).isEmpty();
     }
 
     @Test
