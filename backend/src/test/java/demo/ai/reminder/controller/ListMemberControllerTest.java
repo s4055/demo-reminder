@@ -45,7 +45,7 @@ class ListMemberControllerTest {
     void setUp() {
         bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
         owner = TestAuth.signIn(userRepository, "owner@example.com");
-        list = reminderListRepository.save(new ReminderList(owner, "장보기", null));
+        list = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
     }
 
     @Test

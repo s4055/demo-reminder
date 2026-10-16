@@ -51,7 +51,7 @@ class TagControllerTest {
     @DisplayName("태그 목록 조회 응답은 태그 이름과 미완료 리마인더 개수를 data에 담는다")
     void getTags_returnsTagsWithReminderCount() throws Exception {
         Tag home = tagRepository.save(new Tag(owner, "집"));
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
         reminder.replaceTags(List.of(home));
         reminderRepository.save(reminder);
 

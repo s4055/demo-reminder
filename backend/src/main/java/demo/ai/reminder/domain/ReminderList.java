@@ -66,10 +66,6 @@ public class ReminderList extends BaseTimeEntity {
     @Column(nullable = false)
     private Long version;
 
-    public ReminderList(User user, String name, String color) {
-        this(user, name, color, null, 0);
-    }
-
     public ReminderList(User user, String name, String color, String icon, int sortOrder) {
         this.user = user;
         this.name = name;
@@ -126,14 +122,5 @@ public class ReminderList extends BaseTimeEntity {
             throw new DomainException("The owner cannot leave or be removed from the list");
         }
         members.remove(member);
-    }
-
-    /**
-     * 공유 기능 이전에 만든 리스트에는 멤버가 없으므로, 소유자를 OWNER 멤버로 채운다. 이미 멤버가 있으면 아무것도 하지 않는다.
-     */
-    public void restoreOwnerMember() {
-        if (members.isEmpty()) {
-            members.add(new ListMember(this, user, ListRole.OWNER));
-        }
     }
 }

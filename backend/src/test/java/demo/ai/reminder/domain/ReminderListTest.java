@@ -13,7 +13,7 @@ class ReminderListTest {
     @Test
     @DisplayName("생성자로 만들면 이름과 색상이 설정된다")
     void constructor_setsNameAndColor() {
-        ReminderList list = new ReminderList(owner, "장보기", "#FF9500");
+        ReminderList list = new ReminderList(owner, "장보기", "#FF9500", null, 0);
 
         assertThat(list.getName()).isEqualTo("장보기");
         assertThat(list.getColor()).isEqualTo("#FF9500");
@@ -37,7 +37,7 @@ class ReminderListTest {
     void icon_throws_whenNotAllowed() {
         assertThatThrownBy(() -> new ReminderList(owner, "장보기", null, "rocket-ship", 0))
                 .isInstanceOf(DomainException.class);
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
         assertThatThrownBy(() -> list.update("장보기", null, "unknown"))
                 .isInstanceOf(DomainException.class);
     }
@@ -45,7 +45,7 @@ class ReminderListTest {
     @Test
     @DisplayName("changeGroup으로 소유자의 그룹에 넣고 null로 그룹에서 뺄 수 있다")
     void changeGroup_setsAndClearsOwnersGroup() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
         ListGroup group = new ListGroup(owner, "생활", 0);
 
         list.changeGroup(group);
@@ -58,7 +58,7 @@ class ReminderListTest {
     @Test
     @DisplayName("다른 사용자의 그룹에는 넣을 수 없다")
     void changeGroup_throws_whenGroupBelongsToAnotherUser() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
         User other = new User("other@example.com", "password", "다른 사람");
 
         assertThatThrownBy(() -> list.changeGroup(new ListGroup(other, "남의 그룹", 0)))
@@ -69,7 +69,7 @@ class ReminderListTest {
     @Test
     @DisplayName("색상 없이도 생성할 수 있다")
     void constructor_allowsNullColor() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
 
         assertThat(list.getColor()).isNull();
     }
@@ -77,7 +77,7 @@ class ReminderListTest {
     @Test
     @DisplayName("update를 호출하면 이름과 색상이 변경된다")
     void update_changesNameAndColor() {
-        ReminderList list = new ReminderList(owner, "장보기", "#FF9500");
+        ReminderList list = new ReminderList(owner, "장보기", "#FF9500", null, 0);
 
         list.update("업무", "#007AFF", null);
 
@@ -88,7 +88,7 @@ class ReminderListTest {
     @Test
     @DisplayName("순서를 지정하지 않고 생성하면 표시 순서는 0이다")
     void constructor_defaultsSortOrderToZero() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
 
         assertThat(list.getSortOrder()).isZero();
     }
@@ -106,7 +106,7 @@ class ReminderListTest {
     @Test
     @DisplayName("리스트를 만들면 만든 사용자가 OWNER 멤버가 된다")
     void constructor_addsOwnerAsOwnerMember() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
 
         assertThat(list.getMembers()).singleElement().satisfies(member -> {
             assertThat(member.getUser()).isSameAs(owner);
@@ -119,7 +119,7 @@ class ReminderListTest {
     @Test
     @DisplayName("addMember로 추가한 멤버는 EDITOR이고 소유자 뒤에 추가된다")
     void addMember_addsEditorAfterOwner() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
         User editor = new User("editor@example.com", "password", "편집자");
 
         ListMember member = list.addMember(editor);
@@ -132,7 +132,7 @@ class ReminderListTest {
     @Test
     @DisplayName("removeMember로 편집자를 제거할 수 있다")
     void removeMember_removesEditor() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
         ListMember member = list.addMember(new User("editor@example.com", "password", "편집자"));
 
         list.removeMember(member);
@@ -143,7 +143,7 @@ class ReminderListTest {
     @Test
     @DisplayName("소유자는 멤버에서 제거할 수 없다")
     void removeMember_rejectsOwner() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
         ListMember ownerMember = list.getMembers().getFirst();
 
         assertThatThrownBy(() -> list.removeMember(ownerMember)).isInstanceOf(DomainException.class);
@@ -153,18 +153,8 @@ class ReminderListTest {
     @Test
     @DisplayName("멤버 목록은 외부에서 직접 변경할 수 없다")
     void getMembers_isUnmodifiable() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
 
         assertThatThrownBy(() -> list.getMembers().clear()).isInstanceOf(UnsupportedOperationException.class);
-    }
-
-    @Test
-    @DisplayName("restoreOwnerMember는 멤버가 이미 있으면 아무것도 하지 않는다")
-    void restoreOwnerMember_doesNothingWhenMembersExist() {
-        ReminderList list = new ReminderList(owner, "장보기", null);
-
-        list.restoreOwnerMember();
-
-        assertThat(list.getMembers()).hasSize(1);
     }
 }

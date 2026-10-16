@@ -56,8 +56,8 @@ public class ReminderService {
     // 태그별/전체 조회에는 하위 작업도 개별 항목으로 포함된다. 모두 현재 사용자가 볼 수 있는 리마인더(본인 것 + 멤버인 리스트의 것)만 조회하며, 멤버가 아닌 리스트는 404다.
     public List<ReminderResponse> getReminders(Long listId, String tag) {
         if (listId != null) {
-            listAccess.memberList(listId);
-            return toResponses(reminderRepository.findByListIdAndParentIsNull(listId, LIST_SORT));
+            ReminderList list = listAccess.memberList(listId);
+            return toResponses(reminderRepository.findByListAndParentIsNull(list, LIST_SORT));
         }
         if (tag != null) {
             return toResponses(reminderRepository.findAccessibleByTagName(currentUser.id(), tag.trim(), DEFAULT_SORT));
@@ -151,8 +151,8 @@ public class ReminderService {
     // ids 순서대로 리스트의 최상위 미완료 리마인더 표시 순서를 0부터 다시 매긴다.
     @Transactional
     public void reorderReminders(Long listId, List<Long> ids) {
-        listAccess.memberList(listId);
-        Map<Long, Reminder> reminders = reminderRepository.findByListIdAndParentIsNullAndCompletedFalse(listId).stream()
+        ReminderList list = listAccess.memberList(listId);
+        Map<Long, Reminder> reminders = reminderRepository.findByListAndParentIsNullAndCompletedFalse(list).stream()
                 .collect(Collectors.toMap(Reminder::getId, Function.identity()));
         SortOrders.validateIds(ids, reminders.keySet(), "incomplete reminder of the list");
         for (int i = 0; i < ids.size(); i++) {
@@ -202,9 +202,7 @@ public class ReminderService {
     @Transactional
     public void deleteReminder(Long id) {
         Reminder reminder = findReminderOrThrow(id);
-        if (reminder.isSubtask()) {
-            reminder.getParent().removeSubtask(reminder);
-        }
+        reminder.detachFromParent();
         reminderRepository.delete(reminder);
     }
 
@@ -212,15 +210,15 @@ public class ReminderService {
     // 미완료 부모 아래의 완료된 하위 작업은 그 하위 작업만 삭제된다. 리스트 멤버면 누구나 할 수 있다.
     @Transactional
     public DeletedCountResponse deleteCompletedReminders(Long listId) {
-        listAccess.memberList(listId);
+        ReminderList list = listAccess.memberList(listId);
         int deletedCount = 0;
-        for (Reminder reminder : reminderRepository.findByListIdAndCompletedTrue(listId)) {
+        for (Reminder reminder : reminderRepository.findByListAndCompletedTrue(list)) {
             if (!reminder.isSubtask()) {
                 deletedCount += 1 + reminder.getSubtasks().size();
                 reminderRepository.delete(reminder);
             } else if (!reminder.getParent().isCompleted()) {
                 deletedCount++;
-                reminder.getParent().removeSubtask(reminder);
+                reminder.detachFromParent();
                 reminderRepository.delete(reminder);
             }
         }
@@ -249,7 +247,7 @@ public class ReminderService {
         if (list == null) {
             return reminderRepository.findMaxSortOrderWithoutList(currentUser.id()) + 1;
         }
-        return reminderRepository.findMaxSortOrderInList(list.getId()) + 1;
+        return reminderRepository.findMaxSortOrderInList(list) + 1;
     }
 
     private Reminder findReminderOrThrow(Long id) {

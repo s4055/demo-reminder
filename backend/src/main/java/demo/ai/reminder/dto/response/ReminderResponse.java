@@ -1,6 +1,7 @@
 package demo.ai.reminder.dto.response;
 
 import demo.ai.reminder.domain.Priority;
+import demo.ai.reminder.domain.Recurrence;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.RepeatRule;
 import demo.ai.reminder.domain.Tag;
@@ -33,6 +34,7 @@ public record ReminderResponse(
 
     // 하위 작업은 1단계까지만 있으므로 subtasks의 각 항목은 빈 subtasks를 가진다.
     public static ReminderResponse from(Reminder reminder) {
+        Recurrence recurrence = reminder.getRecurrence();
         return new ReminderResponse(
                 reminder.getId(),
                 reminder.getTitle(),
@@ -41,9 +43,9 @@ public record ReminderResponse(
                 reminder.isFlagged(),
                 reminder.getPriority(),
                 reminder.getDueAt(),
-                reminder.getRepeatRule(),
-                reminder.getRepeatInterval(),
-                reminder.getRepeatDaysOfWeek().stream().sorted().toList(),
+                recurrence.rule(),
+                recurrence.interval(),
+                recurrence.daysOfWeek().stream().sorted().toList(),
                 reminder.getCompletedAt(),
                 reminder.getList() != null ? reminder.getList().getId() : null,
                 reminder.getSortOrder(),

@@ -69,16 +69,19 @@ public class Reminder extends BaseTimeEntity {
     private LocalDateTime completedAt;
 
     // 반복 주기. 반복하지 않으면 NONE이며, 반복은 마감일시가 있을 때만 설정할 수 있다.
+    @Getter(AccessLevel.NONE)
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RepeatRule repeatRule;
 
     // 반복 간격(1~99). 컬럼 추가 전에 저장된 행은 기본값 1로 채워져 예전처럼 동작한다.
+    @Getter(AccessLevel.NONE)
     @ColumnDefault("1")
     @Column(nullable = false)
     private int repeatInterval = Recurrence.MIN_INTERVAL;
 
     // 매주 반복할 요일. WEEKLY일 때만 지정하며, 비어 있으면 마감일의 요일로 반복한다.
+    @Getter(AccessLevel.NONE)
     @ElementCollection
     @CollectionTable(name = "reminder_repeat_day", joinColumns = @JoinColumn(name = "reminder_id"))
     @Enumerated(EnumType.STRING)
@@ -126,19 +129,7 @@ public class Reminder extends BaseTimeEntity {
     @Column(nullable = false)
     private Long version;
 
-    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt) {
-        this(user, title, memo, list, dueAt, Priority.NONE);
-    }
-
-    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority) {
-        this(user, title, memo, list, dueAt, priority, RepeatRule.NONE);
-    }
-
-    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
-                    RepeatRule repeatRule) {
-        this(user, title, memo, list, dueAt, priority, repeatRule == null ? null : Recurrence.of(repeatRule));
-    }
-
+    // 우선순위나 반복을 지정하지 않으면(null) 각각 '없음', '반복 안 함'으로 둔다.
     public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
                     Recurrence recurrence) {
         this.user = user;
@@ -162,12 +153,9 @@ public class Reminder extends BaseTimeEntity {
         applyRecurrence(recurrence, dueAt);
     }
 
+    // 반복 설정은 주기/간격/요일 세 필드로 나눠 저장하지만, 밖에는 이 메서드로 묶어서만 내보낸다.
     public Recurrence getRecurrence() {
         return new Recurrence(repeatRule, repeatInterval, repeatDaysOfWeek);
-    }
-
-    public Set<DayOfWeek> getRepeatDaysOfWeek() {
-        return Collections.unmodifiableSet(repeatDaysOfWeek);
     }
 
     public void replaceTags(Collection<Tag> tags) {
@@ -197,8 +185,15 @@ public class Reminder extends BaseTimeEntity {
         subtasks.add(subtask);
     }
 
-    public void removeSubtask(Reminder subtask) {
-        subtasks.remove(subtask);
+    /**
+     * 부모의 하위 작업 목록에서 빠지고 부모와의 연결을 끊는다. 최상위 리마인더이면 아무것도 하지 않는다.
+     */
+    public void detachFromParent() {
+        if (parent == null) {
+            return;
+        }
+        parent.subtasks.remove(this);
+        this.parent = null;
     }
 
     public List<Reminder> getSubtasks() {
