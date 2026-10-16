@@ -7,7 +7,6 @@ import demo.ai.reminder.dto.request.SignupRequest;
 import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.security.CurrentUser;
-import demo.ai.reminder.security.LoginUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -35,7 +34,7 @@ public class AuthService {
     // 이메일은 소문자로 맞춰 저장하므로 대소문자만 다른 이메일로는 중복 가입할 수 없다.
     @Transactional
     public UserResponse signup(SignupRequest request) {
-        String email = LoginUserDetailsService.normalizeEmail(request.email());
+        String email = User.normalizeEmail(request.email());
         if (userRepository.existsByEmail(email)) {
             throw new BusinessException(ResultCode.CONFLICT, "Email already registered: " + email);
         }

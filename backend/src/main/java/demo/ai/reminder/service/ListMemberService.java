@@ -9,7 +9,6 @@ import demo.ai.reminder.dto.response.ListMemberResponse;
 import demo.ai.reminder.repository.ListMemberRepository;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.security.CurrentUser;
-import demo.ai.reminder.security.LoginUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +37,7 @@ public class ListMemberService {
     @Transactional
     public ListMemberResponse invite(Long listId, String email) {
         ReminderList list = listAccess.ownedList(listId);
-        String normalizedEmail = LoginUserDetailsService.normalizeEmail(email);
+        String normalizedEmail = User.normalizeEmail(email);
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "User not found: " + normalizedEmail));
         if (listMemberRepository.existsByListIdAndUserId(listId, user.getId())) {
