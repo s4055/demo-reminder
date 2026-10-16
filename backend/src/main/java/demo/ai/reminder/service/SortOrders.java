@@ -6,17 +6,31 @@ import demo.ai.reminder.common.ResultCode;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.ObjIntConsumer;
+import java.util.stream.Collectors;
 
-// 순서 일괄 변경 요청의 공통 검증
+// 순서 일괄 변경 요청의 공통 처리
 final class SortOrders {
 
     private SortOrders() {
     }
 
     /**
-     * 요청한 ids가 대상 범위의 id와 정확히 일치(누락/중복/범위 밖 id 없음)하는지 검사한다.
+     * ids 순서대로 대상의 표시 순서를 0부터 다시 매긴다.
+     * ids는 대상 범위의 id와 정확히 일치(누락/중복/범위 밖 id 없음)해야 하며, 아니면 400이다.
      */
-    static void validateIds(List<Long> requestedIds, Collection<Long> targetIds, String target) {
+    static <T> void reorder(List<Long> ids, Collection<T> targets, Function<T, Long> idOf,
+                            ObjIntConsumer<T> changeSortOrder, String target) {
+        Map<Long, T> targetsById = targets.stream().collect(Collectors.toMap(idOf, Function.identity()));
+        validateIds(ids, targetsById.keySet(), target);
+        for (int i = 0; i < ids.size(); i++) {
+            changeSortOrder.accept(targetsById.get(ids.get(i)), i);
+        }
+    }
+
+    private static void validateIds(List<Long> requestedIds, Collection<Long> targetIds, String target) {
         boolean sameSize = requestedIds.size() == targetIds.size();
         if (!sameSize || !new HashSet<>(requestedIds).equals(new HashSet<>(targetIds))) {
             throw new BusinessException(ResultCode.BAD_REQUEST,

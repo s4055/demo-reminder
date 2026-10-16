@@ -130,6 +130,18 @@ class ReminderListTest {
     }
 
     @Test
+    @DisplayName("이미 멤버인 사용자는 다시 추가할 수 없다")
+    void addMember_throws_whenAlreadyMember() {
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
+        User editor = new User("editor@example.com", "password", "편집자");
+        list.addMember(editor);
+
+        assertThatThrownBy(() -> list.addMember(editor)).isInstanceOf(DomainException.class);
+        assertThatThrownBy(() -> list.addMember(owner)).isInstanceOf(DomainException.class);
+        assertThat(list.getMembers()).extracting(ListMember::getUser).containsExactly(owner, editor);
+    }
+
+    @Test
     @DisplayName("removeMember로 편집자를 제거할 수 있다")
     void removeMember_removesEditor() {
         ReminderList list = new ReminderList(owner, "장보기", null, null, 0);

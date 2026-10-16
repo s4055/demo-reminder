@@ -71,15 +71,15 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
     // 하위 작업도 부모와 같은 리스트에 속하므로 함께 조회된다.
     List<Reminder> findByListAndCompletedTrue(ReminderList list);
 
-    // 아래 max 조회는 최상위 리마인더만 대상으로 하며(하위 작업은 부모 안에서 따로 순서를 매긴다),
-    // 범위가 비어 있으면 -1을 돌려주므로 +1 하면 첫 순서(0)가 된다.
-    @Query("select coalesce(max(r.sortOrder), -1) from Reminder r where r.list = :list and r.parent is null")
-    int findMaxSortOrderInList(ReminderList list);
+    // 아래 두 조회는 새 최상위 리마인더가 받을 마지막 순서이며, 범위가 비어 있으면 첫 순서(0)다.
+    // 최상위 리마인더만 대상으로 한다 (하위 작업은 부모 안에서 따로 순서를 매긴다).
+    @Query("select coalesce(max(r.sortOrder), -1) + 1 from Reminder r where r.list = :list and r.parent is null")
+    int findNextSortOrderInList(ReminderList list);
 
     // '리스트 없음'은 사용자마다 따로 순서를 매긴다.
     @Query("""
-            select coalesce(max(r.sortOrder), -1) from Reminder r
+            select coalesce(max(r.sortOrder), -1) + 1 from Reminder r
             where r.user.id = :userId and r.list is null and r.parent is null
             """)
-    int findMaxSortOrderWithoutList(Long userId);
+    int findNextSortOrderWithoutList(Long userId);
 }

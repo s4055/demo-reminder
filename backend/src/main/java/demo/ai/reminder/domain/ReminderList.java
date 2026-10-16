@@ -89,9 +89,13 @@ public class ReminderList extends BaseTimeEntity {
         this.group = group;
     }
 
-    // 같은 객체이거나 저장된 같은 사용자(id 일치)인지
     private boolean isOwner(User other) {
-        return other == user || (other.getId() != null && other.getId().equals(user.getId()));
+        return isSameUser(other, user);
+    }
+
+    // 같은 객체이거나 저장된 같은 사용자(id 일치)인지
+    private static boolean isSameUser(User a, User b) {
+        return a == b || (a.getId() != null && a.getId().equals(b.getId()));
     }
 
     private static String validIcon(String icon) {
@@ -109,8 +113,11 @@ public class ReminderList extends BaseTimeEntity {
         return Collections.unmodifiableList(members);
     }
 
-    // 이미 멤버인지는 호출하는 쪽이 확인한다 (사용자 id 비교에 저장소 조회가 필요하다).
+    // 이미 멤버인 사용자는 다시 추가할 수 없다.
     public ListMember addMember(User user) {
+        if (members.stream().anyMatch(member -> isSameUser(member.getUser(), user))) {
+            throw new DomainException("Already a member of the list");
+        }
         ListMember member = new ListMember(this, user, ListRole.EDITOR);
         members.add(member);
         return member;
