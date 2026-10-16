@@ -10,6 +10,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Locale;
+
 // 리스트/리마인더/태그의 소유자. user는 H2 예약어라 테이블 이름은 users로 둔다.
 @Entity
 @Table(name = "users")
@@ -36,5 +38,10 @@ public class User extends BaseTimeEntity {
         this.email = email;
         this.password = password;
         this.name = name;
+    }
+
+    // 가입/로그인/초대에서 이메일을 같은 기준으로 비교하도록 앞뒤 공백을 지우고 소문자로 맞춘다.
+    public static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
 }
