@@ -250,9 +250,9 @@ class ReminderControllerTest {
     @Test
     @DisplayName("반복 리마인더를 완료하면 완료된 현재 항목을 반환하고, 다음 회차가 조회된다")
     void toggleComplete_whenRepeating_returnsCompletedReminder_andNextOccurrenceIsListed() throws Exception {
-        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         Reminder saved = reminderRepository.save(new Reminder(owner, "분리수거", null, home,
-                LocalDateTime.of(2026, 10, 4, 20, 0), null, Recurrence.of(RepeatRule.WEEKLY)));
+                LocalDateTime.of(2026, 10, 4, 20, 0), null, new Recurrence(RepeatRule.WEEKLY, 1, null)));
 
         mockMvc.perform(patch("/api/reminders/{id}/complete", saved.getId()))
                 .andExpect(status().isOk())
@@ -346,7 +346,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("완료 항목 일괄 삭제는 200과 함께 삭제 개수를 반환한다")
     void deleteCompletedReminders_returnsDeletedCount() throws Exception {
-        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         Reminder done = reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null));
         reminderRepository.save(new Reminder(owner, "청소", null, home, null, null, null));
         mockMvc.perform(patch("/api/reminders/{id}/complete", done.getId()))
@@ -373,8 +373,8 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 이동은 200과 함께 대상 리스트로 옮겨진 리마인더를 반환한다")
     void moveReminder_returnsMovedReminder() throws Exception {
-        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
-        ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null));
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
+        ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null, null, 0));
         Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/{id}/list", saved.getId())
@@ -389,7 +389,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 이동에서 listId가 없으면 400을 반환한다")
     void moveReminder_withoutListId_returnsBadRequest() throws Exception {
-        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/{id}/list", saved.getId())
@@ -432,7 +432,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 순서 변경은 200 성공 응답을 반환하고, 리스트별 조회에 반영된다")
     void reorderReminders_returnsSuccess_andIsReflected() throws Exception {
-        ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null));
+        ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
         Reminder milk = reminderRepository.save(new Reminder(owner, "우유", null, shopping, null, null, null));
         Reminder eggs = reminderRepository.save(new Reminder(owner, "계란", null, shopping, null, null, null));
 
@@ -451,7 +451,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 순서 변경 ids가 리스트 항목과 일치하지 않으면 400과 BAD_REQUEST 응답을 반환한다")
     void reorderReminders_returnsBadRequest_whenIdsDoNotMatch() throws Exception {
-        ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null));
+        ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
         Reminder milk = reminderRepository.save(new Reminder(owner, "우유", null, shopping, null, null, null));
         reminderRepository.save(new Reminder(owner, "계란", null, shopping, null, null, null));
 
@@ -532,7 +532,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("parentId를 담아 생성하면 응답의 parentId에 부모 id가 담기고 listId는 부모의 리스트를 따른다")
     void createReminder_withParentId_returnsSubtask() throws Exception {
-        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         Reminder parent = reminderRepository.save(new Reminder(owner, "이사 준비", null, home, null, null, null));
 
         mockMvc.perform(post("/api/reminders")
@@ -583,7 +583,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리스트별 조회 응답은 최상위 리마인더만 담고, 하위 작업은 각 항목의 subtasks에 담는다")
     void getReminders_byList_nestsSubtasks() throws Exception {
-        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null));
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
         parent.addSubtask(new Reminder(owner, "박스 구하기", null, null, null, null, null));
         parent.addSubtask(new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null));

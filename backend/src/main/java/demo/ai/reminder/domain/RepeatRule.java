@@ -10,10 +10,6 @@ public enum RepeatRule {
     MONTHLY,
     YEARLY;
 
-    public LocalDateTime nextDueAt(LocalDateTime dueAt) {
-        return nextDueAt(dueAt, 1);
-    }
-
     /**
      * 주기 단위로 interval만큼 뒤의 마감일시를 계산한다.
      * 그 달(해)에 같은 날짜가 없으면 그 달의 말일로 맞춘다 (1월 31일 → 2월 28/29일, 2월 29일 → 다음 해 2월 28일).

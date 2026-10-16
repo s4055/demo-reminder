@@ -34,11 +34,6 @@ public record Recurrence(RepeatRule rule, int interval, Set<DayOfWeek> daysOfWee
         }
     }
 
-    // 간격 1, 요일 지정 없이 주기만 정한다 (사용자 지정 반복 이전의 동작).
-    public static Recurrence of(RepeatRule rule) {
-        return new Recurrence(rule, MIN_INTERVAL, Set.of());
-    }
-
     public boolean isRepeating() {
         return rule.isRepeating();
     }

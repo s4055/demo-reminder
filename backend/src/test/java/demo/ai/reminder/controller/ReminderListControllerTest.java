@@ -51,7 +51,7 @@ class ReminderListControllerTest {
     @Test
     @DisplayName("리스트 목록 조회 응답은 resultCode, resultMsg와 data 배열을 포함한다")
     void getLists_wrapsListInApiResponse() throws Exception {
-        reminderListRepository.save(new ReminderList(owner, "장보기", null));
+        reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
 
         mockMvc.perform(get("/api/lists"))
                 .andExpect(status().isOk())
@@ -103,7 +103,7 @@ class ReminderListControllerTest {
     @Test
     @DisplayName("리스트 수정은 version이 필수이며, 생략하면 400이고 지난 버전이면 409와 VERSION_CONFLICT다")
     void updateList_requiresCurrentVersion() throws Exception {
-        ReminderList list = reminderListRepository.saveAndFlush(new ReminderList(owner, "장보기", null));
+        ReminderList list = reminderListRepository.saveAndFlush(new ReminderList(owner, "장보기", null, null, 0));
 
         mockMvc.perform(put("/api/lists/{id}", list.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -129,7 +129,7 @@ class ReminderListControllerTest {
     @Test
     @DisplayName("리스트 삭제는 200과 함께 data가 null인 성공 응답을 반환한다")
     void deleteList_returnsSuccessWithNullData() throws Exception {
-        ReminderList saved = reminderListRepository.save(new ReminderList(owner, "장보기", null));
+        ReminderList saved = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
 
         mockMvc.perform(delete("/api/lists/{id}", saved.getId()))
                 .andExpect(status().isOk())
@@ -140,8 +140,8 @@ class ReminderListControllerTest {
     @Test
     @DisplayName("리스트 순서 변경은 200 성공 응답을 반환하고, 리스트 목록이 바뀐 순서와 sortOrder로 조회된다")
     void reorderLists_returnsSuccess_andIsReflected() throws Exception {
-        ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null));
-        ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null));
+        ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
+        ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null, null, 0));
         List<Long> ids = new ArrayList<>(List.of(work.getId(), shopping.getId()));
         reminderListRepository.findAll().stream()
                 .map(ReminderList::getId)
@@ -164,7 +164,7 @@ class ReminderListControllerTest {
     @Test
     @DisplayName("리스트 순서 변경 ids가 전체 리스트와 일치하지 않으면 400과 BAD_REQUEST 응답을 반환한다")
     void reorderLists_returnsBadRequest_whenIdsDoNotMatch() throws Exception {
-        reminderListRepository.save(new ReminderList(owner, "장보기", null));
+        reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
 
         mockMvc.perform(patch("/api/lists/order")
                         .contentType(MediaType.APPLICATION_JSON)

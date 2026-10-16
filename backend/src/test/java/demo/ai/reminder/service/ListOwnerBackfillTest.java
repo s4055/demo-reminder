@@ -39,8 +39,8 @@ class ListOwnerBackfillTest {
     @DisplayName("멤버가 없는(공유 기능 이전에 만든) 리스트는 소유자를 OWNER 멤버로 채워 다시 조회할 수 있게 한다")
     void restoreOwnerMembers_restoresOwnerOfListsWithoutMembers() {
         User owner = TestAuth.signIn(userRepository, "owner@example.com");
-        ReminderList legacy = reminderListRepository.save(new ReminderList(owner, "예전 리스트", null));
-        ReminderList current = reminderListRepository.save(new ReminderList(owner, "새 리스트", null));
+        ReminderList legacy = reminderListRepository.save(new ReminderList(owner, "예전 리스트", null, null, 0));
+        ReminderList current = reminderListRepository.save(new ReminderList(owner, "새 리스트", null, null, 0));
         entityManager.flush();
         // 공유 기능 이전 데이터처럼 멤버 행을 지운다.
         entityManager.createNativeQuery("delete from list_member where list_id = :listId")

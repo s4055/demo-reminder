@@ -90,7 +90,7 @@ class ListGroupControllerTest {
     @DisplayName("리스트 그룹 지정은 groupId를 담아 응답하고, groupId가 null이면 그룹에서 뺀다")
     void changeGroup_assignsAndClears() throws Exception {
         ListGroup group = listGroupRepository.save(new ListGroup(owner, "생활", 0));
-        ReminderList list = reminderListRepository.save(new ReminderList(owner, "장보기", null));
+        ReminderList list = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
 
         mockMvc.perform(patch("/api/lists/{id}/group", list.getId())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"groupId\":" + group.getId() + "}"))
@@ -105,7 +105,7 @@ class ListGroupControllerTest {
     @Test
     @DisplayName("없는 그룹을 지정하면 404다")
     void changeGroup_withMissingGroup_returnsNotFound() throws Exception {
-        ReminderList list = reminderListRepository.save(new ReminderList(owner, "장보기", null));
+        ReminderList list = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
 
         mockMvc.perform(patch("/api/lists/{id}/group", list.getId())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"groupId\":-1}"))

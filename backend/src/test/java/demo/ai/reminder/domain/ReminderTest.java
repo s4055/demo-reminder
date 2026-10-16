@@ -294,8 +294,8 @@ class ReminderTest {
     @Test
     @DisplayName("addSubtask로 추가한 하위 작업은 부모와 같은 리스트에 속하고 부모 안에서 0부터 순서가 매겨진다")
     void addSubtask_setsParentAndListOfParent_andAssignsSortOrderWithinParent() {
-        ReminderList home = new ReminderList(owner, "집", null);
-        ReminderList work = new ReminderList(owner, "업무", null);
+        ReminderList home = new ReminderList(owner, "집", null, null, 0);
+        ReminderList work = new ReminderList(owner, "업무", null, null, 0);
         Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
         parent.changeSortOrder(7);
         Reminder boxes = new Reminder(owner, "박스 구하기", null, work, null, null, null);
@@ -356,8 +356,8 @@ class ReminderTest {
     @Test
     @DisplayName("moveTo를 호출하면 리스트와 순서가 바뀌고 하위 작업도 같은 리스트로 함께 이동한다")
     void moveTo_changesListAndSortOrder_andMovesSubtasksTogether() {
-        ReminderList home = new ReminderList(owner, "집", null);
-        ReminderList work = new ReminderList(owner, "업무", null);
+        ReminderList home = new ReminderList(owner, "집", null, null, 0);
+        ReminderList work = new ReminderList(owner, "업무", null, null, 0);
         Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
         Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
         Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null);
@@ -377,8 +377,8 @@ class ReminderTest {
     @Test
     @DisplayName("하위 작업은 단독으로 moveTo할 수 없다")
     void moveTo_throws_whenReminderIsSubtask() {
-        ReminderList home = new ReminderList(owner, "집", null);
-        ReminderList work = new ReminderList(owner, "업무", null);
+        ReminderList home = new ReminderList(owner, "집", null, null, 0);
+        ReminderList work = new ReminderList(owner, "업무", null, null, 0);
         Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
         Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null, null, null);
         parent.addSubtask(subtask);
@@ -455,20 +455,20 @@ class ReminderTest {
     @Test
     @DisplayName("마감일시 없이 반복을 설정하면 예외가 발생한다")
     void constructorAndUpdate_rejectRepeatWithoutDueAt() {
-        assertThatThrownBy(() -> new Reminder(owner, "우유 사기", null, null, null, null, Recurrence.of(RepeatRule.DAILY)))
+        assertThatThrownBy(() -> new Reminder(owner, "우유 사기", null, null, null, null, new Recurrence(RepeatRule.DAILY, 1, null)))
                 .isInstanceOf(DomainException.class);
 
         Reminder reminder = new Reminder(owner, "우유 사기", null, null, LocalDateTime.of(2026, 10, 4, 9, 0), null, null);
-        assertThatThrownBy(() -> reminder.update("우유 사기", null, null, false, null, Recurrence.of(RepeatRule.WEEKLY)))
+        assertThatThrownBy(() -> reminder.update("우유 사기", null, null, false, null, new Recurrence(RepeatRule.WEEKLY, 1, null)))
                 .isInstanceOf(DomainException.class);
     }
 
     @Test
     @DisplayName("반복 리마인더를 완료하면 다음 마감일시로 내용을 복사한 다음 회차를 돌려준다")
     void toggleComplete_whenRepeating_returnsNextOccurrenceWithCopiedFields() {
-        ReminderList home = new ReminderList(owner, "집", null);
+        ReminderList home = new ReminderList(owner, "집", null, null, 0);
         Reminder reminder = new Reminder(owner, "분리수거", "캔/페트", home, LocalDateTime.of(2026, 10, 4, 20, 0),
-                Priority.HIGH, Recurrence.of(RepeatRule.WEEKLY));
+                Priority.HIGH, new Recurrence(RepeatRule.WEEKLY, 1, null));
         reminder.toggleFlag();
         reminder.replaceTags(List.of(new Tag(owner, "집안일")));
 
@@ -536,7 +536,7 @@ class ReminderTest {
     @DisplayName("반복 리마인더의 완료를 취소했다가 다시 완료해도 다음 회차는 한 번만 만든다")
     void toggleComplete_whenRecompleting_doesNotCreateNextOccurrenceAgain() {
         Reminder reminder = new Reminder(owner, "분리수거", null, null, LocalDateTime.of(2026, 10, 4, 20, 0),
-                null, Recurrence.of(RepeatRule.DAILY));
+                null, new Recurrence(RepeatRule.DAILY, 1, null));
 
         Optional<Reminder> first = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 0));
         Optional<Reminder> undo = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 1));
@@ -553,7 +553,7 @@ class ReminderTest {
     void toggleComplete_whenRepeatingSubtask_attachesNextOccurrenceToSameParent() {
         Reminder parent = new Reminder(owner, "운동", null, null, null, null, null);
         Reminder stretching = new Reminder(owner, "스트레칭", null, null, LocalDateTime.of(2026, 10, 4, 7, 0),
-                null, Recurrence.of(RepeatRule.DAILY));
+                null, new Recurrence(RepeatRule.DAILY, 1, null));
         parent.addSubtask(stretching);
 
         Optional<Reminder> next = stretching.toggleComplete(LocalDateTime.of(2026, 10, 4, 7, 30));
@@ -570,7 +570,7 @@ class ReminderTest {
     void toggleComplete_whenCompletingParent_doesNotRepeatSubtasks() {
         Reminder parent = new Reminder(owner, "운동", null, null, null, null, null);
         parent.addSubtask(new Reminder(owner, "스트레칭", null, null, LocalDateTime.of(2026, 10, 4, 7, 0),
-                null, Recurrence.of(RepeatRule.DAILY)));
+                null, new Recurrence(RepeatRule.DAILY, 1, null)));
 
         Optional<Reminder> next = parent.toggleComplete(LocalDateTime.of(2026, 10, 4, 8, 0));
 

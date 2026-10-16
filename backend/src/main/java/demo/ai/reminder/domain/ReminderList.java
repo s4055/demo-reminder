@@ -66,10 +66,6 @@ public class ReminderList extends BaseTimeEntity {
     @Column(nullable = false)
     private Long version;
 
-    public ReminderList(User user, String name, String color) {
-        this(user, name, color, null, 0);
-    }
-
     public ReminderList(User user, String name, String color, String icon, int sortOrder) {
         this.user = user;
         this.name = name;

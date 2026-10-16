@@ -51,7 +51,7 @@ class RecurrenceTest {
 
         assertThat(new Recurrence(RepeatRule.YEARLY, 4, null).nextDueAt(leapDay))
                 .isEqualTo(LocalDateTime.of(2032, 2, 29, 9, 0));
-        assertThat(Recurrence.of(RepeatRule.YEARLY).nextDueAt(leapDay))
+        assertThat(new Recurrence(RepeatRule.YEARLY, 1, null).nextDueAt(leapDay))
                 .isEqualTo(LocalDateTime.of(2029, 2, 28, 9, 0));
     }
 
