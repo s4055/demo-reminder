@@ -699,7 +699,7 @@ paths:
         - name: q
           in: query
           required: true
-          description: 검색어. 앞뒤 공백을 뺀 1~100자이며, %와 _는 와일드카드가 아니라 문자 그대로 검색한다.
+          description: 검색어. 공백만으로 이뤄질 수 없고 앞뒤 공백을 포함해 100자 이하다. 앞뒤 공백은 빼고 찾으며, %와 _는 와일드카드가 아니라 문자 그대로 검색한다.
           schema:
             type: string
             minLength: 1
@@ -713,7 +713,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderArrayApiResponse"
         "400":
-          description: q 누락, 또는 공백을 뺀 길이가 0이거나 100자 초과
+          description: q 누락, 공백만 있음, 또는 100자 초과 (resultMsg는 "q: 메시지" 형식)
           content:
             application/json:
               schema:

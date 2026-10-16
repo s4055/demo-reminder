@@ -9,7 +9,10 @@ import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.service.ReminderQueryService;
 import demo.ai.reminder.service.ReminderService;
+import demo.ai.reminder.service.SmartView;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -33,6 +36,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReminderController {
 
+    static final int SEARCH_QUERY_MAX_LENGTH = 100;
+
     private final ReminderService reminderService;
     private final ReminderQueryService reminderQueryService;
 
@@ -43,13 +48,16 @@ public class ReminderController {
         return ApiResponse.success(reminderQueryService.getReminders(listId, tag));
     }
 
+    // 뷰 이름은 대소문자를 구분하지 않으며, 지원하지 않는 이름이면 400이다.
     @GetMapping("/smart/{view}")
     public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable String view) {
-        return ApiResponse.success(reminderQueryService.getSmartReminders(view));
+        return ApiResponse.success(reminderQueryService.getSmartReminders(SmartView.from(view)));
     }
 
+    // 검색어가 비어 있거나 너무 길면 400이다.
     @GetMapping("/search")
-    public ApiResponse<List<ReminderResponse>> searchReminders(@RequestParam String q) {
+    public ApiResponse<List<ReminderResponse>> searchReminders(
+            @RequestParam @NotBlank @Size(max = SEARCH_QUERY_MAX_LENGTH) String q) {
         return ApiResponse.success(reminderQueryService.searchReminders(q));
     }
 
@@ -63,7 +71,7 @@ public class ReminderController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReminderResponse> createReminder(@Valid @RequestBody ReminderRequest request) {
-        return ApiResponse.success(reminderService.createReminder(request));
+        return ApiResponse.success(reminderService.createReminder(request.toCommand()));
     }
 
     // "/{id}"보다 구체적인 경로라 이 매핑이 우선한다.
@@ -80,7 +88,7 @@ public class ReminderController {
 
     @PutMapping("/{id}")
     public ApiResponse<ReminderResponse> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
-        return ApiResponse.success(reminderService.updateReminder(id, request));
+        return ApiResponse.success(reminderService.updateReminder(id, request.toCommand()));
     }
 
     @PatchMapping("/{id}/list")

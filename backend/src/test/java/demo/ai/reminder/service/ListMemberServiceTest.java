@@ -1,13 +1,13 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.DomainException;
 import demo.ai.reminder.domain.ListRole;
 import demo.ai.reminder.domain.User;
-import demo.ai.reminder.dto.request.ReminderListRequest;
 import demo.ai.reminder.dto.response.ListMemberResponse;
+import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.service.command.CreateListCommand;
 import demo.ai.reminder.support.TestAuth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +49,7 @@ class ListMemberServiceTest {
         bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
         carol = userRepository.save(new User("carol@example.com", "{noop}password", "캐럴"));
         alice = TestAuth.signIn(userRepository, "alice@example.com");
-        listId = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
+        listId = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
     }
 
     @Test

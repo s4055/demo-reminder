@@ -30,7 +30,6 @@ public class ReminderQueryService {
     private static final Sort LIST_SORT = Sort.by("sortOrder", "id");
     private static final Sort DUE_DATE_SORT = Sort.by("dueAt", "id");
     private static final Sort COMPLETED_SORT = Sort.by(Sort.Order.desc("completedAt"), Sort.Order.desc("id"));
-    static final int SEARCH_QUERY_MAX_LENGTH = 100;
     private static final Comparator<Reminder> SEARCH_ORDER = Comparator
             .comparing(Reminder::isCompleted)
             .thenComparing(reminder -> reminder.isCompleted() ? null : reminder.getDueAt(),
@@ -57,8 +56,8 @@ public class ReminderQueryService {
         return toResponses(reminderRepository.findAccessible(currentUser.id(), DEFAULT_SORT));
     }
 
-    public List<ReminderResponse> getSmartReminders(String view) {
-        return toResponses(switch (SmartView.from(view)) {
+    public List<ReminderResponse> getSmartReminders(SmartView view) {
+        return toResponses(switch (view) {
             case TODAY -> {
                 LocalDate today = LocalDate.now();
                 yield reminderRepository.findAccessibleIncompleteDueBetween(
@@ -74,14 +73,10 @@ public class ReminderQueryService {
     /**
      * 제목/메모/태그 이름에 검색어가 들어 있는(대소문자 무시) 리마인더를 하위 작업까지 개별 항목으로 찾는다.
      * 미완료 항목을 먼저 마감일시 순(마감일 없는 항목은 뒤), 같으면 생성순으로 두고, 그다음 완료 항목을 완료일시 최신순으로 둔다.
-     * 검색어는 앞뒤 공백을 뺀 1~100자이며, %와 _는 문자 그대로 검색한다.
+     * 검색어는 앞뒤 공백을 빼고 찾으며, %와 _는 문자 그대로 검색한다. 비어 있거나 너무 긴 검색어는 컨트롤러가 400으로 막는다.
      */
     public List<ReminderResponse> searchReminders(String query) {
-        String keyword = query == null ? "" : query.strip();
-        if (keyword.isEmpty() || keyword.length() > SEARCH_QUERY_MAX_LENGTH) {
-            throw new BusinessException(ResultCode.BAD_REQUEST,
-                    "Search query must be 1 to " + SEARCH_QUERY_MAX_LENGTH + " characters");
-        }
+        String keyword = query.strip();
         return reminderRepository.searchAccessible(currentUser.id(), "%" + escapeLike(keyword.toLowerCase()) + "%")
                 .stream()
                 .sorted(SEARCH_ORDER)
@@ -94,6 +89,7 @@ public class ReminderQueryService {
     }
 
     // 알림 스케줄링용. [from, to) 기간에 마감되는 미완료 리마인더를 하위 작업까지 개별 항목으로 마감일시 순으로 조회한다.
+    // from과 to의 관계는 두 값을 함께 봐야 하는 규칙이라 서비스가 검증한다.
     public List<ReminderResponse> getUpcomingReminders(LocalDateTime from, LocalDateTime to) {
         if (!from.isBefore(to)) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "from must be before to: from=" + from + ", to=" + to);

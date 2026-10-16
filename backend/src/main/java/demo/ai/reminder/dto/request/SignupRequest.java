@@ -1,5 +1,6 @@
 package demo.ai.reminder.dto.request;
 
+import demo.ai.reminder.service.command.SignupCommand;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -12,4 +13,8 @@ public record SignupRequest(
 ) {
 
     public static final int PASSWORD_MIN_LENGTH = 8;
+
+    public SignupCommand toCommand() {
+        return new SignupCommand(email, password, name);
+    }
 }

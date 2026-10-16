@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -139,6 +140,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (ex instanceof MethodArgumentNotValidException validation) {
             return validation.getBindingResult().getFieldErrors().stream()
                     .map(this::formatFieldError)
+                    .collect(Collectors.joining(", "));
+        }
+        // 컨트롤러 파라미터(@RequestParam 등)의 제약 위반은 본문 검증과 같은 "이름: 메시지" 형식으로 응답한다.
+        if (ex instanceof HandlerMethodValidationException validation && resultCode == ResultCode.BAD_REQUEST) {
+            return validation.getParameterValidationResults().stream()
+                    .flatMap(result -> result.getResolvableErrors().stream()
+                            .map(error -> result.getMethodParameter().getParameterName() + ": " + error.getDefaultMessage()))
                     .collect(Collectors.joining(", "));
         }
         if (ex instanceof ErrorResponse errorResponse && errorResponse.getBody().getDetail() != null) {

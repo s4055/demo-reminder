@@ -1,16 +1,16 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.User;
-import demo.ai.reminder.dto.request.ReminderRequest;
-import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderResponse;
+import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.service.command.CreateReminderCommand;
+import demo.ai.reminder.service.command.UpdateReminderCommand;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -103,7 +103,7 @@ class ReminderQueryServiceTest {
         Reminder done = reminderRepository.save(new Reminder(owner, "오늘 완료", null, null, today.atTime(12, 0), null, null));
         done.toggleComplete(LocalDateTime.now());
 
-        List<ReminderResponse> result = reminderQueryService.getSmartReminders("today");
+        List<ReminderResponse> result = reminderQueryService.getSmartReminders(SmartView.TODAY);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("오늘 아침", "오늘 저녁");
     }
@@ -118,7 +118,7 @@ class ReminderQueryServiceTest {
         Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, today.atTime(10, 0), null, null));
         done.toggleComplete(LocalDateTime.now());
 
-        List<ReminderResponse> result = reminderQueryService.getSmartReminders("scheduled");
+        List<ReminderResponse> result = reminderQueryService.getSmartReminders(SmartView.SCHEDULED);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("오늘", "다음주");
     }
@@ -130,7 +130,7 @@ class ReminderQueryServiceTest {
         Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null, null, null));
         done.toggleComplete(LocalDateTime.now());
 
-        List<ReminderResponse> result = reminderQueryService.getSmartReminders("all");
+        List<ReminderResponse> result = reminderQueryService.getSmartReminders(SmartView.ALL);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("우유 사기");
     }
@@ -145,7 +145,7 @@ class ReminderQueryServiceTest {
         flaggedDone.toggleComplete(LocalDateTime.now());
         reminderRepository.save(new Reminder(owner, "일반", null, null, null, null, null));
 
-        List<ReminderResponse> result = reminderQueryService.getSmartReminders("flagged");
+        List<ReminderResponse> result = reminderQueryService.getSmartReminders(SmartView.FLAGGED);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("중요");
     }
@@ -157,7 +157,7 @@ class ReminderQueryServiceTest {
         Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null, null, null));
         done.toggleComplete(LocalDateTime.now());
 
-        List<ReminderResponse> result = reminderQueryService.getSmartReminders("completed");
+        List<ReminderResponse> result = reminderQueryService.getSmartReminders(SmartView.COMPLETED);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("완료");
     }
@@ -170,7 +170,7 @@ class ReminderQueryServiceTest {
         second.toggleComplete(LocalDateTime.of(2026, 9, 30, 9, 0));
         first.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
 
-        List<ReminderResponse> result = reminderQueryService.getSmartReminders("completed");
+        List<ReminderResponse> result = reminderQueryService.getSmartReminders(SmartView.COMPLETED);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("먼저 생성", "나중 생성");
     }
@@ -184,38 +184,20 @@ class ReminderQueryServiceTest {
         newer.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
         reminderRepository.flush();
 
-        reminderService.updateReminder(older.getId(), new ReminderUpdateRequest("먼저 완료(수정)", null, null, false, null, null, null, older.getVersion()));
+        reminderService.updateReminder(older.getId(), new UpdateReminderCommand("먼저 완료(수정)", null, null, false, null, null, null, older.getVersion()));
         reminderRepository.flush();
-        List<ReminderResponse> result = reminderQueryService.getSmartReminders("completed");
+        List<ReminderResponse> result = reminderQueryService.getSmartReminders(SmartView.COMPLETED);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("나중 완료", "먼저 완료(수정)");
-    }
-
-    @Test
-    @DisplayName("스마트 뷰 이름은 대소문자를 구분하지 않는다")
-    void getSmartReminders_isCaseInsensitive() {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
-
-        List<ReminderResponse> result = reminderQueryService.getSmartReminders("ALL");
-
-        assertThat(result).extracting(ReminderResponse::title).containsExactly("우유 사기");
-    }
-
-    @Test
-    @DisplayName("알 수 없는 스마트 뷰를 요청하면 400 예외가 발생한다")
-    void getSmartReminders_throwsBadRequest_whenViewIsUnknown() {
-        assertThatThrownBy(() -> reminderQueryService.getSmartReminders("unknown"))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
     }
 
     @Test
     @DisplayName("태그로 조회하면 해당 태그가 붙은 리마인더만 생성순으로 반환한다")
     void getReminders_byTag_returnsOnlyTaggedReminders() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        reminderService.createReminder(new ReminderRequest("우유", null, shopping.getId(), null, null, List.of("집"), null, null));
-        reminderService.createReminder(new ReminderRequest("보고서", null, null, null, null, List.of("회사"), null, null));
-        reminderService.createReminder(new ReminderRequest("빨래", null, null, null, null, List.of("집", "주말"), null, null));
+        reminderService.createReminder(new CreateReminderCommand("우유", null, shopping.getId(), null, null, List.of("집"), null, null));
+        reminderService.createReminder(new CreateReminderCommand("보고서", null, null, null, null, List.of("회사"), null, null));
+        reminderService.createReminder(new CreateReminderCommand("빨래", null, null, null, null, List.of("집", "주말"), null, null));
 
         List<ReminderResponse> result = reminderQueryService.getReminders(null, "집");
 
@@ -246,7 +228,7 @@ class ReminderQueryServiceTest {
         ReminderResponse parent = create("이사 준비", null);
         createSubtask("박스 구하기", parent.id());
 
-        assertThat(reminderQueryService.getSmartReminders("all"))
+        assertThat(reminderQueryService.getSmartReminders(SmartView.ALL))
                 .extracting(ReminderResponse::title).contains("이사 준비", "박스 구하기");
     }
 
@@ -283,8 +265,7 @@ class ReminderQueryServiceTest {
     void getUpcomingReminders_includesSubtasks() {
         LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
         ReminderResponse parent = create("이사 준비", null);
-        reminderService.createReminder(new ReminderRequest(
-                "박스 구하기", null, null, from.plusMinutes(1), null, null, parent.id(), null));
+        reminderService.createReminder(new CreateReminderCommand("박스 구하기", null, null, from.plusMinutes(1), null, null, parent.id(), null));
 
         assertThat(reminderQueryService.getUpcomingReminders(from, from.plusMinutes(2)))
                 .extracting(ReminderResponse::title).containsExactly("박스 구하기");
@@ -307,9 +288,9 @@ class ReminderQueryServiceTest {
     @DisplayName("검색어가 제목, 메모, 태그 이름 중 하나에 들어 있으면 검색된다")
     void searchReminders_matchesTitleMemoAndTag() {
         create("우유 사기", null);
-        reminderService.createReminder(new ReminderRequest("장보기", "우유랑 빵", null, null, null, null, null, null));
+        reminderService.createReminder(new CreateReminderCommand("장보기", "우유랑 빵", null, null, null, null, null, null));
         reminderService.createReminder(
-                new ReminderRequest("마트", null, null, null, null, List.of("우유팩"), null, null));
+                new CreateReminderCommand("마트", null, null, null, null, List.of("우유팩"), null, null));
         create("보고서 작성", null);
 
         List<ReminderResponse> result = reminderQueryService.searchReminders("우유");
@@ -323,7 +304,7 @@ class ReminderQueryServiceTest {
     void searchReminders_isCaseInsensitive_andTrimsQuery() {
         create("Buy MILK", null);
         reminderService.createReminder(
-                new ReminderRequest("마트", null, null, null, null, List.of("Grocery"), null, null));
+                new CreateReminderCommand("마트", null, null, null, null, List.of("Grocery"), null, null));
 
         assertThat(reminderQueryService.searchReminders("  milk ")).extracting(ReminderResponse::title)
                 .containsExactly("Buy MILK");
@@ -349,7 +330,7 @@ class ReminderQueryServiceTest {
     @DisplayName("태그가 여러 개 일치해도 리마인더는 한 번만 나오고, 하위 작업도 개별 항목으로 검색된다")
     void searchReminders_returnsEachReminderOnce_includingSubtasks() {
         ReminderResponse parent = reminderService.createReminder(
-                new ReminderRequest("이사", null, null, null, null, List.of("짐싸기", "짐정리"), null, null));
+                new CreateReminderCommand("이사", null, null, null, null, List.of("짐싸기", "짐정리"), null, null));
         createSubtask("짐 박스 구하기", parent.id());
 
         assertThat(reminderQueryService.searchReminders("짐")).extracting(ReminderResponse::title)
@@ -381,26 +362,15 @@ class ReminderQueryServiceTest {
                 sooner.id(), later.id(), noDue.id(), noDue2.id(), completedSecond.id(), completedFirst.id());
     }
 
-    @Test
-    @DisplayName("검색어가 비어 있거나 100자를 넘으면 400 예외가 발생한다")
-    void searchReminders_throwsBadRequest_whenQueryIsBlankOrTooLong() {
-        for (String query : new String[]{"", "   ", "가".repeat(101)}) {
-            assertThatThrownBy(() -> reminderQueryService.searchReminders(query))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
-        }
-        assertThat(reminderQueryService.searchReminders("가".repeat(100))).isEmpty();
-    }
-
     private ReminderResponse create(String title, Long listId) {
-        return reminderService.createReminder(new ReminderRequest(title, null, listId, null, null, null, null, null));
+        return reminderService.createReminder(new CreateReminderCommand(title, null, listId, null, null, null, null, null));
     }
 
     private ReminderResponse createWithDueAt(String title, LocalDateTime dueAt) {
-        return reminderService.createReminder(new ReminderRequest(title, null, null, dueAt, null, null, null, null));
+        return reminderService.createReminder(new CreateReminderCommand(title, null, null, dueAt, null, null, null, null));
     }
 
     private ReminderResponse createSubtask(String title, Long parentId) {
-        return reminderService.createReminder(new ReminderRequest(title, null, null, null, null, null, parentId, null));
+        return reminderService.createReminder(new CreateReminderCommand(title, null, null, null, null, null, parentId, null));
     }
 }

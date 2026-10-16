@@ -3,6 +3,7 @@ package demo.ai.reminder.dto.request;
 import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Recurrence;
 import demo.ai.reminder.domain.RepeatRule;
+import demo.ai.reminder.service.command.UpdateReminderCommand;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -29,9 +30,8 @@ public record ReminderUpdateRequest(
         @NotNull Long version
 ) {
 
-    // 간격/요일 없이 주기만 지정하는 경우
-    public ReminderUpdateRequest(String title, String memo, LocalDateTime dueAt, boolean flagged, Priority priority,
-                                 List<String> tagNames, RepeatRule repeatRule, Long version) {
-        this(title, memo, dueAt, flagged, priority, tagNames, repeatRule, null, null, version);
+    public UpdateReminderCommand toCommand() {
+        return new UpdateReminderCommand(title, memo, dueAt, flagged, priority, tagNames,
+                ReminderRequest.toRecurrence(repeatRule, repeatInterval, repeatDaysOfWeek), version);
     }
 }

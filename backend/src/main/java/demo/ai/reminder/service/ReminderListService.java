@@ -4,13 +4,13 @@ import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListGroup;
 import demo.ai.reminder.domain.ReminderList;
-import demo.ai.reminder.dto.request.ReminderListRequest;
-import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.repository.ListGroupRepository;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
+import demo.ai.reminder.service.command.CreateListCommand;
+import demo.ai.reminder.service.command.UpdateListCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,20 +38,20 @@ public class ReminderListService {
 
     // 새 리스트는 사이드바 맨 아래(마지막 순서)에 추가하고, 만든 사용자가 OWNER 멤버가 된다.
     @Transactional
-    public ReminderListResponse createList(ReminderListRequest request) {
+    public ReminderListResponse createList(CreateListCommand command) {
         int sortOrder = reminderListRepository.findNextSortOrder(currentUser.id());
         ReminderList list = reminderListRepository.save(
-                new ReminderList(currentUser.reference(), request.name(), request.color(), request.icon(), sortOrder));
+                new ReminderList(currentUser.reference(), command.name(), command.color(), command.icon(), sortOrder));
         return toResponse(list);
     }
 
     // 소유자만 수정할 수 있다. icon을 생략하면 기본 아이콘(null)이 된다.
     // 요청 버전이 현재 버전과 다르면(편집 중 다른 변경이 먼저 저장됨) 409다.
     @Transactional
-    public ReminderListResponse updateList(Long id, ReminderListUpdateRequest request) {
+    public ReminderListResponse updateList(Long id, UpdateListCommand command) {
         ReminderList list = listAccess.ownedList(id);
-        Versions.verify(list.getVersion(), request.version(), "List " + id);
-        list.update(request.name(), request.color(), request.icon());
+        Versions.verify(list.getVersion(), command.version(), "List " + id);
+        list.update(command.name(), command.color(), command.icon());
         return toResponse(list);
     }
 

@@ -1,5 +1,6 @@
 package demo.ai.reminder.dto.request;
 
+import demo.ai.reminder.service.command.UpdateListCommand;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -13,8 +14,7 @@ public record ReminderListUpdateRequest(
         @NotNull Long version
 ) {
 
-    // 아이콘 없이 이름과 색상만 지정하는 경우
-    public ReminderListUpdateRequest(String name, String color, Long version) {
-        this(name, color, null, version);
+    public UpdateListCommand toCommand() {
+        return new UpdateListCommand(name, color, icon, version);
     }
 }

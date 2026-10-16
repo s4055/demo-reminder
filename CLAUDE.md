@@ -25,6 +25,12 @@
 
 - 컨트롤러의 요청/응답 객체는 순수 DTO여야 한다. Lombok getter/setter 클래스가 아니라 불변 Java `record`로 작성한다.
 - 모든 API 응답은 `common.ApiResponse`(`resultCode`, `resultMsg`, `data`)로 감싼다. 컨트롤러는 `ApiResponse.success(...)`를 반환하고(본문 없는 경우 `ApiResponse.success()`, 204 대신 200), 오류는 예외를 던져 `GlobalExceptionHandler`가 `ResultCode`로 변환하게 한다.
+- 서비스는 웹 요청 DTO를 받지 않는다. 필드가 여러 개인 요청은 `service.command`의 불변 `record`(Command)로 바꿔 넘기고(요청 DTO의 `toCommand()`), 필드 하나짜리는 값을 직접 넘긴다. 생략 시 기본값 같은 API 입력 해석은 `toCommand()`에서 한다.
+- 입력 검증 위치: 값 하나의 형식·길이 검증과 문자열→enum 같은 형식 변환은 웹 경계(요청 DTO의 `@Valid`, 컨트롤러 파라미터 제약, 컨트롤러)에서 하고, 여러 값 사이의 관계(예: `from < to`)는 서비스, 도메인 규칙은 도메인에서 검증한다.
+
+### 인증/세션
+
+- 세션의 시작(세션 고정 방어 포함)과 종료는 `security.LoginSession`이 맡는다. 컨트롤러는 `SecurityContextHolder`나 세션을 직접 다루지 않는다.
 
 ### API 명세
 

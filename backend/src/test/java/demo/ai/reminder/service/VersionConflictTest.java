@@ -1,18 +1,17 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.User;
-import demo.ai.reminder.dto.request.ListGroupRequest;
-import demo.ai.reminder.dto.request.ReminderListRequest;
-import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
-import demo.ai.reminder.dto.request.ReminderRequest;
-import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
+import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.service.command.CreateListCommand;
+import demo.ai.reminder.service.command.CreateReminderCommand;
+import demo.ai.reminder.service.command.UpdateListCommand;
+import demo.ai.reminder.service.command.UpdateReminderCommand;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,9 +64,9 @@ class VersionConflictTest {
     @Test
     @DisplayName("새로 만든 리마인더와 리스트의 버전은 0이다")
     void create_startsAtVersionZero() {
-        ReminderListResponse list = reminderListService.createList(new ReminderListRequest("장보기", null));
+        ReminderListResponse list = reminderListService.createList(new CreateListCommand("장보기", null, null));
         ReminderResponse reminder = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, list.id(), null, null, null, null, null));
+                new CreateReminderCommand("우유 사기", null, list.id(), null, null, null, null, null));
 
         assertThat(list.version()).isZero();
         assertThat(reminder.version()).isZero();
@@ -78,20 +77,20 @@ class VersionConflictTest {
     void updateReminder_updatesAndIncrementsVersion_whenVersionMatches() {
         ReminderResponse created = createReminder("우유 사기");
 
-        ReminderResponse updated = reminderService.updateReminder(created.id(), updateRequest("저지방 우유", 0L));
+        ReminderResponse updated = reminderService.updateReminder(created.id(), updateCommand("저지방 우유", 0L));
 
         assertThat(updated.title()).isEqualTo("저지방 우유");
         assertThat(updated.version()).isEqualTo(1L);
-        assertThat(reminderService.updateReminder(created.id(), updateRequest("두유", 1L)).version()).isEqualTo(2L);
+        assertThat(reminderService.updateReminder(created.id(), updateCommand("두유", 1L)).version()).isEqualTo(2L);
     }
 
     @Test
     @DisplayName("요청 버전이 현재 버전과 다르면(다른 사용자가 먼저 저장) 리마인더 수정은 VERSION_CONFLICT이고 앞의 변경이 남는다")
     void updateReminder_throwsVersionConflict_whenVersionIsStale() {
         ReminderResponse created = createReminder("우유 사기");
-        reminderService.updateReminder(created.id(), updateRequest("먼저 저장", 0L));
+        reminderService.updateReminder(created.id(), updateCommand("먼저 저장", 0L));
 
-        assertThatThrownBy(() -> reminderService.updateReminder(created.id(), updateRequest("나중 저장", 0L)))
+        assertThatThrownBy(() -> reminderService.updateReminder(created.id(), updateCommand("나중 저장", 0L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.VERSION_CONFLICT);
         entityManager.flush();
@@ -106,13 +105,13 @@ class VersionConflictTest {
     @Test
     @DisplayName("완료/플래그 토글과 리스트 이동은 버전을 받지 않고 버전을 올리므로, 그 전에 연 편집은 VERSION_CONFLICT다")
     void toggleAndMove_incrementVersion() {
-        Long target = reminderListService.createList(new ReminderListRequest("업무", null)).id();
+        Long target = reminderListService.createList(new CreateListCommand("업무", null, null)).id();
         ReminderResponse created = createReminder("우유 사기");
 
         assertThat(reminderService.toggleFlag(created.id()).version()).isEqualTo(1L);
         assertThat(reminderService.toggleComplete(created.id()).version()).isEqualTo(2L);
         assertThat(reminderService.moveReminder(created.id(), target).version()).isEqualTo(3L);
-        assertThatThrownBy(() -> reminderService.updateReminder(created.id(), updateRequest("나중 저장", 0L)))
+        assertThatThrownBy(() -> reminderService.updateReminder(created.id(), updateCommand("나중 저장", 0L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.VERSION_CONFLICT);
     }
@@ -120,11 +119,11 @@ class VersionConflictTest {
     @Test
     @DisplayName("리마인더 순서를 바꾸면 순서가 바뀐 리마인더의 버전이 올라간다")
     void reorderReminders_incrementsVersion() {
-        Long listId = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
+        Long listId = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
         ReminderResponse first = reminderService.createReminder(
-                new ReminderRequest("우유", null, listId, null, null, null, null, null));
+                new CreateReminderCommand("우유", null, listId, null, null, null, null, null));
         ReminderResponse second = reminderService.createReminder(
-                new ReminderRequest("빵", null, listId, null, null, null, null, null));
+                new CreateReminderCommand("빵", null, listId, null, null, null, null, null));
 
         reminderService.reorderReminders(listId, List.of(second.id(), first.id()));
         entityManager.flush();
@@ -136,15 +135,15 @@ class VersionConflictTest {
     @Test
     @DisplayName("요청 버전이 현재 버전과 같으면 리스트를 수정하고 버전을 올리며, 다르면 VERSION_CONFLICT다")
     void updateList_checksVersion() {
-        ReminderListResponse created = reminderListService.createList(new ReminderListRequest("장보기", null));
+        ReminderListResponse created = reminderListService.createList(new CreateListCommand("장보기", null, null));
 
         ReminderListResponse updated = reminderListService.updateList(created.id(),
-                new ReminderListUpdateRequest("마트", "#FF9500", 0L));
+                new UpdateListCommand("마트", "#FF9500", null, 0L));
 
         assertThat(updated.name()).isEqualTo("마트");
         assertThat(updated.version()).isEqualTo(1L);
         assertThatThrownBy(() -> reminderListService.updateList(created.id(),
-                new ReminderListUpdateRequest("시장", null, 0L)))
+                new UpdateListCommand("시장", null, null, 0L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.VERSION_CONFLICT);
     }
@@ -152,9 +151,9 @@ class VersionConflictTest {
     @Test
     @DisplayName("리스트 그룹 지정과 순서 변경은 버전을 받지 않고 리스트 버전을 올린다")
     void changeGroupAndReorderLists_incrementVersion() {
-        Long shopping = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
-        Long work = reminderListService.createList(new ReminderListRequest("업무", null)).id();
-        Long groupId = listGroupService.createGroup(new ListGroupRequest("개인")).id();
+        Long shopping = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
+        Long work = reminderListService.createList(new CreateListCommand("업무", null, null)).id();
+        Long groupId = listGroupService.createGroup("개인").id();
 
         assertThat(reminderListService.changeGroup(shopping, groupId).version()).isEqualTo(1L);
         reminderListService.reorderLists(List.of(work, shopping));
@@ -169,21 +168,21 @@ class VersionConflictTest {
     void subtaskChanges_doNotIncrementParentVersion() {
         ReminderResponse parent = createReminder("장보기");
         ReminderResponse subtask = reminderService.createReminder(
-                new ReminderRequest("우유", null, null, null, null, null, parent.id(), null));
-        reminderService.createReminder(new ReminderRequest("빵", null, null, null, null, null, parent.id(), null));
+                new CreateReminderCommand("우유", null, null, null, null, null, parent.id(), null));
+        reminderService.createReminder(new CreateReminderCommand("빵", null, null, null, null, null, parent.id(), null));
         reminderService.deleteReminder(subtask.id());
         entityManager.flush();
         entityManager.clear();
 
         assertThat(reminderRepository.findById(parent.id()).orElseThrow().getVersion()).isZero();
-        assertThat(reminderService.updateReminder(parent.id(), updateRequest("마트 장보기", 0L)).version()).isEqualTo(1L);
+        assertThat(reminderService.updateReminder(parent.id(), updateCommand("마트 장보기", 0L)).version()).isEqualTo(1L);
     }
 
     @Test
     @DisplayName("멤버를 초대/제거해도 리스트 버전은 그대로다")
     void memberChanges_doNotIncrementListVersion() {
         User bob = userRepository.save(new User("bob@example.com", "password", "밥"));
-        Long listId = reminderListService.createList(new ReminderListRequest("가족", null)).id();
+        Long listId = reminderListService.createList(new CreateListCommand("가족", null, null)).id();
 
         listMemberService.invite(listId, "bob@example.com");
         entityManager.flush();
@@ -213,14 +212,14 @@ class VersionConflictTest {
         assertThat(reminderRepository.findById(reminderId).orElseThrow().getVersion()).isZero();
         assertThat(reminderListRepository.findAll()).singleElement()
                 .satisfies(list -> assertThat(list.getVersion()).isZero());
-        assertThat(reminderService.updateReminder(reminderId, updateRequest("수정", 0L)).version()).isEqualTo(1L);
+        assertThat(reminderService.updateReminder(reminderId, updateCommand("수정", 0L)).version()).isEqualTo(1L);
     }
 
     private ReminderResponse createReminder(String title) {
-        return reminderService.createReminder(new ReminderRequest(title, null, null, null, null, null, null, null));
+        return reminderService.createReminder(new CreateReminderCommand(title, null, null, null, null, null, null, null));
     }
 
-    private static ReminderUpdateRequest updateRequest(String title, Long version) {
-        return new ReminderUpdateRequest(title, null, null, false, null, null, null, version);
+    private static UpdateReminderCommand updateCommand(String title, Long version) {
+        return new UpdateReminderCommand(title, null, null, false, null, null, null, version);
     }
 }

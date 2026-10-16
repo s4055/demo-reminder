@@ -1,5 +1,6 @@
 package demo.ai.reminder.dto.request;
 
+import demo.ai.reminder.service.command.CreateListCommand;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
@@ -10,8 +11,7 @@ public record ReminderListRequest(
         String icon
 ) {
 
-    // 아이콘 없이 이름과 색상만 지정하는 경우
-    public ReminderListRequest(String name, String color) {
-        this(name, color, null);
+    public CreateListCommand toCommand() {
+        return new CreateListCommand(name, color, icon);
     }
 }

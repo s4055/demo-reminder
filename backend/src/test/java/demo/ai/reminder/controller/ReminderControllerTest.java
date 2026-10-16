@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
@@ -238,6 +239,24 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("수정할 때도 간격이 1~99를 벗어나거나 WEEKLY가 아닌데 요일을 지정하면 400을 반환하고 바뀌지 않는다")
+    void updateReminder_withInvalidRecurrence_returnsBadRequest() throws Exception {
+        Reminder saved = reminderRepository.save(
+                new Reminder(owner, "운동", null, null, LocalDateTime.of(2026, 10, 5, 7, 0), null, null));
+        String[] bodies = {
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatInterval\":0,\"version\":0}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatInterval\":100,\"version\":0}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatDaysOfWeek\":[\"MONDAY\"],\"version\":0}",
+        };
+        for (String body : bodies) {
+            mockMvc.perform(put("/api/reminders/{id}", saved.getId()).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+        }
+        assertThat(reminderRepository.findById(saved.getId()).orElseThrow().getRecurrence().isRepeating()).isFalse();
+    }
+
+    @Test
     @DisplayName("지원하지 않는 repeatRule 값으로 생성하면 400을 반환한다")
     void createReminder_withUnknownRepeatRule_returnsBadRequest() throws Exception {
         mockMvc.perform(post("/api/reminders")
@@ -340,7 +359,21 @@ class ReminderControllerTest {
 
         mockMvc.perform(get("/api/reminders/search").param("q", "  "))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("q: ")));
+    }
+
+    @Test
+    @DisplayName("리마인더 검색어는 100자까지 허용하고, 넘으면 400을 반환한다")
+    void searchReminders_withQueryOverMaxLength_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/reminders/search").param("q", "가".repeat(100)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+
+        mockMvc.perform(get("/api/reminders/search").param("q", "가".repeat(101)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("q: ")));
     }
 
     @Test
@@ -418,6 +451,19 @@ class ReminderControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.resultMsg").value(startsWith("title: ")));
+    }
+
+    @Test
+    @DisplayName("스마트 뷰 이름은 대소문자를 구분하지 않는다")
+    void getSmartReminders_isCaseInsensitive() throws Exception {
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+
+        for (String view : new String[]{"all", "ALL", "All"}) {
+            mockMvc.perform(get("/api/reminders/smart/{view}", view))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data", hasSize(1)))
+                    .andExpect(jsonPath("$.data[0].title").value("우유 사기"));
+        }
     }
 
     @Test
