@@ -38,7 +38,7 @@ public class ReminderListController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReminderListResponse> createList(@Valid @RequestBody ReminderListRequest request) {
-        return ApiResponse.success(reminderListService.createList(request));
+        return ApiResponse.success(reminderListService.createList(request.toCommand()));
     }
 
     @PatchMapping("/order")
@@ -49,11 +49,11 @@ public class ReminderListController {
 
     @PutMapping("/{id}")
     public ApiResponse<ReminderListResponse> updateList(@PathVariable Long id, @Valid @RequestBody ReminderListUpdateRequest request) {
-        return ApiResponse.success(reminderListService.updateList(id, request));
+        return ApiResponse.success(reminderListService.updateList(id, request.toCommand()));
     }
 
     @PatchMapping("/{id}/group")
-    public ApiResponse<ReminderListResponse> changeGroup(@PathVariable Long id, @RequestBody ListGroupAssignRequest request) {
+    public ApiResponse<ReminderListResponse> changeGroup(@PathVariable Long id, @Valid @RequestBody ListGroupAssignRequest request) {
         return ApiResponse.success(reminderListService.changeGroup(id, request.groupId()));
     }
 

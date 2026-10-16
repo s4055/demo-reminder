@@ -101,6 +101,25 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("이미 세션이 있는 상태에서 로그인하면 세션 ID를 바꿔 세션 고정 공격을 막는다")
+    void login_withExistingSession_changesSessionId() throws Exception {
+        signup("alice@example.com", "password1", "앨리스");
+        MockHttpSession session = new MockHttpSession();
+        String sessionIdBeforeLogin = session.getId();
+
+        mockMvc.perform(post("/api/auth/login").session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"alice@example.com\",\"password\":\"password1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.email").value("alice@example.com"));
+
+        assertThat(session.getId()).isNotEqualTo(sessionIdBeforeLogin);
+        mockMvc.perform(get("/api/auth/me").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.email").value("alice@example.com"));
+    }
+
+    @Test
     @DisplayName("로그아웃하면 세션이 무효화되어 이후 요청은 401이다")
     void logout_invalidatesSession() throws Exception {
         MockHttpSession session = signup("alice@example.com", "password1", "앨리스");

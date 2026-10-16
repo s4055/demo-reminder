@@ -1,6 +1,5 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.DomainException;
 import demo.ai.reminder.domain.ListRole;
@@ -8,13 +7,14 @@ import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.domain.Tag;
 import demo.ai.reminder.domain.User;
-import demo.ai.reminder.dto.request.ReminderListRequest;
-import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
+import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.TagRepository;
 import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.service.command.CreateListCommand;
+import demo.ai.reminder.service.command.UpdateListCommand;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,7 +85,7 @@ class ReminderListServiceTest {
     @Test
     @DisplayName("요청으로 받은 이름과 색상으로 리스트를 생성한다")
     void createList_savesListWithGivenNameAndColor() {
-        ReminderListResponse result = reminderListService.createList(new ReminderListRequest("장보기", "#FF9500"));
+        ReminderListResponse result = reminderListService.createList(new CreateListCommand("장보기", "#FF9500", null));
 
         assertThat(result.id()).isNotNull();
         assertThat(result.name()).isEqualTo("장보기");
@@ -99,7 +99,7 @@ class ReminderListServiceTest {
     void createList_fillsCreatedAtAndUpdatedAt() {
         LocalDateTime before = LocalDateTime.now();
 
-        ReminderListResponse result = reminderListService.createList(new ReminderListRequest("장보기", null));
+        ReminderListResponse result = reminderListService.createList(new CreateListCommand("장보기", null, null));
 
         assertThat(result.createdAt()).isNotNull().isAfterOrEqualTo(before);
         assertThat(result.updatedAt()).isNotNull().isAfterOrEqualTo(before);
@@ -112,7 +112,7 @@ class ReminderListServiceTest {
         LocalDateTime updatedAt = backdateUpdatedAt(saved.getId());
         LocalDateTime createdAt = reminderListRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
 
-        ReminderListResponse response = reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", null, 0L));
+        ReminderListResponse response = reminderListService.updateList(saved.getId(), new UpdateListCommand("업무", null, null, 0L));
 
         ReminderList result = reminderListRepository.findById(saved.getId()).orElseThrow();
         assertThat(result.getCreatedAt()).isEqualTo(createdAt);
@@ -137,7 +137,7 @@ class ReminderListServiceTest {
         ReminderList saved = reminderListRepository.save(new ReminderList(owner, "장보기", "#FF9500", null, 0));
         reminderRepository.save(new Reminder(owner, "우유 사기", null, saved, null, null, null));
 
-        ReminderListResponse result = reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", "#007AFF", 0L));
+        ReminderListResponse result = reminderListService.updateList(saved.getId(), new UpdateListCommand("업무", "#007AFF", null, 0L));
 
         assertThat(result.name()).isEqualTo("업무");
         assertThat(result.color()).isEqualTo("#007AFF");
@@ -148,35 +148,35 @@ class ReminderListServiceTest {
     @DisplayName("아이콘을 지정해 만들고 수정으로 바꾸거나 지울 수 있으며, 리스트 목록에도 담긴다")
     void createAndUpdateList_savesIcon() {
         ReminderListResponse created = reminderListService.createList(
-                new ReminderListRequest("장보기", "#FF9500", "shopping-cart"));
+                new CreateListCommand("장보기", "#FF9500", "shopping-cart"));
         assertThat(created.icon()).isEqualTo("shopping-cart");
 
         ReminderListResponse updated = reminderListService.updateList(created.id(),
-                new ReminderListUpdateRequest("장보기", "#FF9500", "gift", 0L));
+                new UpdateListCommand("장보기", "#FF9500", "gift", 0L));
         assertThat(updated.icon()).isEqualTo("gift");
         assertThat(reminderListService.getLists()).filteredOn(list -> list.id().equals(created.id()))
                 .singleElement().extracting(ReminderListResponse::icon).isEqualTo("gift");
 
         ReminderListResponse cleared = reminderListService.updateList(created.id(),
-                new ReminderListUpdateRequest("장보기", "#FF9500", updated.version()));
+                new UpdateListCommand("장보기", "#FF9500", null, updated.version()));
         assertThat(cleared.icon()).isNull();
     }
 
     @Test
     @DisplayName("허용 목록에 없는 아이콘으로 만들거나 수정하면 400 예외가 발생한다")
     void createAndUpdateList_throwBadRequest_whenIconIsNotAllowed() {
-        Long id = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
+        Long id = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
 
-        assertThatThrownBy(() -> reminderListService.createList(new ReminderListRequest("업무", null, "rocket-ship")))
+        assertThatThrownBy(() -> reminderListService.createList(new CreateListCommand("업무", null, "rocket-ship")))
                 .isInstanceOf(DomainException.class);
-        assertThatThrownBy(() -> reminderListService.updateList(id, new ReminderListUpdateRequest("업무", null, "", 0L)))
+        assertThatThrownBy(() -> reminderListService.updateList(id, new UpdateListCommand("업무", null, "", 0L)))
                 .isInstanceOf(DomainException.class);
     }
 
     @Test
     @DisplayName("존재하지 않는 리스트를 수정하면 404 예외가 발생한다")
     void updateList_throwsNotFound_whenListDoesNotExist() {
-        assertThatThrownBy(() -> reminderListService.updateList(-1L, new ReminderListUpdateRequest("업무", null, 0L)))
+        assertThatThrownBy(() -> reminderListService.updateList(-1L, new UpdateListCommand("업무", null, null, 0L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
@@ -229,7 +229,7 @@ class ReminderListServiceTest {
                 .filteredOn(list -> list.id().equals(home.getId()))
                 .extracting(ReminderListResponse::reminderCount)
                 .containsExactly(2L);
-        assertThat(reminderListService.updateList(home.getId(), new ReminderListUpdateRequest("우리 집", null, 0L)).reminderCount())
+        assertThat(reminderListService.updateList(home.getId(), new UpdateListCommand("우리 집", null, null, 0L)).reminderCount())
                 .isEqualTo(2L);
     }
 
@@ -245,7 +245,7 @@ class ReminderListServiceTest {
         entityManager.clear();
 
         ReminderListResponse updated = reminderListService.updateList(home.getId(),
-                new ReminderListUpdateRequest("우리 집", null, 0L));
+                new UpdateListCommand("우리 집", null, null, 0L));
         ReminderListResponse listed = reminderListService.getLists().stream()
                 .filter(list -> list.id().equals(home.getId()))
                 .findFirst().orElseThrow();
@@ -294,8 +294,8 @@ class ReminderListServiceTest {
     @Test
     @DisplayName("리스트를 생성하면 마지막 순서가 부여된다")
     void createList_assignsLastSortOrder() {
-        ReminderListResponse first = reminderListService.createList(new ReminderListRequest("장보기", null));
-        ReminderListResponse second = reminderListService.createList(new ReminderListRequest("업무", null));
+        ReminderListResponse first = reminderListService.createList(new CreateListCommand("장보기", null, null));
+        ReminderListResponse second = reminderListService.createList(new CreateListCommand("업무", null, null));
 
         assertThat(second.sortOrder()).isEqualTo(first.sortOrder() + 1);
     }
@@ -303,9 +303,9 @@ class ReminderListServiceTest {
     @Test
     @DisplayName("리스트 순서를 변경하면 리스트 목록이 바뀐 순서대로 반환된다")
     void reorderLists_changesListOrder() {
-        Long shopping = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
-        Long work = reminderListService.createList(new ReminderListRequest("업무", null)).id();
-        Long hobby = reminderListService.createList(new ReminderListRequest("취미", null)).id();
+        Long shopping = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
+        Long work = reminderListService.createList(new CreateListCommand("업무", null, null)).id();
+        Long hobby = reminderListService.createList(new CreateListCommand("취미", null, null)).id();
         List<Long> ids = new ArrayList<>(List.of(hobby, shopping, work));
         reminderListRepository.findAll().stream()
                 .map(ReminderList::getId)
@@ -322,7 +322,7 @@ class ReminderListServiceTest {
     @Test
     @DisplayName("리스트 순서 변경 ids가 전체 리스트와 정확히 일치하지 않으면 400 예외가 발생한다")
     void reorderLists_throwsBadRequest_whenIdsDoNotMatch() {
-        Long shopping = reminderListService.createList(new ReminderListRequest("장보기", null)).id();
+        Long shopping = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
         List<Long> allIds = reminderListRepository.findAll().stream().map(ReminderList::getId).toList();
         List<Long> missing = allIds.stream().filter(id -> !id.equals(shopping)).toList();
         List<Long> duplicated = new ArrayList<>(missing);

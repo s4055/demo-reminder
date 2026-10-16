@@ -36,7 +36,7 @@ public class ListGroupController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ListGroupResponse> createGroup(@Valid @RequestBody ListGroupRequest request) {
-        return ApiResponse.success(listGroupService.createGroup(request));
+        return ApiResponse.success(listGroupService.createGroup(request.name()));
     }
 
     // 요청 형식은 리스트 순서 변경과 같다 (ids 순서가 곧 새 표시 순서).
@@ -48,7 +48,7 @@ public class ListGroupController {
 
     @PutMapping("/{id}")
     public ApiResponse<ListGroupResponse> renameGroup(@PathVariable Long id, @Valid @RequestBody ListGroupRequest request) {
-        return ApiResponse.success(listGroupService.renameGroup(id, request));
+        return ApiResponse.success(listGroupService.renameGroup(id, request.name()));
     }
 
     @DeleteMapping("/{id}")

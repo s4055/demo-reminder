@@ -2,25 +2,20 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
-import demo.ai.reminder.domain.Recurrence;
 import demo.ai.reminder.domain.Reminder;
 import demo.ai.reminder.domain.ReminderList;
-import demo.ai.reminder.domain.RepeatRule;
-import demo.ai.reminder.dto.request.ReminderRequest;
-import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
+import demo.ai.reminder.service.command.CreateReminderCommand;
+import demo.ai.reminder.service.command.UpdateReminderCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
 /**
  * 리마인더 생성/수정/이동/완료/삭제. 조회는 ReminderQueryService가 맡는다.
@@ -37,39 +32,38 @@ public class ReminderService {
 
     // 새 리마인더는 같은 리스트(리스트 없음도 하나의 범위)의 마지막 순서로 추가한다.
     // parentId를 지정하면 그 리마인더의 하위 작업으로 추가하며, 이때 listId는 무시하고 부모의 리스트를 따른다.
+    // 마감일시 없이 반복하면 도메인이 DomainException(400)을 던진다.
     @Transactional
-    public ReminderResponse createReminder(ReminderRequest request) {
-        Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek());
-        if (request.parentId() != null) {
-            return ReminderResponse.from(createSubtask(request, recurrence));
+    public ReminderResponse createReminder(CreateReminderCommand command) {
+        if (command.parentId() != null) {
+            return ReminderResponse.from(createSubtask(command));
         }
-        ReminderList list = request.listId() == null ? null : listAccess.memberList(request.listId());
+        ReminderList list = command.listId() == null ? null : listAccess.memberList(command.listId());
         Reminder reminder = new Reminder(currentUser.reference(),
-                request.title(), request.memo(), list, request.dueAt(), request.priority(), recurrence);
+                command.title(), command.memo(), list, command.dueAt(), command.priority(), command.recurrence());
         reminder.changeSortOrder(nextSortOrder(list));
-        reminder.replaceTags(tagService.resolveTags(request.tagNames()));
+        reminder.replaceTags(tagService.resolveTags(command.tagNames()));
         return ReminderResponse.from(reminderRepository.save(reminder));
     }
 
-    private Reminder createSubtask(ReminderRequest request, Recurrence recurrence) {
-        Reminder parent = findReminderOrThrow(request.parentId());
+    private Reminder createSubtask(CreateReminderCommand command) {
+        Reminder parent = findReminderOrThrow(command.parentId());
         Reminder subtask = new Reminder(currentUser.reference(),
-                request.title(), request.memo(), null, request.dueAt(), request.priority(), recurrence);
+                command.title(), command.memo(), null, command.dueAt(), command.priority(), command.recurrence());
         parent.addSubtask(subtask);
-        subtask.replaceTags(tagService.resolveTags(request.tagNames()));
+        subtask.replaceTags(tagService.resolveTags(command.tagNames()));
         return reminderRepository.save(subtask);
     }
 
     // 태그도 요청 목록으로 교체한다 (생략하거나 null이면 모두 떨어진다).
     // 요청 버전이 현재 버전과 다르면(편집 중 다른 사용자가 먼저 수정) 409다.
     @Transactional
-    public ReminderResponse updateReminder(Long id, ReminderUpdateRequest request) {
+    public ReminderResponse updateReminder(Long id, UpdateReminderCommand command) {
         Reminder reminder = findReminderOrThrow(id);
-        Versions.verify(reminder.getVersion(), request.version(), "Reminder " + id);
-        Recurrence recurrence = toRecurrence(request.repeatRule(), request.repeatInterval(), request.repeatDaysOfWeek());
-        reminder.update(request.title(), request.memo(), request.dueAt(), request.flagged(), request.priority(),
-                recurrence);
-        reminder.replaceTags(tagService.resolveTags(request.tagNames()));
+        Versions.verify(reminder.getVersion(), command.version(), "Reminder " + id);
+        reminder.update(command.title(), command.memo(), command.dueAt(), command.flagged(), command.priority(),
+                command.recurrence());
+        reminder.replaceTags(tagService.resolveTags(command.tagNames()));
         return toFlushedResponse(reminder);
     }
 
@@ -150,13 +144,6 @@ public class ReminderService {
     private ReminderResponse toFlushedResponse(Reminder reminder) {
         reminderRepository.flush();
         return ReminderResponse.from(reminder);
-    }
-
-    // 요청의 반복 값으로 반복 규칙을 만든다. 간격을 생략하면 1이다.
-    // 마감일시 없이 반복하거나, 간격이 범위를 벗어나거나, WEEKLY가 아닌데 요일을 지정하면 도메인이 DomainException(400)을 던진다.
-    private Recurrence toRecurrence(RepeatRule repeatRule, Integer repeatInterval, Set<DayOfWeek> repeatDaysOfWeek) {
-        return new Recurrence(repeatRule, Objects.requireNonNullElse(repeatInterval, Recurrence.MIN_INTERVAL),
-                repeatDaysOfWeek);
     }
 
     private int nextSortOrder(ReminderList list) {

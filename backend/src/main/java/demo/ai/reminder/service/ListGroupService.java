@@ -3,7 +3,6 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListGroup;
-import demo.ai.reminder.dto.request.ListGroupRequest;
 import demo.ai.reminder.dto.response.ListGroupResponse;
 import demo.ai.reminder.repository.ListGroupRepository;
 import demo.ai.reminder.repository.ReminderListRepository;
@@ -35,18 +34,18 @@ public class ListGroupService {
 
     // 새 그룹은 마지막 순서로 추가한다.
     @Transactional
-    public ListGroupResponse createGroup(ListGroupRequest request) {
+    public ListGroupResponse createGroup(String name) {
         int sortOrder = listGroupRepository.findNextSortOrder(currentUser.id());
         ListGroup group = listGroupRepository.save(
-                new ListGroup(currentUser.reference(), request.name().strip(), sortOrder));
+                new ListGroup(currentUser.reference(), name.strip(), sortOrder));
         return ListGroupResponse.from(group);
     }
 
     // 응답에 갱신된 수정일(updatedAt)이 담기도록 flush한 뒤 변환한다.
     @Transactional
-    public ListGroupResponse renameGroup(Long id, ListGroupRequest request) {
+    public ListGroupResponse renameGroup(Long id, String name) {
         ListGroup group = findGroupOrThrow(id);
-        group.rename(request.name().strip());
+        group.rename(name.strip());
         listGroupRepository.flush();
         return ListGroupResponse.from(group);
     }
