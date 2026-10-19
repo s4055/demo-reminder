@@ -408,6 +408,26 @@ class ReminderServiceTest {
     }
 
     @Test
+    @DisplayName("이미 붙은 태그를 유지한 채 태그를 바꿔 저장해도 유니크 제약에 걸리지 않고, 유지한 태그의 연결 행은 그대로 남는다")
+    void updateReminder_keepingSomeTags_keepsExistingReminderTagRows() {
+        ReminderResponse saved = reminderService.createReminder(
+                new CreateReminderCommand("우유 사기", null, null, null, null, List.of("집", "심부름"), null, null));
+        entityManager.flush();
+        entityManager.clear();
+        Long homeRowId = reminderTagRowId(saved.id(), "집");
+
+        reminderService.updateReminder(saved.id(),
+                new UpdateReminderCommand("우유 사기", null, null, false, null, List.of("급함", "집"), null, saved.version()));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(reminderRepository.findById(saved.id()).orElseThrow().getTags())
+                .extracting(Tag::getName).containsExactlyInAnyOrder("집", "급함");
+        assertThat(reminderTagRowId(saved.id(), "집")).isEqualTo(homeRowId);
+        assertThat(countRows("ReminderTag", saved.id())).isEqualTo(2L);
+    }
+
+    @Test
     @DisplayName("태그가 붙은 리마인더도 삭제할 수 있고, 태그는 남는다")
     void deleteReminder_withTags_keepsTags() {
         ReminderResponse saved = reminderService.createReminder(
@@ -420,6 +440,24 @@ class ReminderServiceTest {
 
         assertThat(reminderRepository.findById(saved.id())).isEmpty();
         assertThat(tagRepository.findByUserIdAndNameIn(owner.getId(), List.of("집"))).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("리마인더를 삭제하면 태그 연결 행과 반복 요일 행도 함께 삭제된다")
+    void deleteReminder_deletesReminderTagAndRepeatDayRows() {
+        ReminderResponse saved = reminderService.createReminder(new CreateReminderCommand("운동", null, null,
+                LocalDateTime.of(2026, 10, 5, 7, 0), null, List.of("건강"), null,
+                new Recurrence(RepeatRule.WEEKLY, 1, Set.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY))));
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(countRows("ReminderTag", saved.id())).isEqualTo(1L);
+        assertThat(countRows("ReminderRepeatDay", saved.id())).isEqualTo(2L);
+
+        reminderService.deleteReminder(saved.id());
+        entityManager.flush();
+
+        assertThat(countRows("ReminderTag", saved.id())).isZero();
+        assertThat(countRows("ReminderRepeatDay", saved.id())).isZero();
     }
 
     @Test
@@ -622,6 +660,26 @@ class ReminderServiceTest {
         assertThat(once.repeatRule()).isEqualTo(RepeatRule.NONE);
         assertThat(once.repeatInterval()).isEqualTo(1);
         assertThat(once.repeatDaysOfWeek()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("요일 일부를 유지한 채 반복 요일을 바꿔 저장해도 유니크 제약에 걸리지 않고, 바뀐 요일만 행이 지워지고 추가된다")
+    void updateReminder_keepingSomeDaysOfWeek_replacesOnlyChangedRows() {
+        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 7, 0);
+        ReminderResponse saved = createCustomRepeating("운동", dueAt, RepeatRule.WEEKLY, 1,
+                Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
+        entityManager.flush();
+        entityManager.clear();
+        Long wednesdayRowId = repeatDayRowId(saved.id(), DayOfWeek.WEDNESDAY);
+
+        ReminderResponse updated = reminderService.updateReminder(saved.id(), new UpdateReminderCommand("운동", null, dueAt,
+                false, null, null, new Recurrence(RepeatRule.WEEKLY, 1, Set.of(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)), saved.version()));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(updated.repeatDaysOfWeek()).containsExactly(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY);
+        assertThat(repeatDayRowId(saved.id(), DayOfWeek.WEDNESDAY)).isEqualTo(wednesdayRowId);
+        assertThat(countRows("ReminderRepeatDay", saved.id())).isEqualTo(2L);
     }
 
     @Test
@@ -889,6 +947,31 @@ class ReminderServiceTest {
                 .executeUpdate();
         entityManager.clear();
         return past;
+    }
+
+    // entityName은 reminder 연관을 가진 ReminderTag 또는 ReminderRepeatDay다.
+    private long countRows(String entityName, Long reminderId) {
+        return entityManager.createQuery("select count(e) from " + entityName + " e where e.reminder.id = :id", Long.class)
+                .setParameter("id", reminderId)
+                .getSingleResult();
+    }
+
+    private Long reminderTagRowId(Long reminderId, String tagName) {
+        return entityManager.createQuery("""
+                        select rt.id from ReminderTag rt where rt.reminder.id = :id and rt.tag.name = :name
+                        """, Long.class)
+                .setParameter("id", reminderId)
+                .setParameter("name", tagName)
+                .getSingleResult();
+    }
+
+    private Long repeatDayRowId(Long reminderId, DayOfWeek dayOfWeek) {
+        return entityManager.createQuery("""
+                        select d.id from ReminderRepeatDay d where d.reminder.id = :id and d.dayOfWeek = :day
+                        """, Long.class)
+                .setParameter("id", reminderId)
+                .setParameter("day", dayOfWeek)
+                .getSingleResult();
     }
 
     private ReminderResponse createRepeating(String title, Long listId, LocalDateTime dueAt, RepeatRule repeatRule) {

@@ -196,7 +196,7 @@ v1(Phase 1~5) 이후 `spec.md`의 "10. 향후 고려 사항"을 **작업이 단�
 
 ### 데이터 모델
 - `Tag` 엔티티 추가: id, name(고유), createdAt
-- `Reminder` N --- M `Tag` (조인 테이블 `reminder_tag`)
+- `Reminder` N --- M `Tag` (조인 테이블 `reminder_tag`) — 이후 연결 엔티티 `ReminderTag`(`reminder_tag`, `(reminder_id, tag_id)` 유니크)로 전환
 
 ### 백엔드
 - 리마인더 생성/수정 요청에 `tagNames: string[]` 추가 — 없는 태그는 자동 생성, 응답에 태그 이름 목록 포함
@@ -447,7 +447,7 @@ v2까지 끝난 뒤 사용 경험을 보강한다. 이후 작업을 안전하게
 **목표**: 고정 주기(매일/매주/매월/매년)를 넘어 "2주마다", "평일마다" 같은 반복을 지원한다.
 
 ### 데이터 모델
-- `Reminder`에 `repeatInterval`(int, 1~99, 기본 1)과 `repeatDaysOfWeek`(`Set<DayOfWeek>`, `@ElementCollection`) 추가
+- `Reminder`에 `repeatInterval`(int, 1~99, 기본 1)과 `repeatDaysOfWeek`(`Set<DayOfWeek>`, `@ElementCollection`) 추가 — 이후 엔티티 `ReminderRepeatDay`(`reminder_repeat_day`, `(reminder_id, day_of_week)` 유니크)로 전환
   - `repeatDaysOfWeek`는 `WEEKLY`일 때만 지정 가능, 비어 있으면 마감일의 요일로 반복 (기존 동작)
   - 기존 데이터(컬럼 추가 전 행)는 간격 1로 동작하도록 처리
 - 반복 규칙(주기 + 간격 + 요일)을 값 객체로 묶어 다음 마감일 계산을 도메인 로직에 둔다.

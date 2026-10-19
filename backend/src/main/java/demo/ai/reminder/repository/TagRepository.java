@@ -19,11 +19,11 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     @Query("""
             select new demo.ai.reminder.repository.TagSummary(
                 t,
-                (select count(r) from Reminder r join r.tags rt where rt = t and r.completed = false)
+                (select count(rt) from ReminderTag rt where rt.tag = t and rt.reminder.completed = false)
             )
             from Tag t
             where t.user.id = :userId
-              and exists (select 1 from Reminder r join r.tags rt where rt = t)
+              and exists (select 1 from ReminderTag rt where rt.tag = t)
             order by t.name
             """)
     List<TagSummary> findAllInUseWithReminderCount(Long userId);

@@ -1,9 +1,7 @@
 package demo.ai.reminder.domain;
 
 import jakarta.persistence.CascadeType;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -12,8 +10,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
@@ -30,12 +26,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Getter
@@ -82,12 +78,9 @@ public class Reminder extends BaseTimeEntity {
 
     // 매주 반복할 요일. WEEKLY일 때만 지정하며, 비어 있으면 마감일의 요일로 반복한다.
     @Getter(AccessLevel.NONE)
-    @ElementCollection
-    @CollectionTable(name = "reminder_repeat_day", joinColumns = @JoinColumn(name = "reminder_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "day_of_week", nullable = false)
+    @OneToMany(mappedBy = "reminder", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 100)
-    private Set<DayOfWeek> repeatDaysOfWeek = new HashSet<>();
+    private List<ReminderRepeatDay> repeatDays = new ArrayList<>();
 
     // 이 회차를 완료하면서 다음 회차를 이미 만들었는지. 완료 취소 후 다시 완료해도 다음 회차를 중복으로 만들지 않는다.
     @Column(nullable = false)
@@ -101,14 +94,12 @@ public class Reminder extends BaseTimeEntity {
     @JoinColumn(name = "list_id")
     private ReminderList list;
 
-    @ManyToMany
-    @JoinTable(
-            name = "reminder_tag",
-            joinColumns = @JoinColumn(name = "reminder_id"),
-            inverseJoinColumns = @JoinColumn(name = "tag_id")
-    )
+    // 붙인 순서대로 둔다.
+    @Getter(AccessLevel.NONE)
+    @OneToMany(mappedBy = "reminder", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
     @BatchSize(size = 100)
-    private Set<Tag> tags = new LinkedHashSet<>();
+    private List<ReminderTag> reminderTags = new ArrayList<>();
 
     // 상위 리마인더. 최상위 리마인더이면 null이다. 깊이는 1단계로 제한한다.
     @ManyToOne(fetch = FetchType.LAZY)
@@ -155,20 +146,31 @@ public class Reminder extends BaseTimeEntity {
 
     // 반복 설정은 주기/간격/요일 세 필드로 나눠 저장하지만, 밖에는 이 메서드로 묶어서만 내보낸다.
     public Recurrence getRecurrence() {
-        return new Recurrence(repeatRule, repeatInterval, repeatDaysOfWeek);
+        Set<DayOfWeek> daysOfWeek = repeatDays.stream().map(ReminderRepeatDay::getDayOfWeek).collect(Collectors.toSet());
+        return new Recurrence(repeatRule, repeatInterval, daysOfWeek);
     }
 
+    // 이미 붙어 있는 태그는 그대로 두고 빠진 태그만 떼고 새 태그만 붙인다.
+    // (전부 지우고 다시 붙이면 flush 때 INSERT가 DELETE보다 먼저 실행돼 (reminder_id, tag_id) 유니크 제약에 걸린다.)
     public void replaceTags(Collection<Tag> tags) {
-        this.tags.clear();
-        this.tags.addAll(tags);
+        reminderTags.removeIf(reminderTag -> tags.stream().noneMatch(reminderTag::isFor));
+        tags.forEach(this::addTag);
     }
 
     public void removeTag(Tag tag) {
-        this.tags.remove(tag);
+        reminderTags.removeIf(reminderTag -> reminderTag.isFor(tag));
     }
 
     public Set<Tag> getTags() {
-        return Collections.unmodifiableSet(tags);
+        return reminderTags.stream()
+                .map(ReminderTag::getTag)
+                .collect(Collectors.collectingAndThen(Collectors.toCollection(LinkedHashSet::new), Collections::unmodifiableSet));
+    }
+
+    private void addTag(Tag tag) {
+        if (reminderTags.stream().noneMatch(reminderTag -> reminderTag.isFor(tag))) {
+            reminderTags.add(new ReminderTag(this, tag));
+        }
     }
 
     /**
@@ -254,7 +256,7 @@ public class Reminder extends BaseTimeEntity {
         this.nextOccurrenceCreated = true;
         Reminder next = new Reminder(user, title, memo, list, recurrence.nextDueAt(dueAt), priority, recurrence);
         next.flagged = flagged;
-        next.tags.addAll(tags);
+        next.replaceTags(getTags());
         if (isSubtask()) {
             parent.addSubtask(next);
         }
@@ -274,8 +276,11 @@ public class Reminder extends BaseTimeEntity {
         }
         this.repeatRule = rule.rule();
         this.repeatInterval = rule.interval();
-        this.repeatDaysOfWeek.clear();
-        this.repeatDaysOfWeek.addAll(rule.daysOfWeek());
+        // 태그와 같은 이유로 바뀐 요일만 지우고 더한다.
+        repeatDays.removeIf(repeatDay -> !rule.daysOfWeek().contains(repeatDay.getDayOfWeek()));
+        rule.daysOfWeek().stream()
+                .filter(day -> repeatDays.stream().noneMatch(repeatDay -> repeatDay.getDayOfWeek() == day))
+                .forEach(day -> repeatDays.add(new ReminderRepeatDay(this, day)));
     }
 
     // 우선순위를 지정하지 않으면(null) '없음'으로 둔다.

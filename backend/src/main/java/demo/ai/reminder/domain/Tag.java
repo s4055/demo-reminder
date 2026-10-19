@@ -13,10 +13,13 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 // 태그 이름은 사용자별로 고유하다. 다른 사용자는 같은 이름의 태그를 따로 가진다.
+// 리마인더의 태그(ReminderTag)는 Tag를 지연 로딩하므로 여러 리마인더의 태그를 한 번에 읽도록 묶어서 조회한다.
 @Entity
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"}))
+@BatchSize(size = 100)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Tag extends BaseTimeEntity {

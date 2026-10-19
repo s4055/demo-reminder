@@ -260,6 +260,20 @@ class ReminderTest {
     }
 
     @Test
+    @DisplayName("replaceTags에 같은 태그가 여러 번 있거나 이미 붙은 태그가 있어도 한 번만 붙고, 붙인 순서가 유지된다")
+    void replaceTags_ignoresDuplicates_andKeepsOrder() {
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Tag home = new Tag(owner, "집");
+        Tag errand = new Tag(owner, "심부름");
+        Tag urgent = new Tag(owner, "급함");
+        reminder.replaceTags(List.of(home, errand));
+
+        reminder.replaceTags(List.of(errand, urgent, home, urgent));
+
+        assertThat(reminder.getTags()).containsExactly(home, errand, urgent);
+    }
+
+    @Test
     @DisplayName("removeTag를 호출하면 해당 태그만 떨어진다")
     void removeTag_removesOnlyGivenTag() {
         Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
