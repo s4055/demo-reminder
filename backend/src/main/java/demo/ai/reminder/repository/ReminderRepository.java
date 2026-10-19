@@ -28,7 +28,7 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
     List<Reminder> findAccessible(Long userId, Sort sort);
 
     // 같은 이름의 태그라도 사용자마다 따로 있으므로 이름으로 찾는다 (공유 리스트에서 다른 멤버가 붙인 태그 포함).
-    @Query("select r from Reminder r join r.tags t where t.name = :tagName and " + ACCESSIBLE)
+    @Query("select r from Reminder r join r.reminderTags rt join rt.tag t where t.name = :tagName and " + ACCESSIBLE)
     List<Reminder> findAccessibleByTagName(Long userId, String tagName, Sort sort);
 
     @Query("select r from Reminder r where r.completed = false and " + ACCESSIBLE)
@@ -55,12 +55,12 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
             select r from Reminder r
             where (lower(r.title) like :pattern escape '\\'
                    or lower(r.memo) like :pattern escape '\\'
-                   or exists (select 1 from r.tags t where lower(t.name) like :pattern escape '\\'))
+                   or exists (select 1 from ReminderTag rt where rt.reminder = r and lower(rt.tag.name) like :pattern escape '\\'))
               and
             """ + ACCESSIBLE)
     List<Reminder> searchAccessible(Long userId, String pattern);
 
-    List<Reminder> findByTagsId(Long tagId);
+    List<Reminder> findByReminderTagsTagId(Long tagId);
 
     List<Reminder> findByListAndParentIsNull(ReminderList list, Sort sort);
 
