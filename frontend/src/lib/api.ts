@@ -1,7 +1,6 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080"
 
-// 모든 API 응답의 공통 형태. 성공 시 data에 결과가, 실패 시 data는 null이다.
 type ApiResponse<T> = {
   resultCode: string
   resultMsg: string
@@ -10,7 +9,6 @@ type ApiResponse<T> = {
 
 const SUCCESS = "SUCCESS"
 
-// 실패한 요청의 HTTP 상태와 resultCode를 담는다. 화면에서 401/409 등을 구분해 안내할 때 쓴다.
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -22,7 +20,6 @@ export class ApiError extends Error {
   }
 }
 
-// 편집하는 동안 다른 사용자가 먼저 저장해 수정이 거부된 경우(409 VERSION_CONFLICT)
 export function isVersionConflict(error: unknown): boolean {
   return error instanceof ApiError && error.resultCode === "VERSION_CONFLICT"
 }
@@ -30,8 +27,6 @@ export function isVersionConflict(error: unknown): boolean {
 export const VERSION_CONFLICT_MESSAGE =
   "다른 사용자가 먼저 수정했습니다. 최신 내용을 불러왔습니다."
 
-// 로그인이 풀린 상태(401)로 일반 API를 호출했을 때 실행할 동작. Providers에서 로그인 페이지 이동을 등록한다.
-// /api/auth/** 의 401(로그인 실패, 비로그인 상태의 me 조회)은 각 화면이 직접 처리하므로 제외한다.
 let unauthorizedHandler: (() => void) | undefined
 
 export function setUnauthorizedHandler(handler: (() => void) | undefined) {

@@ -25,10 +25,6 @@ import {
 import { ApiError } from "@/lib/api"
 import { isOwner, type ReminderList } from "@/lib/lists-api"
 
-/**
- * 리스트 공유 다이얼로그. 멤버 목록은 누구나 보고, 소유자는 이메일로 초대하거나 멤버를 제거하며,
- * 편집자는 리스트에서 나갈 수 있다.
- */
 export function ListShareDialog({
   list,
   onOpenChange,

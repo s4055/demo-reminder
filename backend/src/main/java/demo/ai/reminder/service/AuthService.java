@@ -32,7 +32,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final CurrentUser currentUser;
 
-    // 이메일은 소문자로 맞춰 저장하므로 대소문자만 다른 이메일로는 중복 가입할 수 없다.
     @Transactional
     public UserResponse signup(SignupCommand command) {
         String email = User.normalizeEmail(command.email());
@@ -46,12 +45,10 @@ public class AuthService {
                 userRepository.save(new User(email, passwordEncoder.encode(command.password()), command.name().trim())));
     }
 
-    // 현재 로그인한 사용자 정보.
     public UserResponse me() {
         return UserResponse.from(currentUser.load());
     }
 
-    // 인증 결과의 사용자 정보. 세션에 저장하기 전이나 저장과 상관없이 쓸 수 있다.
     public UserResponse getUser(Authentication authentication) {
         if (!(authentication.getPrincipal() instanceof LoginUser loginUser)) {
             throw new IllegalStateException("Unexpected principal: " + authentication.getPrincipal());

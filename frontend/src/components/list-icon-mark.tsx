@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils"
 
 const DEFAULT_LIST_COLOR = "#8E8E93"
 
-// 리스트 아이콘을 리스트 색상으로 그린다. 아이콘이 없으면 색상 점으로 표시한다.
 export function ListIconMark({
   list,
   className,

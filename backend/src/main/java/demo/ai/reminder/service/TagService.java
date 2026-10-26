@@ -34,10 +34,6 @@ public class TagService {
                 .toList();
     }
 
-    /**
-     * 태그 이름 목록을 태그 엔티티로 바꾼다. 현재 사용자의 태그에서 찾고, 앞뒤 공백은 제거하고 중복은 하나로 합치며, 없는 태그는 새로 만든다.
-     * null이면 빈 목록으로 본다.
-     */
     @Transactional
     public List<Tag> resolveTags(List<String> tagNames) {
         if (tagNames == null) {
@@ -56,7 +52,6 @@ public class TagService {
                 .toList();
     }
 
-    // 태그를 삭제하면 붙어 있던 리마인더에서 떼어내기만 하고 리마인더 자체는 유지한다.
     @Transactional
     public void deleteTag(Long id) {
         Tag tag = tagRepository.findByIdAndUserId(id, currentUser.id())

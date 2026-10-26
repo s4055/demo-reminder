@@ -6,7 +6,6 @@ import { SidebarItem } from "@/components/sidebar/sidebar-item"
 import { isOwner, isShared, type ReminderList } from "@/lib/lists-api"
 import { cn } from "@/lib/utils"
 
-// 리스트 아이콘/이름/개수와 마우스를 올리면 나타나는 버튼. 편집/삭제/그룹 이동은 소유자에게만 전달되어 보인다.
 export function ListItemContent({
   list,
   active,

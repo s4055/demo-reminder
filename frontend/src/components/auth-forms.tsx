@@ -122,7 +122,6 @@ export function SignupForm() {
     )
   }
 
-  // 이메일 중복(409)은 이메일 칸에 표시하고, 나머지 실패만 폼 아래에 안내한다.
   const serverError =
     signup.error &&
     !(signup.error instanceof ApiError && signup.error.status === 409)
@@ -222,7 +221,6 @@ export function SignupForm() {
   )
 }
 
-// 로그인/회원가입 화면 공통 틀. 이미 로그인한 사용자는 메인 화면으로 보낸다.
 function AuthCard({
   title,
   footer,

@@ -12,7 +12,6 @@ import {
   type User,
 } from "@/lib/auth-api"
 
-// 로그인한 사용자. 로그인하지 않았으면 401 ApiError로 실패하며, 이 경우 재시도하지 않는다.
 export function useMe() {
   return useQuery({
     queryKey: meQueryKey,
@@ -27,7 +26,6 @@ export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
 }
 
-// 사용자가 바뀌므로 이전 사용자의 캐시를 모두 지우고 새 사용자로 메인 화면에 들어간다.
 function useEnterApp() {
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -38,7 +36,6 @@ function useEnterApp() {
   }
 }
 
-// 로그인/가입 실패는 폼에 직접 안내하므로 전역 토스트는 띄우지 않는다.
 export function useLogin() {
   const enterApp = useEnterApp()
   return useMutation({

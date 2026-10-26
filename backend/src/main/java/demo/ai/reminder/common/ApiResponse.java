@@ -1,8 +1,5 @@
 package demo.ai.reminder.common;
 
-/**
- * 모든 API 응답의 공통 형태. 성공 시 data에 결과를, 실패 시 data는 null이다.
- */
 public record ApiResponse<T>(
         String resultCode,
         String resultMsg,

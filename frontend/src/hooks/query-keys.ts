@@ -13,6 +13,4 @@ export function listMembersQueryKey(listId: number) {
   return [...listsQueryKey, listId, "members"] as const
 }
 
-// 공유 리스트에서 다른 멤버의 변경을 반영하기 위해 리스트/리마인더/태그를 주기적으로 다시 조회하는 간격.
-// 창으로 돌아올 때도 다시 조회한다 (TanStack Query 기본값 refetchOnWindowFocus). 실시간(WebSocket) 동기화는 범위 밖이다.
 export const SYNC_INTERVAL_MS = 10_000

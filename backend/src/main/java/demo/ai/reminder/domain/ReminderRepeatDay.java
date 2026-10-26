@@ -18,7 +18,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
 
-// 매주 반복하는 리마인더의 반복 요일 하나. 리마인더마다 요일은 한 번만 저장되며, Reminder의 반복 설정을 통해서만 바뀐다.
 @Entity
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"reminder_id", "day_of_week"}))
 @Getter

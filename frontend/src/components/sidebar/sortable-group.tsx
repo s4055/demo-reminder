@@ -12,7 +12,6 @@ import { groupDragId } from "@/components/sidebar/use-sidebar-dnd"
 import type { ListGroup } from "@/lib/list-groups-api"
 import { cn } from "@/lib/utils"
 
-// 그룹 머리글(펼치기/접기, 이름, 리스트 수)과 그 아래 리스트. 그룹 전체가 함께 드래그된다.
 export function SortableGroup({
   group,
   listCount,

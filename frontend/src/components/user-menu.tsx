@@ -4,7 +4,6 @@ import { LogOutIcon, UserIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLogout, useMe } from "@/hooks/use-auth"
 
-// 사이드바 하단의 로그인한 사용자 이름과 로그아웃 버튼
 export function UserMenu() {
   const { data: user } = useMe()
   const logout = useLogout()

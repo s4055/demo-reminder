@@ -5,8 +5,6 @@ import demo.ai.reminder.repository.ReminderListSummary;
 
 import java.time.LocalDateTime;
 
-// role은 조회한 사용자의 역할이고, memberCount는 소유자를 포함한 멤버 수다 (2 이상이면 공유된 리스트).
-// groupId는 소유자의 사이드바 그룹이며, 공유받은 멤버에게는 항상 null이다.
 public record ReminderListResponse(
         Long id,
         String name,

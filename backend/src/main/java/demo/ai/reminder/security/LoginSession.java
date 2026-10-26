@@ -10,9 +10,6 @@ import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Component;
 
-/**
- * 로그인 세션의 시작과 종료. 세션에 인증 정보를 저장하고, 응답의 JSESSIONID 쿠키로 이후 요청을 식별한다.
- */
 @Component
 @RequiredArgsConstructor
 public class LoginSession {
@@ -31,7 +28,6 @@ public class LoginSession {
         securityContextRepository.saveContext(context, request, response);
     }
 
-    // 세션을 무효화하고 인증 정보를 지운다. 로그인하지 않은 상태에서 호출해도 된다.
     public void end(HttpServletRequest request, HttpServletResponse response) {
         logoutHandler.logout(request, response, SecurityContextHolder.getContext().getAuthentication());
     }

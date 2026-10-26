@@ -55,15 +55,12 @@ type ReminderActions = {
   onDelete: (reminder: Reminder) => void
 }
 
-// 리스트 화면에서 부모 아래에 하위 작업을 펼쳐 보여줄 때 쓰는 상태. 스마트 뷰/태그 화면에는 넘기지 않는다.
 type SubtaskView = {
   collapsed: boolean
-  // 완료된 항목 숨기기를 켠 리스트에서는 완료된 하위 작업도 숨긴다.
   hideCompleted: boolean
   onToggleCollapsed: () => void
 }
 
-// 하위 작업까지 포함해 id로 리마인더를 찾는다.
 function findReminder(
   reminders: Reminder[] | undefined,
   id: number
@@ -76,7 +73,6 @@ function findReminder(
   return undefined
 }
 
-// 완료 항목은 미완료 항목 아래에 완료 시각 최신순으로 둔다.
 function byRecentCompletion(a: Reminder, b: Reminder): number {
   const completedTime = (reminder: Reminder) =>
     reminder.completedAt ? Date.parse(reminder.completedAt) : 0
@@ -95,8 +91,6 @@ export function ReminderList({ selection }: { selection: Selection }) {
   const toggleFlag = useToggleReminderFlag()
   const deleteReminder = useDeleteReminder()
   const reorderReminders = useReorderReminders()
-  // 사용자 리스트 화면에서만 미완료 항목을 드래그로 정렬하고, 완료 항목 보기/숨기기와 일괄 삭제를 제공한다.
-  // 스마트 뷰와 태그 화면에서는 여러 리스트의 항목이 섞이므로 드래그를 끄고 소속 리스트를 함께 보여준다.
   const listId = selection.type === "list" ? selection.listId : null
   const [showCompleted, setShowCompleted] = useShowCompleted(listId)
   const [clearDialogOpen, setClearDialogOpen] = useState(false)
@@ -113,7 +107,6 @@ export function ReminderList({ selection }: { selection: Selection }) {
     reminder: Reminder
     open: boolean
   } | null>(null)
-  // 접어 둔 부모 리마인더 id. 기본은 모두 펼친 상태다.
   const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<number>>(
     () => new Set()
   )
@@ -161,12 +154,10 @@ export function ReminderList({ selection }: { selection: Selection }) {
     onToggleFlag: (reminder) => toggleFlag.mutate(reminder.id),
     onDelete: (reminder) => deleteReminder.mutate(reminder.id),
   }
-  // 미완료 항목은 서버가 준 순서(표시 순서)를 유지한다.
   const incomplete = reminders.filter((reminder) => !reminder.completed)
   const completed = reminders
     .filter((reminder) => reminder.completed)
     .sort(byRecentCompletion)
-  // 리스트 화면의 완료 항목 수. 부모 아래에 묶여 오는 완료된 하위 작업도 센다.
   const completedCount =
     completed.length +
     reminders.reduce(
@@ -178,8 +169,6 @@ export function ReminderList({ selection }: { selection: Selection }) {
     listId === null
       ? lists?.find((list) => list.id === reminder.listId)
       : undefined
-  // 리스트 화면만 서버가 최상위 리마인더와 그 하위 작업을 묶어서 주므로 부모 아래에 펼쳐 보여준다.
-  // 스마트 뷰/태그 화면에서는 하위 작업도 개별 항목으로 오므로 그대로 나열한다.
   const subtaskViewOf = (reminder: Reminder): SubtaskView | undefined =>
     listId === null
       ? undefined
@@ -349,7 +338,6 @@ function SortableReminderItem({
   )
 }
 
-// 리마인더 한 항목. subtaskView가 있으면 하위 작업을 들여쓰기해 함께 보여주고, 드래그 시에도 같이 움직인다.
 function ReminderItem({
   reminder,
   list,

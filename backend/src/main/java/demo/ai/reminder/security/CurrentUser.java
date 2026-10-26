@@ -9,10 +9,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-/**
- * 현재 요청의 로그인 사용자. 서비스는 이 값으로 조회/수정 대상을 자기 데이터로 제한한다.
- * /api/** 는 SecurityConfig에서 이미 로그인을 요구하므로, 로그인 정보가 없으면 401로 응답한다.
- */
 @Component
 @RequiredArgsConstructor
 public class CurrentUser {
@@ -27,7 +23,6 @@ public class CurrentUser {
         return loginUser.getId();
     }
 
-    // 소유자 FK를 채울 때 쓰는 참조. 조회 쿼리 없이 id만으로 만든다.
     public User reference() {
         return userRepository.getReferenceById(id());
     }

@@ -11,7 +11,6 @@ import {
 import type { ListGroup } from "@/lib/list-groups-api"
 import type { ReminderList } from "@/lib/lists-api"
 
-// 리스트 메뉴의 "그룹으로 이동". 그룹 간 이동은 드래그 대신 이 메뉴로 한다.
 export function MoveToGroupMenu({
   list,
   groups,

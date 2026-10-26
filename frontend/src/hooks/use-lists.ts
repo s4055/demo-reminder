@@ -42,7 +42,6 @@ export function useCreateList() {
   return useMutation({
     mutationFn: (input: ReminderListInput) => createList(input),
     onSuccess: (created) => {
-      // 만든 리스트를 바로 선택하므로, 다시 조회하기 전에도 목록에 있도록 소유한 리스트의 마지막에 넣어 둔다.
       queryClient.setQueryData<ReminderList[]>(listsQueryKey, (previous) =>
         previous && [
           ...previous.filter(isOwner),
@@ -66,8 +65,6 @@ export function useUpdateList() {
   })
 }
 
-// 수정이 버전 충돌(409)로 거부되었을 때 편집 창을 다시 채울 최신 리스트를 가져온다.
-// 리스트 목록을 다시 조회해 캐시(사이드바)도 함께 갱신하며, 그 사이 삭제되었으면 undefined다.
 export function useFetchLatestList() {
   const queryClient = useQueryClient()
   return async (id: number) => {
@@ -79,7 +76,6 @@ export function useFetchLatestList() {
   }
 }
 
-// 드롭 즉시 사이드바 순서를 바꾸고(optimistic update), 실패하면 원래 순서로 되돌린다.
 export function useReorderLists() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -89,7 +85,6 @@ export function useReorderLists() {
       await queryClient.cancelQueries({ queryKey: listsQueryKey })
       const previous = queryClient.getQueryData<ReminderList[]>(listsQueryKey)
       if (previous) {
-        // ids에는 소유한 리스트만 있으므로 공유받은 리스트는 원래 순서대로 뒤에 둔다.
         const byId = new Map(previous.map((list) => [list.id, list]))
         queryClient.setQueryData(listsQueryKey, [
           ...ids.flatMap((id) => byId.get(id) ?? []),
@@ -109,7 +104,6 @@ export function useReorderLists() {
   })
 }
 
-// 메뉴에서 고르자마자 사이드바에서 옮겨 보이도록 캐시의 groupId를 먼저 바꾸고, 실패하면 되돌린다.
 export function useChangeListGroup() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -156,8 +150,6 @@ export function useListMembers(listId: number | undefined) {
   })
 }
 
-// 실패(없는 사용자, 이미 멤버)는 공유 다이얼로그에서 직접 안내하므로 전역 토스트는 띄우지 않는다.
-// 리스트 목록의 멤버 수가 바뀌므로 리스트도 다시 조회한다 (멤버 목록도 listsQueryKey 아래에 있다).
 export function useInviteListMember() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -170,7 +162,6 @@ export function useInviteListMember() {
   })
 }
 
-// 멤버 제거와 나가기(본인 제거)에 함께 쓴다. 나가면 그 리스트의 리마인더가 스마트 뷰/태그에서도 빠진다.
 export function useRemoveListMember() {
   const queryClient = useQueryClient()
   return useMutation({

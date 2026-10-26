@@ -48,13 +48,11 @@ public class ReminderController {
         return ApiResponse.success(reminderQueryService.getReminders(listId, tag));
     }
 
-    // 뷰 이름은 대소문자를 구분하지 않으며, 지원하지 않는 이름이면 400이다.
     @GetMapping("/smart/{view}")
     public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable String view) {
         return ApiResponse.success(reminderQueryService.getSmartReminders(SmartView.from(view)));
     }
 
-    // 검색어가 비어 있거나 너무 길면 400이다.
     @GetMapping("/search")
     public ApiResponse<List<ReminderResponse>> searchReminders(
             @RequestParam @NotBlank @Size(max = SEARCH_QUERY_MAX_LENGTH) String q) {

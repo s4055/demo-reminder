@@ -88,10 +88,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(resultCode, resultCode.getDefaultMessage()));
     }
 
-    /**
-     * 상위 클래스가 처리하는 모든 예외의 응답이 최종적으로 거치는 메서드.
-     * 기본 구현은 ProblemDetail 본문을 만들지만, 여기서는 상태 코드와 헤더는 그대로 두고 본문만 ApiResponse로 바꾼다.
-     */
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
@@ -142,7 +138,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                     .map(this::formatFieldError)
                     .collect(Collectors.joining(", "));
         }
-        // 컨트롤러 파라미터(@RequestParam 등)의 제약 위반은 본문 검증과 같은 "이름: 메시지" 형식으로 응답한다.
         if (ex instanceof HandlerMethodValidationException validation && resultCode == ResultCode.BAD_REQUEST) {
             return validation.getParameterValidationResults().stream()
                     .flatMap(result -> result.getResolvableErrors().stream()

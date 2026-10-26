@@ -9,7 +9,6 @@ import {
   type Selection,
 } from "@/lib/selection"
 
-// 리마인더에 붙어 있는 태그만 보여주며, 태그가 하나도 없으면 섹션을 숨긴다.
 export function TagSection({
   selection,
   onSelect,

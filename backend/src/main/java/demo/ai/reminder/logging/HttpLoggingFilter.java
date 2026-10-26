@@ -22,23 +22,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * 요청과 응답의 전문을 요청 로그 → 비즈니스 로직 → 응답 로그 순서로 남기고,
- * 모든 로그를 UUID 기반 request_id로 묶어 하나의 요청으로 구분할 수 있게 한다.
- * <ul>
- *   <li>요청 로그: {@code [Request]} 메서드, URI, 본문 / {@code [Header]} 요청 헤더 / {@code [Session]} 세션 정보</li>
- *   <li>응답 로그: {@code [Response]} 상태 코드, 본문</li>
- * </ul>
- * <p>
- * request_id는 MDC({@value #REQUEST_ID})에 넣어 두므로 요청을 처리하는 동안 서비스 등에서 남기는 로그에도 같은 값이 찍힌다.
- * 출력 형식은 application.yml의 {@code logging.pattern.console}에서 정한다.
- * <p>
- * 요청 로그를 체인 실행 전에 남기기 위해 요청 본문은 {@link CachedBodyRequestWrapper}로 미리 읽어 두고,
- * 캐싱된 응답 본문은 {@code copyBodyToResponse()}로 반드시 클라이언트에 돌려준다.
- * <p>
- * H2 콘솔 경로({@code spring.h2.console.path}, 기본값 {@code /h2-console}) 요청은 로깅하지 않고 그대로 통과시킨다.
- * 경로는 설정에서 주입받으므로 application.yml에서 콘솔 경로를 바꿔도 필터가 함께 따라간다.
- */
 @Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -87,7 +70,6 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
         }
     }
 
-    // 회원가입/로그인 요청 본문의 비밀번호가 로그에 평문으로 남지 않도록 JSON의 "password" 값을 가린다.
     static String maskPassword(String body) {
         return PASSWORD_FIELD.matcher(body).replaceAll("$1\"" + MASK + "\"");
     }

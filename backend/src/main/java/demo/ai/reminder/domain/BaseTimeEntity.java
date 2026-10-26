@@ -10,9 +10,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
-/**
- * 엔티티 공통 생성일/수정일. JPA Auditing이 채운다.
- */
 @Getter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)

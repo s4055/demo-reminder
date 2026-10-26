@@ -9,7 +9,6 @@ import {
 } from "@/lib/list-groups-api"
 import { listGroupsQueryKey, listsQueryKey } from "@/hooks/query-keys"
 
-// 그룹은 본인만 바꾸므로 주기적으로 다시 조회하지 않는다.
 export function useListGroups() {
   return useQuery({
     queryKey: listGroupsQueryKey,
@@ -40,7 +39,6 @@ export function useRenameListGroup() {
   })
 }
 
-// 소속 리스트의 groupId가 비워지므로 리스트도 다시 조회한다.
 export function useDeleteListGroup() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -53,7 +51,6 @@ export function useDeleteListGroup() {
   })
 }
 
-// 드롭 즉시 그룹 순서를 바꾸고(optimistic update), 실패하면 원래 순서로 되돌린다.
 export function useReorderListGroups() {
   const queryClient = useQueryClient()
   return useMutation({

@@ -8,7 +8,6 @@ import type { ListGroup } from "@/lib/list-groups-api"
 import type { ReminderList } from "@/lib/lists-api"
 import { cn } from "@/lib/utils"
 
-// 소유한 리스트 항목. 드래그 핸들과 소유자 전용 메뉴(편집/삭제/그룹으로 이동)를 붙인다.
 export function SortableListItem({
   list,
   active,

@@ -1,7 +1,6 @@
 import { SearchIcon, XIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
-// 검색창 입력값. 검색 결과 조회(디바운스)와 이전 화면 복귀는 상위에서 처리한다.
 export function SidebarSearch({
   value,
   onChange,

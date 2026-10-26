@@ -63,7 +63,6 @@ function setHidden(listId: number, hidden: boolean) {
   emit()
 }
 
-// listId가 null(스마트 뷰/태그 화면)이면 항상 보인다.
 export function useShowCompleted(
   listId: number | null
 ): [boolean, (show: boolean) => void] {

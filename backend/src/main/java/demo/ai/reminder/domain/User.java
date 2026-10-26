@@ -23,11 +23,9 @@ public class User extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 로그인 아이디. 소문자로 정규화해 저장한다.
     @Column(nullable = false, unique = true)
     private String email;
 
-    // BCrypt 해시. 평문 비밀번호는 저장하지 않는다.
     @Column(nullable = false)
     private String password;
 
@@ -40,7 +38,6 @@ public class User extends BaseTimeEntity {
         this.name = name;
     }
 
-    // 가입/로그인/초대에서 이메일을 같은 기준으로 비교하도록 앞뒤 공백을 지우고 소문자로 맞춘다.
     public static String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
