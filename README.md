@@ -29,6 +29,11 @@ Apple Reminders의 핵심 사용 경험(리스트, 리마인더, 완료 처리, 
 
 백엔드와 프론트엔드를 각각 실행합니다.
 
+| 구분 | 접속 주소 | 비고 |
+|---|---|---|
+| 프론트엔드 | http://localhost:3000 | 처음 접속하면 `/login`으로 이동 |
+| H2 콘솔 | http://localhost:8080/h2-console | JDBC URL `jdbc:h2:file:./data/reminderdb`, 사용자 `sa`, 비밀번호 없음 |
+
 ### 백엔드 (`:8080`)
 
 ```bash
