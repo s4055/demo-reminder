@@ -21,7 +21,6 @@ import type { ListGroup } from "@/lib/list-groups-api"
 import type { ReminderList } from "@/lib/lists-api"
 import { DEFAULT_SELECTION, type Selection } from "@/lib/selection"
 
-// 사이드바 조립. 여러 섹션에서 여는 리스트/그룹 다이얼로그의 상태는 여기서 관리한다.
 export function Sidebar({
   selection,
   onSelect,
@@ -30,7 +29,6 @@ export function Sidebar({
 }: {
   selection: Selection
   onSelect: (selection: Selection) => void
-  // 검색창 입력값. 검색 결과 조회(디바운스)와 이전 화면 복귀는 상위에서 처리한다.
   searchText: string
   onSearchChange: (text: string) => void
 }) {
@@ -47,7 +45,6 @@ export function Sidebar({
   }>({ open: false })
   const [groupToDelete, setGroupToDelete] = useState<ListGroup | null>(null)
 
-  // 보고 있던 리스트가 삭제되거나 나간 리스트면 기본 화면으로 돌아간다.
   function leaveIfSelected(list: ReminderList) {
     if (selection.type === "list" && selection.listId === list.id) {
       onSelect(DEFAULT_SELECTION)

@@ -39,7 +39,6 @@ import {
   type RepeatRule,
 } from "@/lib/repeat"
 
-// 선택 목록의 항목. 프리셋 외의 반복은 CUSTOM으로 표시하고, EDIT_CUSTOM을 고르면 사용자 지정 다이얼로그를 연다.
 type RepeatOption = RepeatRule | "WEEKDAYS" | "CUSTOM" | "EDIT_CUSTOM"
 
 function optionOf(recurrence: Recurrence): RepeatOption {
@@ -50,7 +49,6 @@ function optionOf(recurrence: Recurrence): RepeatOption {
   return "CUSTOM"
 }
 
-// 반복은 마감일이 있을 때만 설정할 수 있으므로, 마감일이 없으면 disabled로 막는다.
 export function RepeatSelect({
   id,
   value,
@@ -141,7 +139,6 @@ function CustomRepeatDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
-        {/* 열 때마다 현재 반복 값으로 다시 시작한다. */}
         {open && <CustomRepeatForm initial={value} onSave={onSave} />}
       </DialogContent>
     </Dialog>

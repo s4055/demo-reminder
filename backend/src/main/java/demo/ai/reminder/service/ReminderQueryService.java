@@ -17,10 +17,6 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * 리마인더 조회(리스트/태그별 목록, 스마트 뷰, 검색, 다가오는 일정). 리마인더 변경은 ReminderService가 맡는다.
- * 모두 현재 사용자가 볼 수 있는 리마인더(본인 것 + 멤버인 리스트의 것)만 조회한다.
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -42,9 +38,6 @@ public class ReminderQueryService {
     private final ListAccess listAccess;
     private final CurrentUser currentUser;
 
-    // 리스트를 지정하면 최상위 리마인더만 표시 순서대로(하위 작업은 각 부모의 subtasks로),
-    // 태그를 지정하면 그 태그가 붙은 리마인더를 생성순으로, 둘 다 없으면 전체를 생성순으로 조회한다.
-    // 태그별/전체 조회에는 하위 작업도 개별 항목으로 포함된다. 멤버가 아닌 리스트는 404다.
     public List<ReminderResponse> getReminders(Long listId, String tag) {
         if (listId != null) {
             ReminderList list = listAccess.memberList(listId);
@@ -88,8 +81,6 @@ public class ReminderQueryService {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
-    // 알림 스케줄링용. [from, to) 기간에 마감되는 미완료 리마인더를 하위 작업까지 개별 항목으로 마감일시 순으로 조회한다.
-    // from과 to의 관계는 두 값을 함께 봐야 하는 규칙이라 서비스가 검증한다.
     public List<ReminderResponse> getUpcomingReminders(LocalDateTime from, LocalDateTime to) {
         if (!from.isBefore(to)) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "from must be before to: from=" + from + ", to=" + to);

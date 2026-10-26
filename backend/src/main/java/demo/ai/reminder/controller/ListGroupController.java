@@ -39,7 +39,6 @@ public class ListGroupController {
         return ApiResponse.success(listGroupService.createGroup(request.name()));
     }
 
-    // 요청 형식은 리스트 순서 변경과 같다 (ids 순서가 곧 새 표시 순서).
     @PatchMapping("/order")
     public ApiResponse<Void> reorderGroups(@Valid @RequestBody ListOrderRequest request) {
         listGroupService.reorderGroups(request.ids());

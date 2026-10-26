@@ -13,9 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * 사이드바 리스트 그룹. 모든 작업은 현재 사용자의 그룹으로 제한하며, 다른 사용자의 그룹은 404로 응답한다.
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -25,14 +22,12 @@ public class ListGroupService {
     private final ReminderListRepository reminderListRepository;
     private final CurrentUser currentUser;
 
-    // 사이드바 표시 순서대로 조회한다.
     public List<ListGroupResponse> getGroups() {
         return listGroupRepository.findByUserIdOrderBySortOrderAscIdAsc(currentUser.id()).stream()
                 .map(ListGroupResponse::from)
                 .toList();
     }
 
-    // 새 그룹은 마지막 순서로 추가한다.
     @Transactional
     public ListGroupResponse createGroup(String name) {
         int sortOrder = listGroupRepository.findNextSortOrder(currentUser.id());
@@ -50,14 +45,12 @@ public class ListGroupService {
         return ListGroupResponse.from(group);
     }
 
-    // ids 순서대로 현재 사용자의 그룹 표시 순서를 0부터 다시 매긴다.
     @Transactional
     public void reorderGroups(List<Long> ids) {
         SortOrders.reorder(ids, listGroupRepository.findByUserId(currentUser.id()),
                 ListGroup::getId, ListGroup::changeSortOrder, "list group");
     }
 
-    // 그룹만 삭제한다. 소속 리스트는 그룹에서 빠질 뿐 리스트와 리마인더는 그대로 남는다.
     @Transactional
     public void deleteGroup(Long id) {
         ListGroup group = findGroupOrThrow(id);

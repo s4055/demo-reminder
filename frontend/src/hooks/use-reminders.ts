@@ -56,7 +56,6 @@ export function useReminders(selection: Selection) {
   })
 }
 
-// 리마인더 변경은 목록 조회 결과와 사이드바의 리스트별/태그별 개수에 모두 영향을 준다.
 function useInvalidateReminderQueries() {
   const queryClient = useQueryClient()
   return () => {
@@ -83,8 +82,6 @@ export function useUpdateReminder() {
   })
 }
 
-// 수정이 버전 충돌(409)로 거부되었을 때 편집 창을 다시 채울 최신 리마인더를 가져오고, 화면의 목록도 다시 조회한다.
-// 단건 조회 API가 없으므로 볼 수 있는 전체 리마인더(하위 작업 포함)에서 찾으며, 그 사이 삭제되었으면 undefined다.
 export function useFetchLatestReminder() {
   const invalidate = useInvalidateReminderQueries()
   return async (id: number) => {
@@ -94,7 +91,6 @@ export function useFetchLatestReminder() {
   }
 }
 
-// 원래 리스트와 대상 리스트의 목록, 사이드바의 리스트별 개수가 모두 바뀌므로 리마인더 관련 쿼리를 전부 무효화한다.
 export function useMoveReminder() {
   const invalidate = useInvalidateReminderQueries()
   return useMutation({
@@ -105,7 +101,6 @@ export function useMoveReminder() {
   })
 }
 
-// 드롭 즉시 리스트 화면의 순서를 바꾸고(optimistic update), 실패하면 원래 순서로 되돌린다.
 export function useReorderReminders() {
   const queryClient = useQueryClient()
   return useMutation({

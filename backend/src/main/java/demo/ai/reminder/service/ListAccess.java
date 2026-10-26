@@ -25,12 +25,10 @@ class ListAccess {
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List not found: " + listId));
     }
 
-    // 멤버라면 누구나 리스트의 리마인더를 조회/생성/수정/완료/삭제할 수 있다.
     ReminderList memberList(Long listId) {
         return membership(listId).getList();
     }
 
-    // 리스트 자체의 수정/삭제와 멤버 관리는 소유자만 할 수 있다.
     ReminderList ownedList(Long listId) {
         ListMember membership = membership(listId);
         if (!membership.isOwner()) {

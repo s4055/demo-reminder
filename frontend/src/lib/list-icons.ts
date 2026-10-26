@@ -58,7 +58,6 @@ export type ListIconKey = keyof typeof LIST_ICONS
 
 export const LIST_ICON_KEYS = Object.keys(LIST_ICONS) as ListIconKey[]
 
-// 모르는 값이 와도(이전 버전 데이터 등) 기본 표시로 떨어지도록 확인한다.
 export function isListIconKey(icon: string | null): icon is ListIconKey {
   return icon !== null && Object.hasOwn(LIST_ICONS, icon)
 }

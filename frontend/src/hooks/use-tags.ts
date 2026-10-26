@@ -14,7 +14,6 @@ export function useTags() {
   })
 }
 
-// 태그를 지우면 리마인더 항목의 #태그 표시도 바뀌므로 리마인더 조회도 무효화한다.
 export function useDeleteTag() {
   const queryClient = useQueryClient()
   return useMutation({

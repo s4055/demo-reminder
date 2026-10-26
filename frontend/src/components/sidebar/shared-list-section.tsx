@@ -3,7 +3,6 @@ import { useLists } from "@/hooks/use-lists"
 import { isOwner, type ReminderList } from "@/lib/lists-api"
 import { isSameSelection, type Selection } from "@/lib/selection"
 
-// 공유받은 리스트. 순서 변경/그룹/편집/삭제 없이 멤버 보기만 할 수 있으며, 없으면 섹션을 숨긴다.
 export function SharedListSection({
   selection,
   onSelect,

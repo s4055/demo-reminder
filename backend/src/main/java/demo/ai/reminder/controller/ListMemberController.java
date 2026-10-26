@@ -37,7 +37,6 @@ public class ListMemberController {
         return ApiResponse.success(listMemberService.invite(listId, request.email()));
     }
 
-    // userId가 본인이면 리스트에서 나간다.
     @DeleteMapping("/{userId}")
     public ApiResponse<Void> removeMember(@PathVariable Long listId, @PathVariable Long userId) {
         listMemberService.removeMember(listId, userId);

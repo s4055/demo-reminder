@@ -6,7 +6,6 @@ import { normalizeTagName } from "@/lib/tags-api"
 
 const TAG_NAME_MAX_LENGTH = 50
 
-/** 입력 후 Enter(또는 쉼표)로 태그 칩을 추가하고, 칩의 X 또는 빈 입력에서 Backspace로 제거한다. */
 export function TagInput({
   id,
   value,
@@ -28,7 +27,6 @@ export function TagInput({
     // 한글 조합 중 Enter는 조합 확정이므로 태그로 추가하지 않는다.
     if (event.nativeEvent.isComposing) return
     if (event.key === "Enter" || event.key === ",") {
-      // 폼 제출을 막고 태그만 추가한다.
       event.preventDefault()
       commitDraft()
     } else if (event.key === "Backspace" && draft === "" && value.length > 0) {
@@ -60,7 +58,6 @@ export function TagInput({
         maxLength={TAG_NAME_MAX_LENGTH}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={handleKeyDown}
-        // 입력 중인 태그도 포커스를 잃을 때(저장 버튼 클릭 등) 칩으로 확정한다.
         onBlur={commitDraft}
         placeholder={value.length === 0 ? "태그 입력 후 Enter" : ""}
         className="h-6 min-w-24 flex-1 bg-transparent px-1 outline-none placeholder:text-muted-foreground"

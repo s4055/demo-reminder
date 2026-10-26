@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { isUnauthorized, useMe } from "@/hooks/use-auth"
 
-// 로그인한 사용자에게만 children을 보여준다. 로그인하지 않았으면 /login으로 보낸다.
 export function AuthGate({ children }: { children: ReactNode }) {
   const router = useRouter()
   const { data: user, error, isError, refetch } = useMe()

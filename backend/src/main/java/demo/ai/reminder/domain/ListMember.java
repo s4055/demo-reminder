@@ -16,7 +16,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 리스트를 함께 쓰는 사용자. 소유자도 OWNER 멤버로 저장되며, 멤버는 ReminderList를 통해서만 추가/제거한다.
 @Entity
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"list_id", "user_id"}))
 @Getter

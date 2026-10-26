@@ -16,7 +16,6 @@ export function ReminderForm({
 }: {
   listId?: number
   defaultDueAt?: Date
-  // 태그 화면에서 추가한 리마인더가 바로 그 화면에 나타나도록 붙일 태그
   tagNames?: string[]
 }) {
   const [title, setTitle] = useState("")
@@ -24,7 +23,6 @@ export function ReminderForm({
   const [recurrence, setRecurrence] = useState<Recurrence>(NO_REPEAT)
   const createReminder = useCreateReminder()
 
-  // 반복은 마감일이 있어야 하므로 마감일을 지우면 반복도 해제한다.
   function handleDueAtChange(value: Date | undefined) {
     setDueAt(value)
     if (!value) setRecurrence(NO_REPEAT)

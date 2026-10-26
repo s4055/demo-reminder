@@ -54,7 +54,6 @@ type ReminderFormValues = {
   flagged: boolean
   priority: Priority
   tagNames: string[]
-  // 소속 리스트. 리스트 없이 만든 리마인더는 null이며, 리스트로 옮길 수는 있지만 '리스트 없음'으로 되돌릴 수는 없다.
   listId: number | null
 }
 
@@ -107,10 +106,6 @@ function ReminderEditForm({
   // 폼을 채운 시점의 리마인더. 목록이 주기적으로 다시 조회되어 reminder가 바뀌어도, 저장할 때는 편집을 시작한 시점의
   // version을 보내야 그 사이 다른 사용자가 저장한 변경을 덮어쓰지 않는다 (다르면 409).
   const [base, setBase] = useState(reminder)
-  // 입력 연결 방식은 컴포넌트가 값을 주고받는 방식에 따라 나눈다.
-  // - register: 내부가 진짜 HTML 입력 요소인 컴포넌트(Input, Textarea). ref와 onChange 이벤트(event.target.value)로 값을 읽는다.
-  // - Controller(control): 진짜 입력 요소 없이 value / onChange 계열 prop으로 값을 주고받는 컴포넌트
-  //   (DueDatePicker, Checkbox, Select, TagInput). field.value와 field.onChange를 컴포넌트 prop에 이어 준다.
   const {
     register,
     handleSubmit,
@@ -122,8 +117,6 @@ function ReminderEditForm({
 
   const dueAt = useWatch({ control, name: "dueAt" })
 
-  // 다른 사용자가 먼저 저장해 거부되면(409) 최신 내용과 version으로 폼을 다시 채운다 (입력 중이던 내용은 버린다).
-  // 그 사이 삭제되었으면 창을 닫는다. 다시 불러오지 못하면 그대로 두며, 다시 저장하면 또 409가 되어 다시 시도한다.
   async function reloadLatest() {
     try {
       const latest = await fetchLatestReminder(reminder.id)
@@ -134,11 +127,9 @@ function ReminderEditForm({
       setBase(latest)
       reset(formValuesOf(latest))
     } catch {
-      // 전역 토스트로 충돌은 이미 알렸다.
     }
   }
 
-  // 내용을 저장한 뒤 리스트가 바뀌었으면 옮긴다. 하위 작업은 부모를 따라서만 이동하므로 리스트를 바꿀 수 없다.
   function moveIfChanged(listId: number | null) {
     if (listId === null || listId === base.listId) {
       onSaved()
@@ -234,7 +225,6 @@ function ReminderEditForm({
                 value={field.value}
                 onChange={(value) => {
                   field.onChange(value)
-                  // 반복은 마감일이 있어야 하므로 마감일을 지우면 반복도 해제한다.
                   if (!value) setValue("recurrence", NO_REPEAT)
                 }}
               />
@@ -308,7 +298,6 @@ function ReminderEditForm({
         />
         <Label htmlFor="reminder-flagged">플래그 지정</Label>
       </div>
-      {/* 하위 작업은 1단계까지만 만들 수 있으므로 최상위 리마인더에서만 보여준다. */}
       {reminder.parentId === null && <SubtaskSection parent={reminder} />}
       <DialogFooter>
         <Button
@@ -322,7 +311,6 @@ function ReminderEditForm({
   )
 }
 
-// 리스트 이름 앞에 사이드바와 같은 색상 점을 보여준다. 리스트가 없으면(null) "리스트 없음"으로 표시한다.
 function ListSelect({
   id,
   lists,
@@ -372,7 +360,6 @@ function ListLabel({ list }: { list: ReminderList }) {
   )
 }
 
-// 하위 작업은 편집 폼의 저장과 별개로 추가 즉시 생성한다.
 // 이 영역은 편집 폼 안에 있으므로 Enter가 폼을 제출하지 않도록 막는다.
 function SubtaskSection({ parent }: { parent: Reminder }) {
   const createReminder = useCreateReminder()

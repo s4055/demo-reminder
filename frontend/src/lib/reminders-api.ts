@@ -12,28 +12,20 @@ export type Reminder = {
   flagged: boolean
   priority: Priority
   dueAt: string | null
-  // 반복 주기. 반복 리마인더를 완료하면 서버가 다음 회차를 새 리마인더로 만든다.
   repeatRule: RepeatRule
-  // 반복 간격 (반복하지 않으면 1)
   repeatInterval: number
-  // 매주 반복할 요일 (월요일부터 정렬). 비어 있으면 마감일의 요일로 반복한다.
   repeatDaysOfWeek: DayOfWeek[]
   completedAt: string | null
   listId: number | null
   sortOrder: number
-  // 붙은 태그 이름 (이름순)
   tags: string[]
-  // 부모 리마인더 id. 최상위 리마인더이면 null
   parentId: number | null
-  // 하위 작업 (부모 안의 순서대로). 하위 작업 자신은 항상 빈 배열이다.
   subtasks: Reminder[]
-  // 동시 수정 충돌 감지용 버전. 변경이 저장될 때마다 1씩 늘어나며, 수정할 때 편집을 시작한 시점의 값을 보낸다.
   version: number
   createdAt: string
   updatedAt: string
 }
 
-// parentId를 지정하면 하위 작업으로 만들어지고, 리스트는 listId와 관계없이 부모를 따른다.
 export type CreateReminderInput = {
   title: string
   memo?: string | null
@@ -42,15 +34,11 @@ export type CreateReminderInput = {
   priority?: Priority
   tagNames?: string[]
   parentId?: number | null
-  // NONE이 아니면 dueAt이 있어야 한다 (없으면 400).
   repeatRule?: RepeatRule
-  // 1~99, 생략하면 1
   repeatInterval?: number
-  // WEEKLY일 때만 지정할 수 있다 (아니면 400).
   repeatDaysOfWeek?: DayOfWeek[]
 }
 
-// 전체 교체 방식이라 tagNames를 빈 배열로 보내면 태그가 모두 떨어진다.
 export type UpdateReminderInput = {
   title: string
   memo: string | null
@@ -58,17 +46,12 @@ export type UpdateReminderInput = {
   flagged: boolean
   priority: Priority
   tagNames: string[]
-  // NONE이 아니면 dueAt이 있어야 한다 (없으면 400).
   repeatRule: RepeatRule
-  // 1~99
   repeatInterval: number
-  // WEEKLY일 때만 지정할 수 있다 (아니면 400). 빈 배열이면 마감일의 요일로 반복한다.
   repeatDaysOfWeek: DayOfWeek[]
-  // 편집을 시작할 때 받은 version. 그 사이 다른 사용자가 먼저 저장했으면 409(VERSION_CONFLICT)로 거부된다.
   version: number
 }
 
-// listId를 지정하면 최상위 리마인더만 오고, 하위 작업은 각 항목의 subtasks에 담긴다.
 export function getReminders(listId?: number): Promise<Reminder[]> {
   const query = listId === undefined ? "" : `?listId=${listId}`
   return apiRequest<Reminder[]>(`/api/reminders${query}`)
@@ -84,14 +67,12 @@ export function getSmartReminders(view: SmartView): Promise<Reminder[]> {
   return apiRequest<Reminder[]>(`/api/reminders/smart/${view}`)
 }
 
-// 제목/메모/태그 이름에 검색어가 들어 있는 리마인더 (하위 작업 포함). 미완료 항목(마감일시 순)이 먼저, 완료 항목(완료일시 최신순)이 나중에 온다.
 export function searchReminders(query: string): Promise<Reminder[]> {
   return apiRequest<Reminder[]>(
     `/api/reminders/search?q=${encodeURIComponent(query)}`
   )
 }
 
-// 마감일시가 [from, to) 에 있는 미완료 리마인더 (하위 작업 포함, 마감일시 순). 브라우저 알림 스케줄링용이다.
 export function getUpcomingReminders(from: Date, to: Date): Promise<Reminder[]> {
   const query = new URLSearchParams({
     from: toDueAtParam(from),
@@ -111,7 +92,6 @@ export function updateReminder(
   return apiRequest<Reminder>(`/api/reminders/${id}`, jsonBody("PUT", input))
 }
 
-// ids 순서가 곧 새 순서다. 리스트의 최상위 미완료 리마인더 id를 모두 담아야 한다.
 export function reorderReminders(listId: number, ids: number[]): Promise<void> {
   return apiRequest<void>(
     "/api/reminders/order",
@@ -119,8 +99,6 @@ export function reorderReminders(listId: number, ids: number[]): Promise<void> {
   )
 }
 
-// 응답은 토글된 현재 리마인더뿐이다. 반복 리마인더의 다음 회차는 목록을 다시 조회해야 보인다.
-// 최상위 리마인더를 하위 작업과 함께 다른 리스트의 마지막 순서로 옮긴다. 하위 작업 단독 이동은 400, 멤버가 아닌 리스트는 404다.
 export function moveReminder(id: number, listId: number): Promise<Reminder> {
   return apiRequest<Reminder>(
     `/api/reminders/${id}/list`,
@@ -144,7 +122,6 @@ export function deleteReminder(id: number): Promise<void> {
   return apiRequest<void>(`/api/reminders/${id}`, { method: "DELETE" })
 }
 
-// 리스트의 완료된 리마인더를 모두 삭제한다. 완료된 리마인더의 하위 작업도 함께 삭제되며 deletedCount에 포함된다.
 export function deleteCompletedReminders(
   listId: number
 ): Promise<{ deletedCount: number }> {

@@ -17,9 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 리마인더 생성/수정/이동/완료/삭제. 조회는 ReminderQueryService가 맡는다.
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -30,9 +27,6 @@ public class ReminderService {
     private final TagService tagService;
     private final CurrentUser currentUser;
 
-    // 새 리마인더는 같은 리스트(리스트 없음도 하나의 범위)의 마지막 순서로 추가한다.
-    // parentId를 지정하면 그 리마인더의 하위 작업으로 추가하며, 이때 listId는 무시하고 부모의 리스트를 따른다.
-    // 마감일시 없이 반복하면 도메인이 DomainException(400)을 던진다.
     @Transactional
     public ReminderResponse createReminder(CreateReminderCommand command) {
         if (command.parentId() != null) {
@@ -55,8 +49,6 @@ public class ReminderService {
         return reminderRepository.save(subtask);
     }
 
-    // 태그도 요청 목록으로 교체한다 (생략하거나 null이면 모두 떨어진다).
-    // 요청 버전이 현재 버전과 다르면(편집 중 다른 사용자가 먼저 수정) 409다.
     @Transactional
     public ReminderResponse updateReminder(Long id, UpdateReminderCommand command) {
         Reminder reminder = findReminderOrThrow(id);
@@ -67,7 +59,6 @@ public class ReminderService {
         return toFlushedResponse(reminder);
     }
 
-    // ids 순서대로 리스트의 최상위 미완료 리마인더 표시 순서를 0부터 다시 매긴다.
     @Transactional
     public void reorderReminders(Long listId, List<Long> ids) {
         ReminderList list = listAccess.memberList(listId);
@@ -75,8 +66,6 @@ public class ReminderService {
                 Reminder::getId, Reminder::changeSortOrder, "incomplete reminder of the list");
     }
 
-    // 최상위 리마인더를 하위 작업과 함께 다른 리스트의 마지막 순서로 옮긴다. 대상 리스트의 멤버여야 하고(아니면 404),
-    // 하위 작업은 단독으로 옮길 수 없다(400). 이미 그 리스트에 있으면 순서도 바꾸지 않는다.
     @Transactional
     public ReminderResponse moveReminder(Long id, Long listId) {
         Reminder reminder = findReminderOrThrow(id);
@@ -92,8 +81,6 @@ public class ReminderService {
         return toFlushedResponse(reminder);
     }
 
-    // 반복 리마인더를 완료하면 다음 회차를 저장한다. 최상위 리마인더의 다음 회차는 같은 리스트의 마지막 순서로 들어가고,
-    // 하위 작업의 다음 회차는 도메인에서 같은 부모의 마지막 하위 작업으로 붙는다.
     @Transactional
     public ReminderResponse toggleComplete(Long id) {
         Reminder reminder = findReminderOrThrow(id);
@@ -113,7 +100,6 @@ public class ReminderService {
         return toFlushedResponse(reminder);
     }
 
-    // 하위 작업이 있으면 함께 삭제된다. 하위 작업을 삭제하면 부모의 하위 작업 목록에서도 떼어낸다.
     @Transactional
     public void deleteReminder(Long id) {
         Reminder reminder = findReminderOrThrow(id);
@@ -121,8 +107,6 @@ public class ReminderService {
         reminderRepository.delete(reminder);
     }
 
-    // 리스트의 완료된 리마인더를 모두 삭제한다. 완료된 최상위 리마인더는 하위 작업과 함께 삭제되고(미완료 하위 작업 포함),
-    // 미완료 부모 아래의 완료된 하위 작업은 그 하위 작업만 삭제된다. 리스트 멤버면 누구나 할 수 있다.
     @Transactional
     public DeletedCountResponse deleteCompletedReminders(Long listId) {
         ReminderList list = listAccess.memberList(listId);

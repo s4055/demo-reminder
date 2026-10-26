@@ -29,7 +29,6 @@ import {
 } from "@/hooks/use-list-groups"
 import type { ListGroup } from "@/lib/list-groups-api"
 
-/** group 이 있으면 이름 변경, 없으면 새 그룹 생성 폼이 된다. */
 export function ListGroupFormDialog({
   open,
   onOpenChange,

@@ -42,7 +42,6 @@ const DEFAULT_COLOR = "#007AFF"
 type ListFormValues = {
   name: string
   color: string
-  // null이면 아이콘 없이 색상 점으로 표시한다.
   icon: ListIconKey | null
 }
 
@@ -54,7 +53,6 @@ function formValuesOf(list: ReminderList | undefined): ListFormValues {
   }
 }
 
-/** list 가 있으면 수정, 없으면 새 리스트 생성 폼이 된다. */
 export function ListFormDialog({
   open,
   onOpenChange,
@@ -109,8 +107,6 @@ function ListForm({
   } = useForm<ListFormValues>({ defaultValues: formValuesOf(list) })
   const color = useWatch({ control, name: "color" })
 
-  // 다른 변경이 먼저 저장되어 거부되면(409) 최신 내용과 version으로 폼을 다시 채운다 (입력 중이던 내용은 버린다).
-  // 그 사이 삭제되었으면 창을 닫는다. 다시 불러오지 못하면 그대로 두며, 다시 저장하면 또 409가 되어 다시 시도한다.
   async function reloadLatest(id: number) {
     try {
       const latest = await fetchLatestList(id)
@@ -121,7 +117,6 @@ function ListForm({
       setVersion(latest.version)
       reset(formValuesOf(latest))
     } catch {
-      // 전역 토스트로 충돌은 이미 알렸다.
     }
   }
 

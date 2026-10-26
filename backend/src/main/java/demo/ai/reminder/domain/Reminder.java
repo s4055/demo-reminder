@@ -42,7 +42,6 @@ public class Reminder extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 소유자. 리스트 없이 만든 리마인더도 소유자를 구분해야 하므로 리스트와 별도로 둔다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -61,10 +60,8 @@ public class Reminder extends BaseTimeEntity {
     @Column(nullable = false)
     private Priority priority;
 
-    // 완료 처리한 시각. 미완료 상태에서는 null이다.
     private LocalDateTime completedAt;
 
-    // 반복 주기. 반복하지 않으면 NONE이며, 반복은 마감일시가 있을 때만 설정할 수 있다.
     @Getter(AccessLevel.NONE)
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -76,17 +73,14 @@ public class Reminder extends BaseTimeEntity {
     @Column(nullable = false)
     private int repeatInterval = Recurrence.MIN_INTERVAL;
 
-    // 매주 반복할 요일. WEEKLY일 때만 지정하며, 비어 있으면 마감일의 요일로 반복한다.
     @Getter(AccessLevel.NONE)
     @OneToMany(mappedBy = "reminder", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 100)
     private List<ReminderRepeatDay> repeatDays = new ArrayList<>();
 
-    // 이 회차를 완료하면서 다음 회차를 이미 만들었는지. 완료 취소 후 다시 완료해도 다음 회차를 중복으로 만들지 않는다.
     @Column(nullable = false)
     private boolean nextOccurrenceCreated;
 
-    // 같은 리스트 안에서의 표시 순서. 작을수록 위에 표시된다.
     @Column(nullable = false)
     private int sortOrder;
 
@@ -94,19 +88,16 @@ public class Reminder extends BaseTimeEntity {
     @JoinColumn(name = "list_id")
     private ReminderList list;
 
-    // 붙인 순서대로 둔다.
     @Getter(AccessLevel.NONE)
     @OneToMany(mappedBy = "reminder", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     @BatchSize(size = 100)
     private List<ReminderTag> reminderTags = new ArrayList<>();
 
-    // 상위 리마인더. 최상위 리마인더이면 null이다. 깊이는 1단계로 제한한다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Reminder parent;
 
-    // 하위 작업. 부모를 삭제하면 함께 삭제되고, sortOrder는 부모 안에서의 순서다.
     // 하위 작업은 각자 버전을 가지므로 추가/삭제해도 부모의 버전은 올리지 않는다 (편집 창에서 하위 작업을 추가한 뒤 부모를 저장할 수 있어야 한다).
     @OptimisticLock(excluded = true)
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -120,7 +111,6 @@ public class Reminder extends BaseTimeEntity {
     @Column(nullable = false)
     private Long version;
 
-    // 우선순위나 반복을 지정하지 않으면(null) 각각 '없음', '반복 안 함'으로 둔다.
     public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
                     Recurrence recurrence) {
         this.user = user;
@@ -144,7 +134,6 @@ public class Reminder extends BaseTimeEntity {
         applyRecurrence(recurrence, dueAt);
     }
 
-    // 반복 설정은 주기/간격/요일 세 필드로 나눠 저장하지만, 밖에는 이 메서드로 묶어서만 내보낸다.
     public Recurrence getRecurrence() {
         Set<DayOfWeek> daysOfWeek = repeatDays.stream().map(ReminderRepeatDay::getDayOfWeek).collect(Collectors.toSet());
         return new Recurrence(repeatRule, repeatInterval, daysOfWeek);
@@ -268,7 +257,6 @@ public class Reminder extends BaseTimeEntity {
         this.completedAt = now;
     }
 
-    // 반복을 지정하지 않으면(null) '반복 안 함'으로 둔다. 마감일시 없이 반복을 설정할 수는 없다.
     private void applyRecurrence(Recurrence recurrence, LocalDateTime dueAt) {
         Recurrence rule = Objects.requireNonNullElse(recurrence, Recurrence.NONE);
         if (rule.isRepeating() && dueAt == null) {
@@ -283,7 +271,6 @@ public class Reminder extends BaseTimeEntity {
                 .forEach(day -> repeatDays.add(new ReminderRepeatDay(this, day)));
     }
 
-    // 우선순위를 지정하지 않으면(null) '없음'으로 둔다.
     private static Priority priorityOrNone(Priority priority) {
         return Objects.requireNonNullElse(priority, Priority.NONE);
     }

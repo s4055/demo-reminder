@@ -18,9 +18,6 @@ import {
 function createQueryClient() {
   return new QueryClient({ // 서버에서 가져온 데이터를 관리
     mutationCache: new MutationCache({
-      // mutation의 meta.errorMessage가 있으면 그 문구로, 없으면 공통 문구로 알린다.
-      // meta.silent가 true이면(로그인 폼처럼 화면에서 직접 안내하는 경우) 알리지 않는다.
-      // 버전 충돌(409)은 편집 창이 최신 내용을 다시 채우므로 그 사실을 알린다.
       onError: (error, _variables, _context, mutation) => {
         if (mutation.meta?.silent) return
         if (isVersionConflict(error)) {
@@ -53,7 +50,6 @@ export function Providers({ children }: { children: ReactNode }) {
   const queryClient = getQueryClient()
   const router = useRouter()
 
-  // 세션이 만료된 상태로 API를 호출하면(401) 이전 사용자의 캐시를 지우고 로그인 페이지로 보낸다.
   useEffect(() => {
     setUnauthorizedHandler(() => {
       queryClient.clear()

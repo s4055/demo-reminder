@@ -13,7 +13,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 리마인더에 붙은 태그. 한 리마인더에 같은 태그는 한 번만 붙으며, Reminder를 통해서만 붙이고 뗀다.
 @Entity
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"reminder_id", "tag_id"}))
 @Getter
@@ -37,7 +36,6 @@ public class ReminderTag extends BaseTimeEntity {
         this.tag = tag;
     }
 
-    // 같은 객체이거나 저장된 같은 태그(id 일치)인지
     boolean isFor(Tag other) {
         return tag == other || (tag.getId() != null && tag.getId().equals(other.getId()));
     }

@@ -9,7 +9,6 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   HIGH: "높음",
 }
 
-// Apple Reminders처럼 우선순위를 제목 앞 느낌표 개수로 표시한다.
 const PRIORITY_MARKS: Record<Priority, string> = {
   NONE: "",
   LOW: "!",

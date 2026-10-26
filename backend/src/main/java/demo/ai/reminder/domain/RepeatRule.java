@@ -2,7 +2,6 @@ package demo.ai.reminder.domain;
 
 import java.time.LocalDateTime;
 
-// 리마인더 반복 주기. 반복은 마감일시가 있는 리마인더에만 설정할 수 있다. 간격과 요일은 {@link Recurrence}가 함께 다룬다.
 public enum RepeatRule {
     NONE,
     DAILY,

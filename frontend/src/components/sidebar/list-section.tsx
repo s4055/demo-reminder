@@ -22,8 +22,6 @@ import type { ListGroup } from "@/lib/list-groups-api"
 import { isOwner, type ReminderList } from "@/lib/lists-api"
 import { isSameSelection, type Selection } from "@/lib/selection"
 
-// "나의 리스트" 영역. 그룹(폴더)과 그 안의 리스트, 그룹 밖의 리스트를 드래그로 정렬할 수 있게 보여준다.
-// 순서 변경과 그룹은 소유한 리스트만 쓸 수 있으며, 공유받은 리스트는 SharedListSection에서 따로 보여준다.
 export function ListSection({
   selection,
   onSelect,
@@ -50,7 +48,6 @@ export function ListSection({
   const dndId = useId()
   const ownedLists = lists?.filter(isOwner)
 
-  // 리스트가 속한 그룹. 그룹 목록에 없는 그룹(아직 불러오지 않았거나 방금 삭제됨)이면 그룹 밖으로 본다.
   const groupIds = new Set(groups?.map((group) => group.id))
   const groupOf = (list: ReminderList) =>
     list.groupId !== null && groupIds.has(list.groupId) ? list.groupId : null

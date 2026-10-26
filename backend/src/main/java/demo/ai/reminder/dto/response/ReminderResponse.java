@@ -32,7 +32,6 @@ public record ReminderResponse(
         LocalDateTime updatedAt
 ) {
 
-    // 하위 작업은 1단계까지만 있으므로 subtasks의 각 항목은 빈 subtasks를 가진다.
     public static ReminderResponse from(Reminder reminder) {
         Recurrence recurrence = reminder.getRecurrence();
         return new ReminderResponse(

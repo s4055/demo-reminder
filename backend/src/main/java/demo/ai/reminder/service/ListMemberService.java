@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-// 리스트 공유. 멤버 목록은 멤버 누구나 볼 수 있고, 초대와 다른 멤버 제거는 소유자만 할 수 있다.
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -26,15 +25,12 @@ public class ListMemberService {
     private final UserRepository userRepository;
     private final CurrentUser currentUser;
 
-    // 소유자가 먼저, 나머지는 초대한 순서다.
     public List<ListMemberResponse> getMembers(Long listId) {
         return listAccess.memberList(listId).getMembers().stream()
                 .map(ListMemberResponse::from)
                 .toList();
     }
 
-    // 가입한 사용자만 초대할 수 있다. 이메일은 가입 때와 같이 소문자로 맞춰 찾는다.
-    // 이미 멤버인 사용자를 초대하면 도메인이 DomainException(400)을 던진다.
     @Transactional
     public ListMemberResponse invite(Long listId, String email) {
         ReminderList list = listAccess.ownedList(listId);
@@ -44,10 +40,6 @@ public class ListMemberService {
         return ListMemberResponse.from(listMemberRepository.save(list.addMember(user)));
     }
 
-    /**
-     * userId가 본인이면 리스트에서 나가고, 다른 사용자이면 그 멤버를 제거한다(소유자만).
-     * 소유자는 나가거나 제거될 수 없다. 멤버가 만든 리마인더는 리스트에 그대로 남는다.
-     */
     @Transactional
     public void removeMember(Long listId, Long userId) {
         ListMember me = listAccess.membership(listId);

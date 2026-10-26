@@ -1,12 +1,10 @@
 import { useSyncExternalStore } from "react"
 
-// unknown: 서버 렌더링 중이라 아직 브라우저 상태를 모름
 export type NotificationPermissionState =
   | NotificationPermission
   | "unsupported"
   | "unknown"
 
-// 알림 권한은 브라우저가 가진 외부 상태다. 권한 요청 결과와 브라우저 설정 변경을 구독자에게 알린다.
 const listeners = new Set<() => void>()
 
 function emit() {
@@ -19,7 +17,6 @@ function isSupported(): boolean {
 
 function subscribe(listener: () => void) {
   listeners.add(listener)
-  // 사이트 설정에서 권한을 바꾸는 경우도 반영한다 (permissions API가 없으면 생략).
   let status: PermissionStatus | undefined
   navigator.permissions
     ?.query({ name: "notifications" })

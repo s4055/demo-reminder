@@ -15,7 +15,6 @@ import { useReorderLists } from "@/hooks/use-lists"
 import type { ListGroup } from "@/lib/list-groups-api"
 import type { ReminderList } from "@/lib/lists-api"
 
-// 그룹과 리스트를 한 DndContext에서 정렬하므로 드래그 id에 종류를 붙여 구분한다.
 export const groupDragId = (id: number) => `group-${id}`
 export const listDragId = (id: number) => `list-${id}`
 
@@ -28,8 +27,6 @@ function parseDragId(
     : null
 }
 
-// 사이드바의 그룹 순서와 그룹 안 리스트 순서를 드래그로 바꾸는 데 필요한 센서/충돌 판정/드롭 처리.
-// 드롭하면 순서 변경 mutation을 호출하며, optimistic update와 실패 시 복구는 각 mutation 훅이 한다.
 export function useSidebarDnd({
   groups,
   ownedLists,
@@ -44,7 +41,6 @@ export function useSidebarDnd({
   const reorderLists = useReorderLists()
   const reorderGroups = useReorderListGroups()
 
-  // 드래그는 같은 범위(그룹 순서, 또는 같은 그룹 안의 리스트) 안에서만 한다. 그룹 간 이동은 메뉴로 한다.
   function dragScope(id: UniqueIdentifier): string | null {
     const parsed = parseDragId(id)
     if (!parsed) return null

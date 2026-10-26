@@ -11,16 +11,11 @@ import java.util.function.Function;
 import java.util.function.ObjIntConsumer;
 import java.util.stream.Collectors;
 
-// 순서 일괄 변경 요청의 공통 처리
 final class SortOrders {
 
     private SortOrders() {
     }
 
-    /**
-     * ids 순서대로 대상의 표시 순서를 0부터 다시 매긴다.
-     * ids는 대상 범위의 id와 정확히 일치(누락/중복/범위 밖 id 없음)해야 하며, 아니면 400이다.
-     */
     static <T> void reorder(List<Long> ids, Collection<T> targets, Function<T, Long> idOf,
                             ObjIntConsumer<T> changeSortOrder, String target) {
         Map<Long, T> targetsById = targets.stream().collect(Collectors.toMap(idOf, Function.identity()));

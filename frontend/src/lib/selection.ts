@@ -4,7 +4,6 @@ export type Selection =
   | { type: "smart"; view: SmartView }
   | { type: "list"; listId: number }
   | { type: "tag"; name: string }
-  // 사이드바 검색창의 검색 결과. query는 앞뒤 공백을 뺀 검색어다.
   | { type: "search"; query: string }
 
 export const SMART_VIEWS: { view: SmartView; label: string }[] = [
