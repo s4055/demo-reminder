@@ -19,7 +19,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -84,9 +83,9 @@ class TagServiceTest {
     }
 
     @Test
-    @DisplayName("태그 이름의 앞뒤 공백은 제거하고 중복은 하나로 합치며 빈 이름은 버린다")
-    void resolveTags_trimsAndDeduplicatesNames() {
-        List<Tag> result = tagService.resolveTags(Arrays.asList(" 집 ", "집", "", null, "심부름"));
+    @DisplayName("같은 태그 이름은 하나로 합치고 처음 나온 순서를 유지한다")
+    void resolveTags_deduplicatesNamesInOrder() {
+        List<Tag> result = tagService.resolveTags(List.of("집", "심부름", "집"));
 
         assertThat(result).extracting(Tag::getName).containsExactly("집", "심부름");
     }

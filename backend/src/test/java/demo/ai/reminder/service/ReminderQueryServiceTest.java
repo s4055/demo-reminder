@@ -300,13 +300,13 @@ class ReminderQueryServiceTest {
     }
 
     @Test
-    @DisplayName("검색은 대소문자를 구분하지 않고, 검색어 앞뒤 공백은 무시한다")
-    void searchReminders_isCaseInsensitive_andTrimsQuery() {
+    @DisplayName("검색은 제목과 태그 이름에서 대소문자를 구분하지 않는다")
+    void searchReminders_isCaseInsensitive() {
         create("Buy MILK", null);
         reminderService.createReminder(
                 new CreateReminderCommand("마트", null, null, null, null, List.of("Grocery"), null, null));
 
-        assertThat(reminderQueryService.searchReminders("  milk ")).extracting(ReminderResponse::title)
+        assertThat(reminderQueryService.searchReminders("milk")).extracting(ReminderResponse::title)
                 .containsExactly("Buy MILK");
         assertThat(reminderQueryService.searchReminders("GROCERY")).extracting(ReminderResponse::title)
                 .containsExactly("마트");

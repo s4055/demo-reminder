@@ -1,11 +1,8 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.exception.BusinessException;
-import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListGroup;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.response.ReminderListResponse;
-import demo.ai.reminder.repository.ListGroupRepository;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
@@ -24,7 +21,7 @@ public class ReminderListService {
 
     private final ReminderListRepository reminderListRepository;
     private final ReminderRepository reminderRepository;
-    private final ListGroupRepository listGroupRepository;
+    private final ListGroupService listGroupService;
     private final ListAccess listAccess;
     private final CurrentUser currentUser;
 
@@ -53,8 +50,7 @@ public class ReminderListService {
     @Transactional
     public ReminderListResponse changeGroup(Long id, Long groupId) {
         ReminderList list = listAccess.ownedList(id);
-        ListGroup group = groupId == null ? null : listGroupRepository.findByIdAndUserId(groupId, currentUser.id())
-                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List group not found: " + groupId));
+        ListGroup group = groupId == null ? null : listGroupService.ownedGroup(groupId);
         list.changeGroup(group);
         return toResponse(list);
     }

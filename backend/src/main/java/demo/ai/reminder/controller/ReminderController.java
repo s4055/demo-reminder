@@ -45,7 +45,7 @@ public class ReminderController {
     public ApiResponse<List<ReminderResponse>> getReminders(
             @RequestParam(required = false) Long listId,
             @RequestParam(required = false) String tag) {
-        return ApiResponse.success(reminderQueryService.getReminders(listId, tag));
+        return ApiResponse.success(reminderQueryService.getReminders(listId, tag == null ? null : tag.strip()));
     }
 
     @GetMapping("/smart/{view}")
@@ -56,7 +56,7 @@ public class ReminderController {
     @GetMapping("/search")
     public ApiResponse<List<ReminderResponse>> searchReminders(
             @RequestParam @NotBlank @Size(max = SEARCH_QUERY_MAX_LENGTH) String q) {
-        return ApiResponse.success(reminderQueryService.searchReminders(q));
+        return ApiResponse.success(reminderQueryService.searchReminders(q.strip()));
     }
 
     @GetMapping("/upcoming")

@@ -36,7 +36,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("가입하면 이메일은 소문자로, 비밀번호는 BCrypt 해시로 저장한다")
     void signup_normalizesEmail_andHashesPassword() {
-        UserResponse response = authService.signup(new SignupCommand(" Alice@Example.COM ", "password1", " 앨리스 "));
+        UserResponse response = authService.signup(new SignupCommand(" Alice@Example.COM ", "password1", "앨리스"));
 
         assertThat(response.email()).isEqualTo("alice@example.com");
         assertThat(response.name()).isEqualTo("앨리스");
@@ -53,16 +53,6 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.signup(new SignupCommand("ALICE@example.com", "password2", "앨리스2")))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.CONFLICT);
-    }
-
-    @Test
-    @DisplayName("비밀번호가 72바이트를 넘으면 400 예외가 발생한다 (BCrypt 제한)")
-    void signup_throwsBadRequest_whenPasswordExceeds72Bytes() {
-        String password = "가".repeat(25); // 25자 = 75바이트
-
-        assertThatThrownBy(() -> authService.signup(new SignupCommand("alice@example.com", password, "앨리스")))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
     }
 
     @Test

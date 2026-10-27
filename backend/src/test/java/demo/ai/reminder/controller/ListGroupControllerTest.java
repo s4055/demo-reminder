@@ -77,6 +77,21 @@ class ListGroupControllerTest {
     }
 
     @Test
+    @DisplayName("그룹을 만들거나 이름을 바꿀 때 이름의 앞뒤 공백은 지운다")
+    void groupName_isStripped() throws Exception {
+        mockMvc.perform(post("/api/list-groups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"  생활  \"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value("생활"));
+
+        ListGroup group = listGroupRepository.save(new ListGroup(owner, "생활", 1));
+        mockMvc.perform(put("/api/list-groups/" + group.getId()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\" 업무 \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("업무"));
+    }
+
+    @Test
     @DisplayName("이름 없이 그룹을 만들거나 순서 변경 ids가 맞지 않으면 400이다")
     void invalidRequests_returnBadRequest() throws Exception {
         mockMvc.perform(post("/api/list-groups").contentType(MediaType.APPLICATION_JSON).content("{\"name\":\" \"}"))

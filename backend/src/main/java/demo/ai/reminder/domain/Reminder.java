@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
 
 @Entity
@@ -197,15 +198,23 @@ public class Reminder extends BaseTimeEntity {
 
     /**
      * 다른 리스트로 옮기고 그 리스트에서의 표시 순서를 정한다. 하위 작업도 함께 같은 리스트로 옮긴다(하위 작업 안 순서는 유지).
-     * 하위 작업은 부모를 따라서만 이동하므로 단독으로 옮길 수 없다.
+     * 하위 작업은 부모를 따라서만 이동하므로 단독으로 옮길 수 없다. 이미 그 리스트에 있으면 순서를 바꾸지 않는다.
      */
-    public void moveTo(ReminderList list, int sortOrder) {
+    public void moveTo(ReminderList list, IntSupplier sortOrderInList) {
         if (isSubtask()) {
             throw new DomainException("A subtask cannot be moved on its own");
         }
+        if (isIn(list)) {
+            return;
+        }
+        // 새 순서를 조회하는 쿼리가 자동 flush를 일으키므로, 리스트를 바꾸기 전에 구해야 이 리마인더가 계산에 끼지 않는다.
+        this.sortOrder = sortOrderInList.getAsInt();
         this.list = list;
-        this.sortOrder = sortOrder;
         subtasks.forEach(subtask -> subtask.list = list);
+    }
+
+    private boolean isIn(ReminderList other) {
+        return list == other || (list != null && list.getId() != null && list.getId().equals(other.getId()));
     }
 
     public void changeSortOrder(int sortOrder) {

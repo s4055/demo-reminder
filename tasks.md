@@ -443,30 +443,30 @@
 `plan.md`의 Phase 23~26을 기준으로 한다. 동작을 유지하는 리팩터링이며(바뀌는 동작은 spec.md 13번 "동작 변경"만), 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 23 — 관례 정합성
-- [ ] 비밀번호 바이트 길이 커스텀 제약(`@MaxBytes`) 추가, `SignupRequest.password`에 적용
-- [ ] `AuthService`의 72바이트 검사와 `BCRYPT_MAX_BYTES` 제거, 숫자 72를 상수 하나로 통합
-- [ ] `Reminder.isIn(ReminderList)` 추가, 이동 시 하위 작업 검사와 같은 리스트 판단을 도메인으로 이동
-- [ ] `ReminderService.moveReminder`의 중복 검사와 우회 주석 제거
-- [ ] 입력 공백 정리를 `toCommand()`/컨트롤러로 모으고 `strip()`으로 통일 (리스트 이름, 리마인더 제목 포함)
-- [ ] `openapi.yml` 갱신 (비밀번호 바이트 제한, 공백 정리 설명)
-- [ ] 테스트: 72바이트 초과 비밀번호 400(컨트롤러), 하위 작업 단독 이동 400·같은 리스트 이동 무변경(도메인/서비스), 이름·제목 공백 정리
+- [x] 비밀번호 바이트 길이 커스텀 제약(`@MaxBytes`) 추가, `SignupRequest.password`에 적용
+- [x] `AuthService`의 72바이트 검사와 `BCRYPT_MAX_BYTES` 제거, 숫자 72를 상수 하나로 통합
+- [x] `Reminder.isIn(ReminderList)` 추가, 이동 시 하위 작업 검사와 같은 리스트 판단을 도메인으로 이동
+- [x] `ReminderService.moveReminder`의 중복 검사와 우회 주석 제거
+- [x] 입력 공백 정리를 `toCommand()`/컨트롤러로 모으고 `strip()`으로 통일 (리스트 이름, 리마인더 제목 포함)
+- [x] `openapi.yml` 갱신 (비밀번호 바이트 제한, 공백 정리 설명)
+- [x] 테스트: 72바이트 초과 비밀번호 400(컨트롤러), 하위 작업 단독 이동 400·같은 리스트 이동 무변경(도메인/서비스), 이름·제목 공백 정리
 
 ### 완료 기준 검증
-- [ ] 회원가입, 리마인더 이동, 리스트/리마인더 생성·수정이 프론트엔드에서 이전과 같게 동작하는지 확인
+- [x] 회원가입, 리마인더 이동, 리스트/리마인더 생성·수정이 프론트엔드에서 이전과 같게 동작하는지 확인
 
 ## Phase 24 — 중복 제거
-- [ ] `AuthService.getUser(Authentication)` 제거, 로그인 응답을 `authService.me()`로 생성
-- [ ] 리스트 그룹 조회·404 처리를 한 곳으로 통합 (`ListGroupService`, `ReminderListService.changeGroup`)
-- [ ] `GlobalExceptionHandler` 응답 생성 메서드 추출, `handleUnexpected`도 `resultCode.getStatus()` 사용
-- [ ] `ReminderService.createReminder`/`createSubtask` 중복 통합
-- [ ] 태그 이름 최대 길이를 공통 위치(예: `Tag.NAME_MAX_LENGTH`)로 이동
-- [ ] 리스트 요청 DTO의 색상 정규식·메시지를 상수로 통합
-- [ ] `SignupRequest`의 매직 넘버(100, 50)를 상수로 변경
-- [ ] `ReminderRequest.toRecurrence()`를 `Recurrence` 팩토리로 이동
-- [ ] 테스트: 기존 테스트 통과 확인, 로그인 응답 사용자 정보 검증
+- [x] `AuthService.getUser(Authentication)` 제거, 로그인 응답을 `authService.me()`로 생성
+- [x] 리스트 그룹 조회·404 처리를 한 곳으로 통합 (`ListGroupService`, `ReminderListService.changeGroup`)
+- [x] `GlobalExceptionHandler` 응답 생성 메서드 추출, `handleUnexpected`도 `resultCode.getStatus()` 사용
+- [x] `ReminderService.createReminder`/`createSubtask` 중복 통합
+- [x] 태그 이름 최대 길이를 공통 위치(예: `Tag.NAME_MAX_LENGTH`)로 이동
+- [x] 리스트 요청 DTO의 색상 정규식·메시지를 상수로 통합
+- [x] `SignupRequest`의 매직 넘버(100, 50)를 상수로 변경
+- [x] `ReminderRequest.toRecurrence()`를 `Recurrence` 팩토리로 이동
+- [x] 테스트: 기존 테스트 통과 확인, 로그인 응답 사용자 정보 검증
 
 ### 완료 기준 검증
-- [ ] 로그인/회원가입, 리스트 그룹 지정, 리마인더·하위 작업 생성이 프론트엔드에서 이전과 같게 동작하는지 확인
+- [x] 로그인/회원가입, 리스트 그룹 지정, 리마인더·하위 작업 생성이 프론트엔드에서 이전과 같게 동작하는지 확인
 
 ## Phase 25 — 책임 위치·가독성
 - [ ] 완료 항목 일괄 삭제의 판단을 `Reminder` 도메인 메서드로 이동

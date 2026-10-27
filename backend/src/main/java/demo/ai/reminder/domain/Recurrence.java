@@ -34,6 +34,10 @@ public record Recurrence(RepeatRule rule, int interval, Set<DayOfWeek> daysOfWee
         }
     }
 
+    public static Recurrence of(RepeatRule rule, Integer interval, Set<DayOfWeek> daysOfWeek) {
+        return new Recurrence(rule, Objects.requireNonNullElse(interval, MIN_INTERVAL), daysOfWeek);
+    }
+
     public boolean isRepeating() {
         return rule.isRepeating();
     }

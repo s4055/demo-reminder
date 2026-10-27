@@ -29,24 +29,17 @@ public class ReminderService {
 
     @Transactional
     public ReminderResponse createReminder(CreateReminderCommand command) {
-        if (command.parentId() != null) {
-            return ReminderResponse.from(createSubtask(command));
-        }
-        ReminderList list = command.listId() == null ? null : listAccess.memberList(command.listId());
+        Reminder parent = command.parentId() == null ? null : findReminderOrThrow(command.parentId());
+        ReminderList list = parent == null ? memberListOrNull(command.listId()) : null;
         Reminder reminder = new Reminder(currentUser.reference(),
                 command.title(), command.memo(), list, command.dueAt(), command.priority(), command.recurrence());
-        reminder.changeSortOrder(nextSortOrder(list));
+        if (parent == null) {
+            reminder.changeSortOrder(nextSortOrder(list));
+        } else {
+            parent.addSubtask(reminder);
+        }
         reminder.replaceTags(tagService.resolveTags(command.tagNames()));
         return ReminderResponse.from(reminderRepository.save(reminder));
-    }
-
-    private Reminder createSubtask(CreateReminderCommand command) {
-        Reminder parent = findReminderOrThrow(command.parentId());
-        Reminder subtask = new Reminder(currentUser.reference(),
-                command.title(), command.memo(), null, command.dueAt(), command.priority(), command.recurrence());
-        parent.addSubtask(subtask);
-        subtask.replaceTags(tagService.resolveTags(command.tagNames()));
-        return reminderRepository.save(subtask);
     }
 
     @Transactional
@@ -69,15 +62,8 @@ public class ReminderService {
     @Transactional
     public ReminderResponse moveReminder(Long id, Long listId) {
         Reminder reminder = findReminderOrThrow(id);
-        // 같은 리스트로 옮기는 요청은 아래에서 도메인을 거치지 않고 끝나므로, 하위 작업 검사는 여기서 먼저 한다.
-        if (reminder.isSubtask()) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "A subtask cannot be moved on its own: " + id);
-        }
         ReminderList target = listAccess.memberList(listId);
-        if (reminder.getList() != null && reminder.getList().getId().equals(target.getId())) {
-            return ReminderResponse.from(reminder);
-        }
-        reminder.moveTo(target, nextSortOrder(target));
+        reminder.moveTo(target, () -> nextSortOrder(target));
         return toFlushedResponse(reminder);
     }
 
@@ -128,6 +114,10 @@ public class ReminderService {
     private ReminderResponse toFlushedResponse(Reminder reminder) {
         reminderRepository.flush();
         return ReminderResponse.from(reminder);
+    }
+
+    private ReminderList memberListOrNull(Long listId) {
+        return listId == null ? null : listAccess.memberList(listId);
     }
 
     private int nextSortOrder(ReminderList list) {

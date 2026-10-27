@@ -23,6 +23,8 @@ import org.hibernate.annotations.BatchSize;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Tag extends BaseTimeEntity {
 
+    public static final int NAME_MAX_LENGTH = 50;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

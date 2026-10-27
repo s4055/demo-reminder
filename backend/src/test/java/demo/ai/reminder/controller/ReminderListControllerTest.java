@@ -73,6 +73,40 @@ class ReminderListControllerTest {
     }
 
     @Test
+    @DisplayName("리스트 이름의 앞뒤 공백은 지우고, 색상이 #RRGGBB 형식이 아니면 400과 color 필드 오류를 반환한다")
+    void createList_stripsName_andValidatesColor() throws Exception {
+        mockMvc.perform(post("/api/lists")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"  장보기  \"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value("장보기"));
+
+        mockMvc.perform(post("/api/lists")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"장보기\",\"color\":\"orange\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultMsg").value("color: color must be a hex color like #FF9500"));
+    }
+
+    @Test
+    @DisplayName("리스트를 수정할 때도 이름의 앞뒤 공백은 지우고, 색상 형식이 틀리면 400이다")
+    void updateList_stripsName_andValidatesColor() throws Exception {
+        ReminderList list = reminderListRepository.saveAndFlush(new ReminderList(owner, "장보기", null, null, 0));
+
+        mockMvc.perform(put("/api/lists/" + list.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\" 마트 \",\"color\":\"#00FF00\",\"version\":" + list.getVersion() + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("마트"));
+
+        mockMvc.perform(put("/api/lists/" + list.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"마트\",\"color\":\"#00FF0\",\"version\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultMsg").value("color: color must be a hex color like #FF9500"));
+    }
+
+    @Test
     @DisplayName("아이콘을 지정해 리스트를 만들면 응답에 icon과 groupId(null)가 담기고, 허용되지 않은 아이콘은 400이다")
     void createList_withIcon() throws Exception {
         mockMvc.perform(post("/api/lists")

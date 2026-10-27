@@ -39,6 +39,6 @@ public class User extends BaseTimeEntity {
     }
 
     public static String normalizeEmail(String email) {
-        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+        return email == null ? null : email.strip().toLowerCase(Locale.ROOT);
     }
 }

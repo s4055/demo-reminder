@@ -11,7 +11,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,9 +38,8 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<UserResponse> login(@Valid @RequestBody LoginRequest request,
                                            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-        Authentication authentication = authService.authenticate(request.email(), request.password());
-        loginSession.start(authentication, httpRequest, httpResponse);
-        return ApiResponse.success(authService.getUser(authentication));
+        loginSession.start(authService.authenticate(request.email(), request.password()), httpRequest, httpResponse);
+        return ApiResponse.success(authService.me());
     }
 
     @PostMapping("/logout")

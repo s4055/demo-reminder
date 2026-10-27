@@ -6,7 +6,6 @@ import demo.ai.reminder.domain.User;
 import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.security.CurrentUser;
-import demo.ai.reminder.security.LoginUser;
 import demo.ai.reminder.service.command.SignupCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,15 +16,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AuthService {
-
-    // BCrypt가 비교에 쓰는 최대 길이. 넘으면 뒷부분이 무시되므로 가입 단계에서 막는다.
-    private static final int BCRYPT_MAX_BYTES = 72;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -38,23 +32,12 @@ public class AuthService {
         if (userRepository.existsByEmail(email)) {
             throw new BusinessException(ResultCode.CONFLICT, "Email already registered: " + email);
         }
-        if (command.password().getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "password must be at most 72 bytes");
-        }
         return UserResponse.from(
-                userRepository.save(new User(email, passwordEncoder.encode(command.password()), command.name().trim())));
+                userRepository.save(new User(email, passwordEncoder.encode(command.password()), command.name())));
     }
 
     public UserResponse me() {
         return UserResponse.from(currentUser.load());
-    }
-
-    public UserResponse getUser(Authentication authentication) {
-        if (!(authentication.getPrincipal() instanceof LoginUser loginUser)) {
-            throw new IllegalStateException("Unexpected principal: " + authentication.getPrincipal());
-        }
-        return UserResponse.from(userRepository.findById(loginUser.getId())
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + loginUser.getId())));
     }
 
     /**

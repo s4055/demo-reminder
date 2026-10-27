@@ -378,7 +378,7 @@ class ReminderTest {
         parent.addSubtask(boxes);
         parent.addSubtask(movers);
 
-        parent.moveTo(work, 5);
+        parent.moveTo(work, () -> 5);
 
         assertThat(parent.getList()).isSameAs(work);
         assertThat(parent.getSortOrder()).isEqualTo(5);
@@ -386,6 +386,21 @@ class ReminderTest {
         assertThat(movers.getList()).isSameAs(work);
         assertThat(boxes.getSortOrder()).isZero();
         assertThat(movers.getSortOrder()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("이미 그 리스트에 있으면 moveTo는 순서를 바꾸지 않고 새 순서도 구하지 않는다")
+    void moveTo_keepsSortOrder_whenAlreadyInList() {
+        ReminderList home = new ReminderList(owner, "집", null, null, 0);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, home, null, null, null);
+        reminder.changeSortOrder(2);
+
+        reminder.moveTo(home, () -> {
+            throw new AssertionError("sort order must not be computed");
+        });
+
+        assertThat(reminder.getList()).isSameAs(home);
+        assertThat(reminder.getSortOrder()).isEqualTo(2);
     }
 
     @Test
@@ -397,7 +412,9 @@ class ReminderTest {
         Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null, null, null);
         parent.addSubtask(subtask);
 
-        assertThatThrownBy(() -> subtask.moveTo(work, 0))
+        assertThatThrownBy(() -> subtask.moveTo(work, () -> 0))
+                .isInstanceOf(DomainException.class);
+        assertThatThrownBy(() -> subtask.moveTo(home, () -> 0))
                 .isInstanceOf(DomainException.class);
         assertThat(subtask.getList()).isSameAs(home);
     }

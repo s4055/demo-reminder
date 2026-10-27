@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -39,11 +38,7 @@ public class TagService {
         if (tagNames == null) {
             return List.of();
         }
-        Set<String> names = tagNames.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(name -> !name.isEmpty())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> names = new LinkedHashSet<>(tagNames);
         Map<String, Tag> existing = tagRepository.findByUserIdAndNameIn(currentUser.id(), names).stream()
                 .collect(Collectors.toMap(Tag::getName, Function.identity()));
         return names.stream()

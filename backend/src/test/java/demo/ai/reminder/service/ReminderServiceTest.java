@@ -384,7 +384,7 @@ class ReminderServiceTest {
         Tag home = tagRepository.save(new Tag(owner, "집"));
 
         ReminderResponse result = reminderService.createReminder(
-                new CreateReminderCommand("우유 사기", null, null, null, null, List.of("집", " 심부름 ", "집"), null, null));
+                new CreateReminderCommand("우유 사기", null, null, null, null, List.of("집", "심부름", "집"), null, null));
 
         assertThat(result.tags()).containsExactlyInAnyOrder("집", "심부름");
         assertThat(reminderRepository.findById(result.id()).orElseThrow().getTags())
@@ -909,16 +909,17 @@ class ReminderServiceTest {
     }
 
     @Test
-    @DisplayName("하위 작업을 단독으로 옮기면 400 예외가 발생하고 그대로 남는다")
-    void moveReminder_throwsBadRequest_whenReminderIsSubtask() {
+    @DisplayName("하위 작업을 단독으로 옮기면 다른 리스트든 같은 리스트든 도메인 예외가 발생하고 그대로 남는다")
+    void moveReminder_throwsDomainException_whenReminderIsSubtask() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null, null, 0));
         ReminderResponse parent = create("이사 준비", home.getId());
         ReminderResponse subtask = createSubtask("박스 구하기", parent.id());
 
         assertThatThrownBy(() -> reminderService.moveReminder(subtask.id(), work.getId()))
-                .isInstanceOf(BusinessException.class)
-                .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
+                .isInstanceOf(DomainException.class);
+        assertThatThrownBy(() -> reminderService.moveReminder(subtask.id(), home.getId()))
+                .isInstanceOf(DomainException.class);
         assertThat(reminderRepository.findById(subtask.id()).orElseThrow().getList().getId()).isEqualTo(home.getId());
     }
 

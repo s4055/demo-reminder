@@ -34,11 +34,29 @@ class ReminderRequestTest {
     }
 
     @Test
-    @DisplayName("반복을 지정하지 않으면 반복하지 않는 Recurrence가 된다")
-    void toCommand_withoutRepeat_isNotRepeating() {
+    @DisplayName("반복과 태그를 지정하지 않으면 반복하지 않는 Recurrence와 빈 태그 목록이 된다")
+    void toCommand_withoutRepeatAndTags_isNotRepeating_andHasNoTags() {
         ReminderRequest request = new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null);
 
-        assertThat(request.toCommand().recurrence()).isEqualTo(Recurrence.NONE);
+        CreateReminderCommand command = request.toCommand();
+
+        assertThat(command.recurrence()).isEqualTo(Recurrence.NONE);
+        assertThat(command.tagNames()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("생성·수정 요청은 제목과 태그 이름의 앞뒤 공백을 지운다")
+    void toCommand_stripsTitleAndTagNames() {
+        ReminderRequest create = new ReminderRequest("  우유 사기 ", " 저지방 ", null, null, null,
+                List.of(" 장보기 ", "집"), null, null, null, null);
+        ReminderUpdateRequest update = new ReminderUpdateRequest(" 계란 사기 ", null, null, false, null,
+                List.of(" 장보기 "), null, null, null, 0L);
+
+        assertThat(create.toCommand().title()).isEqualTo("우유 사기");
+        assertThat(create.toCommand().memo()).isEqualTo(" 저지방 ");
+        assertThat(create.toCommand().tagNames()).containsExactly("장보기", "집");
+        assertThat(update.toCommand().title()).isEqualTo("계란 사기");
+        assertThat(update.toCommand().tagNames()).containsExactly("장보기");
     }
 
     @Test

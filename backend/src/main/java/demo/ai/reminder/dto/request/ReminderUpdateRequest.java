@@ -3,6 +3,7 @@ package demo.ai.reminder.dto.request;
 import demo.ai.reminder.domain.Priority;
 import demo.ai.reminder.domain.Recurrence;
 import demo.ai.reminder.domain.RepeatRule;
+import demo.ai.reminder.domain.Tag;
 import demo.ai.reminder.service.command.UpdateReminderCommand;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -21,7 +22,7 @@ public record ReminderUpdateRequest(
         LocalDateTime dueAt,
         boolean flagged,
         Priority priority,
-        List<@NotBlank @Size(max = ReminderRequest.TAG_NAME_MAX_LENGTH) String> tagNames,
+        List<@NotBlank @Size(max = Tag.NAME_MAX_LENGTH) String> tagNames,
         RepeatRule repeatRule,
         @Min(Recurrence.MIN_INTERVAL) @Max(Recurrence.MAX_INTERVAL) Integer repeatInterval,
         Set<@NotNull DayOfWeek> repeatDaysOfWeek,
@@ -29,7 +30,7 @@ public record ReminderUpdateRequest(
 ) {
 
     public UpdateReminderCommand toCommand() {
-        return new UpdateReminderCommand(title, memo, dueAt, flagged, priority, tagNames,
-                ReminderRequest.toRecurrence(repeatRule, repeatInterval, repeatDaysOfWeek), version);
+        return new UpdateReminderCommand(title.strip(), memo, dueAt, flagged, priority, TagNames.strip(tagNames),
+                Recurrence.of(repeatRule, repeatInterval, repeatDaysOfWeek), version);
     }
 }
