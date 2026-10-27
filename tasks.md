@@ -435,3 +435,57 @@
 
 ### 완료 기준 검증
 - [x] 두 계정이 같은 공유 리스트의 리마인더를 동시에 편집할 때 나중 저장이 409로 거부되고 최신 내용이 반영되는지 확인
+
+---
+
+# v5 — 백엔드 클린코드 (spec.md 13번)
+
+`plan.md`의 Phase 23~26을 기준으로 한다. 동작을 유지하는 리팩터링이며(바뀌는 동작은 spec.md 13번 "동작 변경"만), 모든 작업은 CI가 통과한 PR로 머지한다.
+
+## Phase 23 — 관례 정합성
+- [ ] 비밀번호 바이트 길이 커스텀 제약(`@MaxBytes`) 추가, `SignupRequest.password`에 적용
+- [ ] `AuthService`의 72바이트 검사와 `BCRYPT_MAX_BYTES` 제거, 숫자 72를 상수 하나로 통합
+- [ ] `Reminder.isIn(ReminderList)` 추가, 이동 시 하위 작업 검사와 같은 리스트 판단을 도메인으로 이동
+- [ ] `ReminderService.moveReminder`의 중복 검사와 우회 주석 제거
+- [ ] 입력 공백 정리를 `toCommand()`/컨트롤러로 모으고 `strip()`으로 통일 (리스트 이름, 리마인더 제목 포함)
+- [ ] `openapi.yml` 갱신 (비밀번호 바이트 제한, 공백 정리 설명)
+- [ ] 테스트: 72바이트 초과 비밀번호 400(컨트롤러), 하위 작업 단독 이동 400·같은 리스트 이동 무변경(도메인/서비스), 이름·제목 공백 정리
+
+### 완료 기준 검증
+- [ ] 회원가입, 리마인더 이동, 리스트/리마인더 생성·수정이 프론트엔드에서 이전과 같게 동작하는지 확인
+
+## Phase 24 — 중복 제거
+- [ ] `AuthService.getUser(Authentication)` 제거, 로그인 응답을 `authService.me()`로 생성
+- [ ] 리스트 그룹 조회·404 처리를 한 곳으로 통합 (`ListGroupService`, `ReminderListService.changeGroup`)
+- [ ] `GlobalExceptionHandler` 응답 생성 메서드 추출, `handleUnexpected`도 `resultCode.getStatus()` 사용
+- [ ] `ReminderService.createReminder`/`createSubtask` 중복 통합
+- [ ] 태그 이름 최대 길이를 공통 위치(예: `Tag.NAME_MAX_LENGTH`)로 이동
+- [ ] 리스트 요청 DTO의 색상 정규식·메시지를 상수로 통합
+- [ ] `SignupRequest`의 매직 넘버(100, 50)를 상수로 변경
+- [ ] `ReminderRequest.toRecurrence()`를 `Recurrence` 팩토리로 이동
+- [ ] 테스트: 기존 테스트 통과 확인, 로그인 응답 사용자 정보 검증
+
+### 완료 기준 검증
+- [ ] 로그인/회원가입, 리스트 그룹 지정, 리마인더·하위 작업 생성이 프론트엔드에서 이전과 같게 동작하는지 확인
+
+## Phase 25 — 책임 위치·가독성
+- [ ] 완료 항목 일괄 삭제의 판단을 `Reminder` 도메인 메서드로 이동
+- [ ] `Clock` 빈 등록, `ReminderQueryService`·`ReminderService`의 `now()`를 `Clock` 사용으로 변경
+- [ ] `ReminderListResponse.from`의 `summary.list()` 지역 변수화, `groupId` 노출 규칙을 메서드로 추출
+- [ ] `changeGroup(null)` → `leaveGroup()`
+- [ ] `ListGroupRepository` 정렬을 `Sort` 파라미터 방식으로 통일
+- [ ] `Reminder` 생성자의 불필요한 기본값 대입 제거
+- [ ] private 메서드 배치 정리 (`ReminderListService.toResponse`, `ReminderQueryService.escapeLike`)
+- [ ] `SmartView` 변환을 `Converter<String, SmartView>`로 등록, 컨트롤러에서 `SmartView`로 직접 받기
+- [ ] 테스트: 고정 `Clock`으로 오늘 뷰 자정 경계·완료 시각, 일괄 삭제 개수(도메인), 알 수 없는 스마트 뷰 400
+
+### 완료 기준 검증
+- [ ] 스마트 뷰(오늘/예정/전체/플래그/완료), 완료 토글, 완료 항목 일괄 삭제, 그룹 삭제가 프론트엔드에서 이전과 같게 동작하는지 확인
+
+## Phase 26 — 로그 민감 정보 마스킹
+- [ ] `HttpLoggingFilter`에서 `Cookie`(필요하면 `Authorization`) 헤더 값 마스킹
+- [ ] 세션 로그에 세션 ID와 속성 이름만 남기고 값은 제외
+- [ ] 테스트: 헤더·세션 로그 마스킹 검증 (`HttpLoggingFilterTest`)
+
+### 완료 기준 검증
+- [ ] 로그인 후 API 요청 로그에 `JSESSIONID` 값과 보안 컨텍스트 내용이 나오지 않는지 확인

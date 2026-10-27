@@ -570,6 +570,96 @@ v3까지 끝난 뒤 새 기능 대신 품질을 다듬는다. 동작이 바뀌�
 
 ---
 
+# v5 — 백엔드 클린코드 (spec.md 13번)
+
+v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반을 먼저 바로잡고, 그다음 중복 제거, 마지막으로 책임 이동과
+보안 정리 순으로 진행한다. 각 Phase는 동작을 유지하는 리팩터링이며, 바뀌는 동작은 spec.md 13번의 "동작 변경"에 적은 것뿐이다.
+
+| 순서 | Phase | 기능 | 복잡도를 결정하는 요소 |
+|---|---|---|---|
+| 1 | Phase 23 | 관례 정합성 | 커스텀 검증 제약, 도메인 메서드 이동, 입력 정리 위치 통일 |
+| 2 | Phase 24 | 중복 제거 | 여러 서비스/DTO에 걸친 공통 코드 추출 |
+| 3 | Phase 25 | 책임 위치·가독성 | 도메인으로 규칙 이동, `Clock` 주입, 이름 정리 |
+| 4 | Phase 26 | 로그 민감 정보 마스킹 | 로깅 필터 마스킹 규칙 |
+
+### 공통 원칙 (Phase 23~26)
+- v2~v4 공통 원칙을 그대로 따른다 (`openapi.yml` 갱신, 테스트 함께 작성, `ApiResponse`/`BusinessException`, CI 통과 PR로 머지).
+- 리팩터링 전후로 기존 테스트가 그대로 통과해야 한다. 테스트를 고쳐야 한다면 그 이유가 spec.md 13번의 "동작 변경"에 해당하는지 확인한다.
+
+---
+
+## Phase 23 — 관례 정합성
+**목표**: `CLAUDE.md`의 입력 검증 위치, 도메인 규칙 중복 금지 규칙에 맞춘다.
+
+### 백엔드
+- 비밀번호 72바이트 검증을 웹 경계로 이동
+  - `@MaxBytes` 같은 커스텀 Bean Validation 제약을 만들어 `SignupRequest.password`에 붙인다
+  - `AuthService`의 바이트 검사와 `BCRYPT_MAX_BYTES`를 지우고, 흩어진 숫자 72(`@Size(max = 72)`, 오류 메시지)를 상수 하나로 모은다
+- 리마인더 이동에서 서비스의 도메인 규칙 중복 제거
+  - `Reminder.isIn(ReminderList)`를 추가하고, "하위 작업이면 예외 → 같은 리스트면 그대로 둠" 판단을 도메인으로 옮긴다
+  - `ReminderService.moveReminder`의 `isSubtask()` 검사와 `getList().getId().equals(...)` 비교, 우회를 설명하던 주석을 지운다
+- 입력 공백 정리 통일
+  - 이름·제목·태그·검색어 등의 정리를 요청 DTO의 `toCommand()`(또는 컨트롤러)로 모으고 `strip()`으로 통일한다
+  - 지금 정리하지 않는 리스트 이름과 리마인더 제목도 정리한다 (동작 변경)
+
+### 완료 기준
+- 72바이트를 넘는 비밀번호로 가입하면 서비스를 거치지 않고 400이 나온다.
+- 하위 작업 단독 이동은 400, 같은 리스트로의 이동은 변경 없이 성공한다.
+- 앞뒤 공백이 있는 리스트 이름과 리마인더 제목이 정리된 값으로 저장된다.
+
+---
+
+## Phase 24 — 중복 제거
+**목표**: 여러 곳에 반복된 코드를 한 곳으로 모은다.
+
+### 백엔드
+- `AuthService.getUser(Authentication)`를 지우고, 로그인 응답은 `loginSession.start()` 뒤 `authService.me()`로 만든다
+- 리스트 그룹 조회와 404 처리(`ListGroupService.findGroupOrThrow`, `ReminderListService.changeGroup`)를 한 곳으로 모은다
+- `GlobalExceptionHandler`의 `ResponseEntity.status(...).body(ApiResponse.error(...))` 반복을 private 메서드로 추출하고, `handleUnexpected`도 `resultCode.getStatus()`를 쓰게 한다
+- `ReminderService.createReminder`와 `createSubtask`의 생성·태그 지정·저장 중복을 합친다 (부모 연결과 순서 지정만 분기)
+- 요청 DTO의 제약 상수 정리
+  - 태그 이름 최대 길이는 `ReminderRequest`가 아닌 공통 위치(예: `Tag.NAME_MAX_LENGTH`)에 둔다
+  - 리스트 생성/수정 요청에 중복된 색상 정규식과 메시지를 상수로 모은다
+  - `SignupRequest`의 매직 넘버(100, 50)를 상수로 바꾼다
+  - `ReminderRequest.toRecurrence()`를 `Recurrence` 쪽 팩토리로 옮겨 DTO끼리 서로 참조하지 않게 한다
+
+### 완료 기준
+- 위 코드가 각각 한 곳에만 있고, 로그인/회원가입/그룹 지정/예외 응답/리마인더·하위 작업 생성 테스트가 그대로 통과한다.
+
+---
+
+## Phase 25 — 책임 위치·가독성
+**목표**: 규칙을 제자리로 옮기고 읽기 쉽게 다듬는다.
+
+### 백엔드
+- 완료 항목 일괄 삭제(`ReminderService.deleteCompletedReminders`)의 "최상위는 하위 작업과 함께, 하위 작업은 부모가 미완료일 때만" 판단을 `Reminder`의 의도가 드러나는 메서드로 옮긴다
+- `Clock` 빈을 등록하고 `ReminderQueryService`(오늘 스마트 뷰)와 `ReminderService`(완료 토글)에서 `now()` 대신 주입한 `Clock`을 쓴다
+- `ReminderListResponse.from`에서 `summary.list()`를 지역 변수로 받고, "소유자에게만 `groupId`를 보여준다" 규칙을 이름 있는 메서드로 꺼낸다
+- 작은 정리
+  - `list.changeGroup(null)` → `list.leaveGroup()`
+  - `ListGroupRepository.findByUserIdOrderBySortOrderAscIdAsc`를 다른 리포지토리처럼 `Sort` 파라미터를 받는 방식으로 통일한다
+  - `Reminder` 생성자에서 기본값과 같은 `completed = false`, `flagged = false` 대입을 지운다
+  - private 메서드(`ReminderListService.toResponse`, `ReminderQueryService.escapeLike`)를 public 메서드 뒤로 옮긴다
+  - `SmartView` 문자열 변환을 `Converter<String, SmartView>`로 등록하고, 컨트롤러가 `@PathVariable SmartView view`로 받게 한다 (알 수 없는 값은 계속 400)
+
+### 완료 기준
+- 고정한 `Clock`으로 "오늘" 스마트 뷰의 자정 경계와 완료 시각을 검증하는 테스트가 있다.
+- 완료 항목 일괄 삭제의 삭제 개수와 결과가 이전과 같다.
+
+---
+
+## Phase 26 — 로그 민감 정보 마스킹
+**목표**: 요청 로그에 세션을 가로챌 수 있는 값이 남지 않게 한다.
+
+### 백엔드
+- `HttpLoggingFilter`가 `Cookie`(필요하면 `Authorization`도) 헤더 값을 마스킹한다
+- 세션 로그에는 세션 ID와 속성 이름만 남기고 값(`SPRING_SECURITY_CONTEXT` 등)은 남기지 않는다
+
+### 완료 기준
+- 로그인 후 요청의 로그에 `JSESSIONID` 값과 보안 컨텍스트 내용이 나오지 않는다.
+
+---
+
 ## 참고
 - 각 Phase는 이전 Phase 위에서 빌드/실행 가능한 상태를 유지하며 순차 진행한다.
 - spec.md 3번의 Out-of-Scope 중 10번에 포함되지 않은 항목(자연어 날짜 입력, 첨부파일, 위치 기반 리마인더)과 Web Push, 실시간(WebSocket) 동기화는 이 계획 범위 밖이며 필요 시 별도 논의한다.
