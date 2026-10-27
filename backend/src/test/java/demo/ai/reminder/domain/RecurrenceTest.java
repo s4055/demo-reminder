@@ -23,6 +23,15 @@ class RecurrenceTest {
     private static final Set<DayOfWeek> WEEKDAYS = EnumSet.range(MONDAY, FRIDAY);
 
     @Test
+    @DisplayName("of는 간격이 없으면 1로 보고, 주어진 간격과 요일은 그대로 담는다")
+    void of_defaultsMissingIntervalToMin() {
+        assertThat(Recurrence.of(RepeatRule.WEEKLY, null, Set.of(MONDAY)))
+                .isEqualTo(new Recurrence(RepeatRule.WEEKLY, Recurrence.MIN_INTERVAL, Set.of(MONDAY)));
+        assertThat(Recurrence.of(RepeatRule.DAILY, 3, null)).isEqualTo(new Recurrence(RepeatRule.DAILY, 3, null));
+        assertThat(Recurrence.of(null, null, null)).isEqualTo(Recurrence.NONE);
+    }
+
+    @Test
     @DisplayName("간격을 지정하면 일/주/월/년 단위로 간격만큼 뒤가 다음 마감일시다")
     void nextDueAt_addsIntervalPerUnit() {
         assertThat(new Recurrence(RepeatRule.DAILY, 3, null).nextDueAt(MONDAY_DUE))

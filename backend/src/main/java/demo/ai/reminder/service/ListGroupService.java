@@ -31,16 +31,15 @@ public class ListGroupService {
     @Transactional
     public ListGroupResponse createGroup(String name) {
         int sortOrder = listGroupRepository.findNextSortOrder(currentUser.id());
-        ListGroup group = listGroupRepository.save(
-                new ListGroup(currentUser.reference(), name.strip(), sortOrder));
+        ListGroup group = listGroupRepository.save(new ListGroup(currentUser.reference(), name, sortOrder));
         return ListGroupResponse.from(group);
     }
 
     // 응답에 갱신된 수정일(updatedAt)이 담기도록 flush한 뒤 변환한다.
     @Transactional
     public ListGroupResponse renameGroup(Long id, String name) {
-        ListGroup group = findGroupOrThrow(id);
-        group.rename(name.strip());
+        ListGroup group = ownedGroup(id);
+        group.rename(name);
         listGroupRepository.flush();
         return ListGroupResponse.from(group);
     }
@@ -53,12 +52,12 @@ public class ListGroupService {
 
     @Transactional
     public void deleteGroup(Long id) {
-        ListGroup group = findGroupOrThrow(id);
+        ListGroup group = ownedGroup(id);
         reminderListRepository.findByGroupId(id).forEach(list -> list.changeGroup(null));
         listGroupRepository.delete(group);
     }
 
-    private ListGroup findGroupOrThrow(Long id) {
+    ListGroup ownedGroup(Long id) {
         return listGroupRepository.findByIdAndUserId(id, currentUser.id())
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List group not found: " + id));
     }

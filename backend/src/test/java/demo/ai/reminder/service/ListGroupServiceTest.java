@@ -58,9 +58,9 @@ class ListGroupServiceTest {
     }
 
     @Test
-    @DisplayName("그룹을 만들면 이름 앞뒤 공백을 빼고 마지막 순서로 추가되며, 목록은 순서대로 조회된다")
+    @DisplayName("그룹을 만들면 마지막 순서로 추가되며, 목록은 순서대로 조회된다")
     void createGroup_appendsLast_andGetGroupsReturnsInOrder() {
-        ListGroupResponse life = listGroupService.createGroup("  생활  ");
+        ListGroupResponse life = listGroupService.createGroup("생활");
         ListGroupResponse work = listGroupService.createGroup("업무");
 
         assertThat(life.name()).isEqualTo("생활");

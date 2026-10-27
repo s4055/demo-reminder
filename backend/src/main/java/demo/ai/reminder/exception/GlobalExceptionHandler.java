@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.ConversionNotSupportedException;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -59,33 +58,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
-        ResultCode resultCode = ex.getResultCode();
-        return ResponseEntity.status(resultCode.getStatus())
-                .body(ApiResponse.error(resultCode, ex.getMessage()));
+        return respond(ex.getResultCode(), ex.getMessage());
     }
 
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ApiResponse<Void>> handleDomain(DomainException ex) {
-        ResultCode resultCode = ResultCode.BAD_REQUEST;
-        return ResponseEntity.status(resultCode.getStatus())
-                .body(ApiResponse.error(resultCode, ex.getMessage()));
+        return respond(ResultCode.BAD_REQUEST, ex.getMessage());
     }
 
     // 버전 검증을 통과한 뒤 같은 순간에 다른 요청이 먼저 저장하면 flush 시점에 낙관적 락 실패가 난다. 버전 불일치와 같은 409로 응답한다.
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailure(ObjectOptimisticLockingFailureException ex) {
         log.info("Optimistic locking failure: {}", ex.getMessage());
-        ResultCode resultCode = ResultCode.VERSION_CONFLICT;
-        return ResponseEntity.status(resultCode.getStatus())
-                .body(ApiResponse.error(resultCode, resultCode.getDefaultMessage()));
+        return respond(ResultCode.VERSION_CONFLICT, ResultCode.VERSION_CONFLICT.getDefaultMessage());
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception ex) {
         log.error("Unhandled exception", ex);
-        ResultCode resultCode = ResultCode.INTERNAL_SERVER_ERROR;
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(resultCode, resultCode.getDefaultMessage()));
+        return respond(ResultCode.INTERNAL_SERVER_ERROR, ResultCode.INTERNAL_SERVER_ERROR.getDefaultMessage());
+    }
+
+    private ResponseEntity<ApiResponse<Void>> respond(ResultCode resultCode, String message) {
+        return ResponseEntity.status(resultCode.getStatus()).body(ApiResponse.error(resultCode, message));
     }
 
     @Override

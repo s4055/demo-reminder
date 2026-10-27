@@ -70,11 +70,42 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("비밀번호는 UTF-8 72바이트까지 허용하고, 넘으면 400과 password 필드 오류를 반환한다 (BCrypt 제한)")
+    void signup_withPasswordOver72Bytes_returnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(signupJson("alice@example.com", "가".repeat(25), "앨리스")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value("password: must be at most 72 bytes in UTF-8"));
+        assertThat(userRepository.count()).isZero();
+
+        signup("alice@example.com", "가".repeat(24), "앨리스");
+    }
+
+    @Test
+    @DisplayName("가입할 때 이름의 앞뒤 공백은 지우고 저장한다")
+    void signup_stripsName() throws Exception {
+        MockHttpSession session = signup("alice@example.com", "password1", "  앨리스  ");
+
+        mockMvc.perform(get("/api/auth/me").session(session))
+                .andExpect(jsonPath("$.data.name").value("앨리스"));
+    }
+
+    @Test
     @DisplayName("올바른 이메일/비밀번호로 로그인하면 사용자 정보를 반환하고 세션으로 API를 호출할 수 있다")
     void login_withValidCredentials_startsSession() throws Exception {
         signup("alice@example.com", "password1", "앨리스");
 
-        MockHttpSession session = login("ALICE@example.com", "password1");
+        MockHttpSession session = (MockHttpSession) mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"ALICE@example.com\",\"password\":\"password1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").isNumber())
+                .andExpect(jsonPath("$.data.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.data.name").value("앨리스"))
+                .andExpect(jsonPath("$.data.password").doesNotExist())
+                .andReturn().getRequest().getSession(false);
 
         mockMvc.perform(get("/api/lists").session(session))
                 .andExpect(status().isOk())

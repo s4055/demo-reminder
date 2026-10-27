@@ -351,6 +351,43 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("리마인더 검색어와 태그 조회의 tag는 앞뒤 공백을 지우고 찾는다")
+    void searchAndTagQuery_stripParameters() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\",\"tagNames\":[\"장보기\"]}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/reminders/search").param("q", "  우유 "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].title").value(contains("우유 사기")));
+        mockMvc.perform(get("/api/reminders").param("tag", " 장보기 "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].title").value(contains("우유 사기")));
+    }
+
+    @Test
+    @DisplayName("리마인더를 만들거나 수정할 때 제목과 태그 이름의 앞뒤 공백은 지운다")
+    void createAndUpdateReminder_stripTitleAndTagNames() throws Exception {
+        Reminder reminder = reminderRepository.saveAndFlush(new Reminder(owner, "빨래", null, null, null, null, null));
+
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"  우유 사기  \",\"tagNames\":[\" 장보기 \"]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.title").value("우유 사기"))
+                .andExpect(jsonPath("$.data.tags").value(contains("장보기")));
+
+        mockMvc.perform(put("/api/reminders/" + reminder.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\" 청소 \",\"flagged\":false,\"tagNames\":[\" 집안일 \"],\"version\":"
+                                + reminder.getVersion() + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("청소"))
+                .andExpect(jsonPath("$.data.tags").value(contains("집안일")));
+    }
+
+    @Test
     @DisplayName("리마인더 검색에서 q가 없거나 비어 있으면 400을 반환한다")
     void searchReminders_withMissingOrBlankQuery_returnsBadRequest() throws Exception {
         mockMvc.perform(get("/api/reminders/search"))
