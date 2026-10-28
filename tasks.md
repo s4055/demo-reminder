@@ -483,9 +483,9 @@
 - [x] 스마트 뷰(오늘/예정/전체/플래그/완료), 완료 토글, 완료 항목 일괄 삭제, 그룹 삭제가 프론트엔드에서 이전과 같게 동작하는지 확인
 
 ## Phase 26 — 로그 민감 정보 마스킹
-- [ ] `HttpLoggingFilter`에서 `Cookie`(필요하면 `Authorization`) 헤더 값 마스킹
-- [ ] 세션 로그에 세션 ID와 속성 이름만 남기고 값은 제외
-- [ ] 테스트: 헤더·세션 로그 마스킹 검증 (`HttpLoggingFilterTest`)
+- [x] `HttpLoggingFilter`에서 `Cookie`(필요하면 `Authorization`) 헤더 값 마스킹
+- [x] 세션 로그에 세션 ID와 속성 이름만 남기고 값은 제외
+- [x] 테스트: 헤더·세션 로그 마스킹 검증 (`HttpLoggingFilterTest`)
 
 ### 완료 기준 검증
-- [ ] 로그인 후 API 요청 로그에 `JSESSIONID` 값과 보안 컨텍스트 내용이 나오지 않는지 확인
+- [x] 로그인 후 API 요청 로그에 `JSESSIONID` 값과 보안 컨텍스트 내용이 나오지 않는지 확인
