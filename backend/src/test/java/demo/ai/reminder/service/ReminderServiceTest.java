@@ -832,6 +832,31 @@ class ReminderServiceTest {
     }
 
     @Test
+    @DisplayName("부모가 지연 로딩 프록시여도 완료된 하위 작업은 부모와 함께 한 번만 삭제된다")
+    void deleteCompletedReminders_countsCompletedSubtaskOnce_whenParentIsProxy() {
+        ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
+        ReminderResponse parent = create("이사 준비", home.getId());
+        ReminderResponse child = createSubtask("박스 구하기", parent.id());
+        reminderService.toggleComplete(parent.id());
+        entityManager.flush();
+        entityManager.clear();
+
+        Reminder parentProxy = entityManager.getReference(Reminder.class, parent.id());
+        Reminder loadedChild = reminderRepository.findById(child.id()).orElseThrow();
+        assertThat(loadedChild.getParent()).isSameAs(parentProxy);
+        assertThat(entityManager.getEntityManagerFactory().getPersistenceUnitUtil().isLoaded(parentProxy)).isFalse();
+        assertThat(loadedChild.isDeletedOnCompletedClear()).isFalse();
+
+        DeletedCountResponse result = reminderService.deleteCompletedReminders(home.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.deletedCount()).isEqualTo(2);
+        assertThat(reminderRepository.findById(parent.id())).isEmpty();
+        assertThat(reminderRepository.findById(child.id())).isEmpty();
+    }
+
+    @Test
     @DisplayName("완료 항목이 없으면 아무것도 삭제하지 않고 0을 반환한다")
     void deleteCompletedReminders_returnsZero_whenNothingCompleted() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));

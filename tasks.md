@@ -469,15 +469,15 @@
 - [x] 로그인/회원가입, 리스트 그룹 지정, 리마인더·하위 작업 생성이 프론트엔드에서 이전과 같게 동작하는지 확인
 
 ## Phase 25 — 책임 위치·가독성
-- [ ] 완료 항목 일괄 삭제의 판단을 `Reminder` 도메인 메서드로 이동
-- [ ] `Clock` 빈 등록, `ReminderQueryService`·`ReminderService`의 `now()`를 `Clock` 사용으로 변경
-- [ ] `ReminderListResponse.from`의 `summary.list()` 지역 변수화, `groupId` 노출 규칙을 메서드로 추출
-- [ ] `changeGroup(null)` → `leaveGroup()`
-- [ ] `ListGroupRepository` 정렬을 `Sort` 파라미터 방식으로 통일
-- [ ] `Reminder` 생성자의 불필요한 기본값 대입 제거
-- [ ] private 메서드 배치 정리 (`ReminderListService.toResponse`, `ReminderQueryService.escapeLike`)
-- [ ] `SmartView` 변환을 `Converter<String, SmartView>`로 등록, 컨트롤러에서 `SmartView`로 직접 받기
-- [ ] 테스트: 고정 `Clock`으로 오늘 뷰 자정 경계·완료 시각, 일괄 삭제 개수(도메인), 알 수 없는 스마트 뷰 400
+- [x] 완료 항목 일괄 삭제의 판단을 `Reminder` 도메인 메서드로 이동
+- [x] `Clock` 빈 등록, `ReminderQueryService`·`ReminderService`의 `now()`를 `Clock` 사용으로 변경
+- [x] `ReminderListResponse.from`의 `summary.list()` 지역 변수화, `groupId` 노출 규칙을 메서드로 추출
+- [x] `changeGroup(null)` → `leaveGroup()`
+- [x] `ListGroupRepository` 정렬을 `Sort` 파라미터 방식으로 통일
+- [x] `Reminder` 생성자의 불필요한 기본값 대입 제거
+- [x] private 메서드 배치 정리 (`ReminderListService.toResponse`, `ReminderQueryService.escapeLike`)
+- [x] `SmartView` 변환을 `Converter<String, SmartView>`로 등록, 컨트롤러에서 `SmartView`로 직접 받기
+- [x] 테스트: 고정 `Clock`으로 오늘 뷰 자정 경계·완료 시각, 일괄 삭제 개수(도메인), 알 수 없는 스마트 뷰 400
 
 ### 완료 기준 검증
 - [ ] 스마트 뷰(오늘/예정/전체/플래그/완료), 완료 토글, 완료 항목 일괄 삭제, 그룹 삭제가 프론트엔드에서 이전과 같게 동작하는지 확인

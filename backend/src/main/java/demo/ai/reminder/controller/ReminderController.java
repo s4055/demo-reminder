@@ -49,8 +49,8 @@ public class ReminderController {
     }
 
     @GetMapping("/smart/{view}")
-    public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable String view) {
-        return ApiResponse.success(reminderQueryService.getSmartReminders(SmartView.from(view)));
+    public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable SmartView view) {
+        return ApiResponse.success(reminderQueryService.getSmartReminders(view));
     }
 
     @GetMapping("/search")

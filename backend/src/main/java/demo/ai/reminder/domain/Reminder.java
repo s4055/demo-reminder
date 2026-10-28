@@ -121,8 +121,6 @@ public class Reminder extends BaseTimeEntity {
         this.dueAt = dueAt;
         this.priority = priorityOrNone(priority);
         applyRecurrence(recurrence, dueAt);
-        this.completed = false;
-        this.flagged = false;
     }
 
     public void update(String title, String memo, LocalDateTime dueAt, boolean flagged, Priority priority,
@@ -184,8 +182,13 @@ public class Reminder extends BaseTimeEntity {
         if (parent == null) {
             return;
         }
-        parent.subtasks.remove(this);
-        this.parent = null;
+        parent.removeSubtask(this);
+    }
+
+    public void removeSubtask(Reminder subtask) {
+        if (subtasks.remove(subtask)) {
+            subtask.parent = null;
+        }
     }
 
     public List<Reminder> getSubtasks() {
@@ -194,6 +197,14 @@ public class Reminder extends BaseTimeEntity {
 
     public boolean isSubtask() {
         return parent != null;
+    }
+
+    public boolean isDeletedOnCompletedClear() {
+        return completed && !(isSubtask() && parent.isCompleted());
+    }
+
+    public int countWithSubtasks() {
+        return 1 + subtasks.size();
     }
 
     /**

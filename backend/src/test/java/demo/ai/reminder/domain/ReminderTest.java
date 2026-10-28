@@ -608,4 +608,45 @@ class ReminderTest {
         assertThat(next).isEmpty();
         assertThat(parent.getSubtasks()).hasSize(1);
     }
+
+    @Test
+    @DisplayName("완료된 최상위 리마인더는 완료 항목 일괄 삭제 대상이고 하위 작업과 함께 개수를 센다")
+    void isDeletedOnCompletedClear_whenCompletedTopLevel_countsWithSubtasks() {
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        parent.addSubtask(boxes);
+        parent.addSubtask(new Reminder(owner, "업체 예약", null, null, null, null, null));
+        parent.toggleComplete(LocalDateTime.of(2026, 10, 28, 9, 0));
+        boxes.toggleComplete(LocalDateTime.of(2026, 10, 28, 9, 5));
+
+        assertThat(parent.isDeletedOnCompletedClear()).isTrue();
+        assertThat(parent.countWithSubtasks()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("미완료 리마인더는 완료 항목 일괄 삭제 대상이 아니다")
+    void isDeletedOnCompletedClear_isFalse_whenIncomplete() {
+        Reminder parent = new Reminder(owner, "파티 준비", null, null, null, null, null);
+        Reminder cake = new Reminder(owner, "케이크 주문", null, null, null, null, null);
+        parent.addSubtask(cake);
+
+        assertThat(parent.isDeletedOnCompletedClear()).isFalse();
+        assertThat(cake.isDeletedOnCompletedClear()).isFalse();
+    }
+
+    @Test
+    @DisplayName("완료된 하위 작업은 부모가 미완료일 때만 단독으로 일괄 삭제 대상이 된다")
+    void isDeletedOnCompletedClear_forCompletedSubtask_dependsOnParent() {
+        Reminder parent = new Reminder(owner, "파티 준비", null, null, null, null, null);
+        Reminder invitation = new Reminder(owner, "초대장 보내기", null, null, null, null, null);
+        parent.addSubtask(invitation);
+        invitation.toggleComplete(LocalDateTime.of(2026, 10, 28, 9, 0));
+
+        assertThat(invitation.isDeletedOnCompletedClear()).isTrue();
+        assertThat(invitation.countWithSubtasks()).isEqualTo(1);
+
+        parent.toggleComplete(LocalDateTime.of(2026, 10, 28, 10, 0));
+
+        assertThat(invitation.isDeletedOnCompletedClear()).isFalse();
+    }
 }

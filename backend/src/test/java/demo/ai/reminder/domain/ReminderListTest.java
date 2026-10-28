@@ -43,15 +43,15 @@ class ReminderListTest {
     }
 
     @Test
-    @DisplayName("changeGroup으로 소유자의 그룹에 넣고 null로 그룹에서 뺄 수 있다")
-    void changeGroup_setsAndClearsOwnersGroup() {
+    @DisplayName("changeGroup으로 소유자의 그룹에 넣고 leaveGroup으로 그룹에서 뺄 수 있다")
+    void changeGroupAndLeaveGroup_setsAndClearsOwnersGroup() {
         ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
         ListGroup group = new ListGroup(owner, "생활", 0);
 
         list.changeGroup(group);
         assertThat(list.getGroup()).isSameAs(group);
 
-        list.changeGroup(null);
+        list.leaveGroup();
         assertThat(list.getGroup()).isNull();
     }
 

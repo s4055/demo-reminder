@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -26,6 +27,7 @@ public class ReminderService {
     private final ListAccess listAccess;
     private final TagService tagService;
     private final CurrentUser currentUser;
+    private final Clock clock;
 
     @Transactional
     public ReminderResponse createReminder(CreateReminderCommand command) {
@@ -70,7 +72,7 @@ public class ReminderService {
     @Transactional
     public ReminderResponse toggleComplete(Long id) {
         Reminder reminder = findReminderOrThrow(id);
-        reminder.toggleComplete(LocalDateTime.now()).ifPresent(next -> {
+        reminder.toggleComplete(LocalDateTime.now(clock)).ifPresent(next -> {
             if (!next.isSubtask()) {
                 next.changeSortOrder(nextSortOrder(next.getList()));
             }
@@ -96,17 +98,14 @@ public class ReminderService {
     @Transactional
     public DeletedCountResponse deleteCompletedReminders(Long listId) {
         ReminderList list = listAccess.memberList(listId);
-        int deletedCount = 0;
-        for (Reminder reminder : reminderRepository.findByListAndCompletedTrue(list)) {
-            if (!reminder.isSubtask()) {
-                deletedCount += 1 + reminder.getSubtasks().size();
-                reminderRepository.delete(reminder);
-            } else if (!reminder.getParent().isCompleted()) {
-                deletedCount++;
-                reminder.detachFromParent();
-                reminderRepository.delete(reminder);
-            }
-        }
+        List<Reminder> targets = reminderRepository.findByListAndCompletedTrue(list).stream()
+                .filter(Reminder::isDeletedOnCompletedClear)
+                .toList();
+        int deletedCount = targets.stream().mapToInt(Reminder::countWithSubtasks).sum();
+        targets.forEach(reminder -> {
+            reminder.detachFromParent();
+            reminderRepository.delete(reminder);
+        });
         return new DeletedCountResponse(deletedCount);
     }
 
