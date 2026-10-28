@@ -77,10 +77,14 @@ public class ReminderList extends BaseTimeEntity {
     }
 
     public void changeGroup(ListGroup group) {
-        if (group != null && !isOwner(group.getUser())) {
+        if (!isOwner(group.getUser())) {
             throw new DomainException("A list can only join a group of its owner");
         }
         this.group = group;
+    }
+
+    public void leaveGroup() {
+        this.group = null;
     }
 
     private boolean isOwner(User other) {

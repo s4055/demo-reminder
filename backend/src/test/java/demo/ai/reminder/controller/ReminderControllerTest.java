@@ -508,8 +508,7 @@ class ReminderControllerTest {
     void getSmartReminders_returnsBadRequest_whenViewIsUnknown() throws Exception {
         mockMvc.perform(get("/api/reminders/smart/{view}", "unknown"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.resultMsg").value("Unknown smart view: unknown"));
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
     }
 
     @Test

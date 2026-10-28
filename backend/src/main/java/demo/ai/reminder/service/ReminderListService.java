@@ -1,6 +1,5 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.domain.ListGroup;
 import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.repository.ReminderListRepository;
@@ -50,8 +49,11 @@ public class ReminderListService {
     @Transactional
     public ReminderListResponse changeGroup(Long id, Long groupId) {
         ReminderList list = listAccess.ownedList(id);
-        ListGroup group = groupId == null ? null : listGroupService.ownedGroup(groupId);
-        list.changeGroup(group);
+        if (groupId == null) {
+            list.leaveGroup();
+        } else {
+            list.changeGroup(listGroupService.ownedGroup(groupId));
+        }
         return toResponse(list);
     }
 
@@ -61,18 +63,18 @@ public class ReminderListService {
                 ReminderList::getId, ReminderList::changeSortOrder, "list");
     }
 
+    @Transactional
+    public void deleteList(Long id) {
+        ReminderList list = listAccess.ownedList(id);
+        reminderRepository.deleteAllByList(list);
+        reminderListRepository.delete(list);
+    }
+
     // 리스트 목록과 같은 요약 쿼리로 응답을 만들어 개수/역할 규칙을 한 곳에 둔다.
     // 갱신된 수정일(updatedAt)과 새 리스트/멤버가 반영되도록 flush한 뒤 조회한다.
     private ReminderListResponse toResponse(ReminderList list) {
         reminderListRepository.flush();
         return ReminderListResponse.from(reminderListRepository.findSummary(currentUser.id(), list.getId())
                 .orElseThrow(() -> new IllegalStateException("No membership for an accessed list: " + list.getId())));
-    }
-
-    @Transactional
-    public void deleteList(Long id) {
-        ReminderList list = listAccess.ownedList(id);
-        reminderRepository.deleteAllByList(list);
-        reminderListRepository.delete(list);
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -37,6 +38,7 @@ public class ReminderQueryService {
     private final ReminderRepository reminderRepository;
     private final ListAccess listAccess;
     private final CurrentUser currentUser;
+    private final Clock clock;
 
     public List<ReminderResponse> getReminders(Long listId, String tag) {
         if (listId != null) {
@@ -52,7 +54,7 @@ public class ReminderQueryService {
     public List<ReminderResponse> getSmartReminders(SmartView view) {
         return toResponses(switch (view) {
             case TODAY -> {
-                LocalDate today = LocalDate.now();
+                LocalDate today = LocalDate.now(clock);
                 yield reminderRepository.findAccessibleIncompleteDueBetween(
                         currentUser.id(), today.atStartOfDay(), today.plusDays(1).atStartOfDay(), DUE_DATE_SORT);
             }
@@ -76,16 +78,16 @@ public class ReminderQueryService {
                 .toList();
     }
 
-    private static String escapeLike(String value) {
-        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-    }
-
     public List<ReminderResponse> getUpcomingReminders(LocalDateTime from, LocalDateTime to) {
         if (!from.isBefore(to)) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "from must be before to: from=" + from + ", to=" + to);
         }
         return toResponses(reminderRepository.findAccessibleIncompleteDueBetween(
                 currentUser.id(), from, to, DUE_DATE_SORT));
+    }
+
+    private static String escapeLike(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     // 응답 변환은 트랜잭션 안에서 해야 지연 로딩되는 태그/하위 작업/부모를 읽을 수 있다.

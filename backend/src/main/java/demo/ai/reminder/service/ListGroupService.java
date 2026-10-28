@@ -3,11 +3,13 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.ListGroup;
+import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.dto.response.ListGroupResponse;
 import demo.ai.reminder.repository.ListGroupRepository;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,12 +20,14 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ListGroupService {
 
+    private static final Sort GROUP_SORT = Sort.by("sortOrder", "id");
+
     private final ListGroupRepository listGroupRepository;
     private final ReminderListRepository reminderListRepository;
     private final CurrentUser currentUser;
 
     public List<ListGroupResponse> getGroups() {
-        return listGroupRepository.findByUserIdOrderBySortOrderAscIdAsc(currentUser.id()).stream()
+        return listGroupRepository.findByUserId(currentUser.id(), GROUP_SORT).stream()
                 .map(ListGroupResponse::from)
                 .toList();
     }
@@ -53,7 +57,7 @@ public class ListGroupService {
     @Transactional
     public void deleteGroup(Long id) {
         ListGroup group = ownedGroup(id);
-        reminderListRepository.findByGroupId(id).forEach(list -> list.changeGroup(null));
+        reminderListRepository.findByGroupId(id).forEach(ReminderList::leaveGroup);
         listGroupRepository.delete(group);
     }
 

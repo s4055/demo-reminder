@@ -1,6 +1,7 @@
 package demo.ai.reminder.dto.response;
 
 import demo.ai.reminder.domain.ListRole;
+import demo.ai.reminder.domain.ReminderList;
 import demo.ai.reminder.repository.ReminderListSummary;
 
 import java.time.LocalDateTime;
@@ -21,20 +22,27 @@ public record ReminderListResponse(
 ) {
 
     public static ReminderListResponse from(ReminderListSummary summary) {
-        boolean owner = summary.role() == ListRole.OWNER;
+        ReminderList list = summary.list();
         return new ReminderListResponse(
-                summary.list().getId(),
-                summary.list().getName(),
-                summary.list().getColor(),
-                summary.list().getIcon(),
-                owner && summary.list().getGroup() != null ? summary.list().getGroup().getId() : null,
-                summary.list().getSortOrder(),
+                list.getId(),
+                list.getName(),
+                list.getColor(),
+                list.getIcon(),
+                groupIdVisibleTo(summary.role(), list),
+                list.getSortOrder(),
                 summary.reminderCount(),
                 summary.role(),
                 summary.memberCount(),
-                summary.list().getVersion(),
-                summary.list().getCreatedAt(),
-                summary.list().getUpdatedAt()
+                list.getVersion(),
+                list.getCreatedAt(),
+                list.getUpdatedAt()
         );
+    }
+
+    private static Long groupIdVisibleTo(ListRole role, ReminderList list) {
+        if (role != ListRole.OWNER || list.getGroup() == null) {
+            return null;
+        }
+        return list.getGroup().getId();
     }
 }
