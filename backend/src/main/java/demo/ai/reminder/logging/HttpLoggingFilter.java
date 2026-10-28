@@ -16,11 +16,15 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
+import java.util.HexFormat;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @Component
@@ -33,6 +37,10 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
     private static final Pattern PASSWORD_FIELD = Pattern.compile("(\"password\"\\s*:\\s*)\"(?:[^\"\\\\]|\\\\.)*\"");
 
     private static final String MASK = "****";
+
+    private static final Set<String> MASKED_HEADERS = Set.of("cookie", "authorization");
+
+    private static final int SESSION_FINGERPRINT_LENGTH = 12;
 
     private final String h2ConsolePath;
 
@@ -81,12 +89,19 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     private String requestHeaders(HttpServletRequest request) {
         return Collections.list(request.getHeaderNames()).stream()
-                .map(name -> name + "=" + String.join(", ", Collections.list(request.getHeaders(name))))
+                .map(name -> name + "=" + headerValue(request, name))
                 .collect(Collectors.joining(", ", "[", "]"));
     }
 
+    private String headerValue(HttpServletRequest request, String name) {
+        if (MASKED_HEADERS.contains(name.toLowerCase(Locale.ROOT))) {
+            return MASK;
+        }
+        return String.join(", ", Collections.list(request.getHeaders(name)));
+    }
+
     /**
-     * 세션 ID와 속성을 헤더와 같은 [key=value, ...] 형식으로 남긴다.
+     * 세션 ID의 지문과 속성 이름만 [id=..., attributes=[...]] 형식으로 남긴다.
      * 로깅 때문에 세션이 새로 생기지 않도록 기존 세션만 조회하고, 세션이 없으면 none을 남긴다.
      */
     private String sessionInfo(HttpServletRequest request) {
@@ -94,10 +109,16 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
         if (session == null) {
             return "none";
         }
-        return Stream.concat(
-                        Stream.of("id=" + session.getId()),
-                        Collections.list(session.getAttributeNames()).stream()
-                                .map(name -> name + "=" + session.getAttribute(name)))
-                .collect(Collectors.joining(", ", "[", "]"));
+        String attributeNames = String.join(", ", Collections.list(session.getAttributeNames()));
+        return "[id=" + sessionFingerprint(session.getId()) + ", attributes=[" + attributeNames + "]]";
+    }
+
+    static String sessionFingerprint(String sessionId) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(sessionId.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest).substring(0, SESSION_FINGERPRINT_LENGTH);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 }

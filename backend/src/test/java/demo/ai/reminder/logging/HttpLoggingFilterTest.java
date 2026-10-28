@@ -21,6 +21,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.test.context.TestSecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -98,9 +99,9 @@ class HttpLoggingFilterTest {
     }
 
     @Test
-    @DisplayName("세션이 있으면 세션 ID와 속성을 [key=value, ...] 형식으로, 없으면 none을 남긴다")
-    void logsSessionInfo(CapturedOutput output) throws Exception {
-        MockHttpSession session = new MockHttpSession();
+    @DisplayName("세션이 있으면 세션 ID 대신 지문과 속성 이름만 남기고, 없으면 none을 남긴다")
+    void logsSessionFingerprintAndAttributeNamesOnly(CapturedOutput output) throws Exception {
+        MockHttpSession session = new MockHttpSession(null, "raw-session-id-123");
         session.setAttribute("loginUser", "tester");
         session.setAttribute("theme", "dark");
 
@@ -109,10 +110,50 @@ class HttpLoggingFilterTest {
         TestSecurityContextHolder.clearContext();
         mockMvc.perform(get("/api/lists")).andExpect(status().isUnauthorized());
 
-        assertThat(output).contains("[Session] [id=" + session.getId() + ", ");
-        assertThat(output).containsPattern("\\[Session] \\[id=[^]]*loginUser=tester");
-        assertThat(output).containsPattern("\\[Session] \\[id=[^]]*theme=dark");
+        String fingerprint = HttpLoggingFilter.sessionFingerprint("raw-session-id-123");
+        assertThat(output).containsPattern("\\[Session] \\[id=" + fingerprint + ", attributes=\\[[^]]*loginUser");
+        assertThat(output).containsPattern("\\[Session] \\[id=" + fingerprint + ", attributes=\\[[^]]*theme");
+        assertThat(output).doesNotContain("raw-session-id-123", "tester", "dark");
         assertThat(output).contains("[Session] none");
+    }
+
+    @Test
+    @DisplayName("세션 지문은 같은 세션 ID에 대해 항상 같고 원래 값을 드러내지 않는 12자리 16진수다")
+    void sessionFingerprint_isStableShortHexAndHidesSessionId() {
+        String fingerprint = HttpLoggingFilter.sessionFingerprint("ABC123");
+
+        assertThat(fingerprint).matches("[0-9a-f]{12}");
+        assertThat(fingerprint).isEqualTo(HttpLoggingFilter.sessionFingerprint("ABC123"));
+        assertThat(fingerprint).isNotEqualTo(HttpLoggingFilter.sessionFingerprint("ABC124"));
+        assertThat(fingerprint).doesNotContain("ABC123");
+    }
+
+    @Test
+    @DisplayName("Cookie와 Authorization 헤더 값은 가리고 다른 헤더는 그대로 남긴다")
+    void masksCookieAndAuthorizationHeaders(CapturedOutput output) throws Exception {
+        mockMvc.perform(get("/api/lists")
+                        .header("Cookie", "JSESSIONID=secret-session-value")
+                        .header("Authorization", "Bearer secret-token")
+                        .header("X-Client-Version", "1.2.0"))
+                .andExpect(status().isOk());
+
+        assertThat(output).containsPattern("\\[Header] \\[[^]]*(?i:cookie)=\\*\\*\\*\\*");
+        assertThat(output).containsPattern("\\[Header] \\[[^]]*(?i:authorization)=\\*\\*\\*\\*");
+        assertThat(output).containsPattern("\\[Header] \\[[^]]*X-Client-Version=1\\.2\\.0");
+        assertThat(output).doesNotContain("secret-session-value", "secret-token");
+    }
+
+    @Test
+    @DisplayName("로그인 세션의 보안 컨텍스트 내용은 세션 로그에 남지 않는다")
+    void doesNotLogSecurityContextOfLoggedInSession(CapturedOutput output) throws Exception {
+        MockHttpSession session = new MockHttpSession(null, "logged-in-session-id");
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                TestSecurityContextHolder.getContext());
+
+        mockMvc.perform(get("/api/lists").session(session)).andExpect(status().isOk());
+
+        assertThat(output).containsPattern("\\[Session] \\[id=[0-9a-f]{12}, attributes=\\[[^]]*SPRING_SECURITY_CONTEXT");
+        assertThat(output).doesNotContain("logged-in-session-id", "SecurityContextImpl");
     }
 
     @Test
