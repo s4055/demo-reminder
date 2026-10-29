@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
-// 앨리스(소유자)가 리스트를 만들고 밥을 초대/제거하며, 캐럴은 초대받지 않은 사용자다.
 @SpringBootTest
 @Transactional
 class ListMemberServiceTest {

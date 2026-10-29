@@ -106,7 +106,6 @@ class HttpLoggingFilterTest {
         session.setAttribute("theme", "dark");
 
         mockMvc.perform(get("/api/lists").session(session)).andExpect(status().isOk());
-        // 로그인하지 않은 요청은 세션을 만들지 않는다 (401 응답 시에도 요청을 세션에 저장하지 않음).
         TestSecurityContextHolder.clearContext();
         mockMvc.perform(get("/api/lists")).andExpect(status().isUnauthorized());
 
@@ -278,7 +277,6 @@ class HttpLoggingFilterTest {
         assertThat(output.getOut()).contains("[startup] - outside request");
     }
 
-    /** 주어진 문구가 들어간 로그 줄에서, 로그 패턴이 앞에 붙인 request_id를 순서대로 뽑는다. */
     private List<String> requestIdsOf(CapturedOutput output, String... markers) {
         return output.getOut().lines()
                 .filter(line -> Arrays.stream(markers).anyMatch(line::contains))

@@ -29,10 +29,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * 공유 리스트의 접근 제어를 검증한다.
- * 앨리스(소유자)가 "가족" 리스트를 만들어 밥(편집자)을 초대했고, 캐럴은 멤버가 아니다.
- */
 @SpringBootTest
 @Transactional
 class SharedListAccessTest {

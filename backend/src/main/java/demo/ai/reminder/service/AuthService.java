@@ -40,10 +40,6 @@ public class AuthService {
         return UserResponse.from(currentUser.load());
     }
 
-    /**
-     * 이메일/비밀번호를 확인해 인증 정보를 돌려준다. 세션 저장은 호출하는 쪽(AuthController → LoginSession)이 한다.
-     * 어느 쪽이 틀렸는지 알려주지 않도록 실패 사유는 하나의 메시지로 응답한다.
-     */
     public Authentication authenticate(String email, String password) {
         try {
             return authenticationManager.authenticate(

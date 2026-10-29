@@ -16,9 +16,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * HttpLoggingFilter가 H2 콘솔 경로를 하드코딩하지 않고 spring.h2.console.path 설정을 따르는지 검증한다.
- */
 @SpringBootTest(properties = "spring.h2.console.path=/custom-h2")
 @ExtendWith(OutputCaptureExtension.class)
 class HttpLoggingFilterH2ConsolePathTest {

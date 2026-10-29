@@ -964,7 +964,6 @@ class ReminderServiceTest {
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
 
-    // 저장 직후 수정하면 시계 해상도에 따라 수정일이 같을 수 있으므로, 수정일을 과거로 돌려 두고 갱신 여부를 확인한다.
     private LocalDateTime backdateUpdatedAt(Long reminderId) {
         LocalDateTime past = LocalDateTime.of(2026, 1, 1, 0, 0);
         entityManager.createQuery("update Reminder r set r.updatedAt = :past where r.id = :id")
@@ -975,7 +974,6 @@ class ReminderServiceTest {
         return past;
     }
 
-    // entityName은 reminder 연관을 가진 ReminderTag 또는 ReminderRepeatDay다.
     private long countRows(String entityName, Long reminderId) {
         return entityManager.createQuery("select count(e) from " + entityName + " e where e.reminder.id = :id", Long.class)
                 .setParameter("id", reminderId)

@@ -31,9 +31,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * 테스트 전용 컨트롤러로 각종 예외를 발생시켜 GlobalExceptionHandler의 변환 결과를 검증한다.
- */
 class GlobalExceptionHandlerTest {
 
     private MockMvc mockMvc;

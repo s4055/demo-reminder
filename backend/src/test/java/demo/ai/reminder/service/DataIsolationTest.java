@@ -27,7 +27,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-// 두 사용자(앨리스, 밥)의 데이터가 서로 보이지 않고, 다른 사용자의 리소스는 404로 응답하는지 검증한다.
 @SpringBootTest
 @Transactional
 class DataIsolationTest {
