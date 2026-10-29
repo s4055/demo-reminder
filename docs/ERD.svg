@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1540" height="1120" viewBox="0 0 1540 1120" role="img" aria-labelledby="title desc">
+<title id="title">Reminder database ERD</title><desc id="desc">Eight entity tables without data types. Crow foot endpoints show one to many relationships. Circles indicate optional parents. All relationships are non-identifying.</desc>
+<defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e8edf2" stroke-width="0.6"/></pattern><marker id="one" markerWidth="18" markerHeight="18" refX="1" refY="9" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 7 2 V 16 M 12 2 V 16" stroke="#526578" fill="none" stroke-width="1.5"/></marker><marker id="optional" markerWidth="25" markerHeight="18" refX="1" refY="9" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 7 2 V 16" stroke="#526578" stroke-width="1.5"/><circle cx="18" cy="9" r="4" stroke="#526578" fill="white" stroke-width="1.5"/></marker><marker id="many" markerWidth="28" markerHeight="18" refX="27" refY="9" orient="auto" markerUnits="userSpaceOnUse"><circle cx="6" cy="9" r="4" stroke="#526578" fill="white" stroke-width="1.5"/><path d="M 15 9 L 27 2 M 15 9 L 27 9 M 15 9 L 27 16" stroke="#526578" fill="none" stroke-width="1.5"/></marker></defs>
+<rect width="1540" height="1120" fill="#fbfcfe"/><rect width="1540" height="1120" fill="url(#grid)"/>
+<path d="M 320 130 H 420" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 180 70 V 30 H 920 V 70" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 320 180 H 370 V 370 H 1100 V 480 H 1060" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 180 288 V 530" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 320 230 H 350 V 335 H 1150 V 180 H 1200" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 700 180 H 780" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#optional)" marker-end="url(#many)"/>
+<path d="M 920 392 V 420" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#optional)" marker-end="url(#many)"/>
+<path d="M 1060 130 H 1200" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 780 550 H 700" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 320 600 H 420" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 1060 680 H 1200" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#one)" marker-end="url(#many)"/>
+<path d="M 1060 850 H 1120 V 1010 H 1020 V 1002" fill="none" stroke="#526578" stroke-width="1.6" stroke-dasharray="7 4" marker-start="url(#optional)" marker-end="url(#many)"/>
+<g transform="translate(40 70)" font-family="Segoe UI, Arial, sans-serif"><rect x="3" y="4" width="280" height="218" rx="7" fill="#d9e2eb" opacity="0.5"/><rect width="280" height="218" rx="7" fill="white" stroke="#8ca7bb"/><path d="M 7 0 H 273 Q 280 0 280 7 V 38 H 0 V 7 Q 0 0 7 0" fill="#a9c8dd"/><path d="M 12 12 H 28 V 27 H 12 Z M 12 17 H 28 M 17 17 V 27" stroke="#557b98" fill="#edf5fb"/><text x="38" y="25" font-size="16" font-weight="700" fill="#243e52">users</text><path d="M 258 16 L 268 16 L 263 23 Z" fill="#66899f"/>
+<path d="M 16 54 l 4 -4 l 4 4 l -4 4 Z" fill="#c7a02c"/><text x="33" y="59" font-size="14" fill="#263c4b">id [PK]</text>
+<path d="M 16 80 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="85" font-size="14" fill="#263c4b">email [UK]</text>
+<path d="M 16 106 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="111" font-size="14" fill="#263c4b">password</text>
+<path d="M 16 132 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="137" font-size="14" fill="#263c4b">name</text>
+<path d="M 16 158 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="163" font-size="14" fill="#263c4b">created_at</text>
+<path d="M 16 184 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="189" font-size="14" fill="#263c4b">updated_at</text>
+</g>
+<g transform="translate(420 70)" font-family="Segoe UI, Arial, sans-serif"><rect x="3" y="4" width="280" height="218" rx="7" fill="#d9e2eb" opacity="0.5"/><rect width="280" height="218" rx="7" fill="white" stroke="#8ca7bb"/><path d="M 7 0 H 273 Q 280 0 280 7 V 38 H 0 V 7 Q 0 0 7 0" fill="#a9c8dd"/><path d="M 12 12 H 28 V 27 H 12 Z M 12 17 H 28 M 17 17 V 27" stroke="#557b98" fill="#edf5fb"/><text x="38" y="25" font-size="16" font-weight="700" fill="#243e52">list_group</text><path d="M 258 16 L 268 16 L 263 23 Z" fill="#66899f"/>
+<path d="M 16 54 l 4 -4 l 4 4 l -4 4 Z" fill="#c7a02c"/><text x="33" y="59" font-size="14" fill="#263c4b">id [PK]</text>
+<path d="M 16 80 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="85" font-size="14" fill="#263c4b">user_id [FK]</text>
+<path d="M 16 106 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="111" font-size="14" fill="#263c4b">name</text>
+<path d="M 16 132 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="137" font-size="14" fill="#263c4b">sort_order</text>
+<path d="M 16 158 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="163" font-size="14" fill="#263c4b">created_at</text>
+<path d="M 16 184 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="189" font-size="14" fill="#263c4b">updated_at</text>
+</g>
+<g transform="translate(780 70)" font-family="Segoe UI, Arial, sans-serif"><rect x="3" y="4" width="280" height="322" rx="7" fill="#d9e2eb" opacity="0.5"/><rect width="280" height="322" rx="7" fill="white" stroke="#8ca7bb"/><path d="M 7 0 H 273 Q 280 0 280 7 V 38 H 0 V 7 Q 0 0 7 0" fill="#a9c8dd"/><path d="M 12 12 H 28 V 27 H 12 Z M 12 17 H 28 M 17 17 V 27" stroke="#557b98" fill="#edf5fb"/><text x="38" y="25" font-size="16" font-weight="700" fill="#243e52">reminder_list</text><path d="M 258 16 L 268 16 L 263 23 Z" fill="#66899f"/>
+<path d="M 16 54 l 4 -4 l 4 4 l -4 4 Z" fill="#c7a02c"/><text x="33" y="59" font-size="14" fill="#263c4b">id [PK]</text>
+<path d="M 16 80 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="85" font-size="14" fill="#263c4b">user_id [FK]</text>
+<path d="M 16 106 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="111" font-size="14" fill="#263c4b">name</text>
+<path d="M 16 132 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="137" font-size="14" fill="#263c4b">color</text>
+<path d="M 16 158 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="163" font-size="14" fill="#263c4b">icon</text>
+<path d="M 16 184 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="189" font-size="14" fill="#263c4b">group_id [FK]</text>
+<path d="M 16 210 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="215" font-size="14" fill="#263c4b">sort_order</text>
+<path d="M 16 236 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="241" font-size="14" fill="#263c4b">version</text>
+<path d="M 16 262 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="267" font-size="14" fill="#263c4b">created_at</text>
+<path d="M 16 288 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="293" font-size="14" fill="#263c4b">updated_at</text>
+</g>
+<g transform="translate(1200 70)" font-family="Segoe UI, Arial, sans-serif"><rect x="3" y="4" width="280" height="218" rx="7" fill="#d9e2eb" opacity="0.5"/><rect width="280" height="218" rx="7" fill="white" stroke="#8ca7bb"/><path d="M 7 0 H 273 Q 280 0 280 7 V 38 H 0 V 7 Q 0 0 7 0" fill="#a9c8dd"/><path d="M 12 12 H 28 V 27 H 12 Z M 12 17 H 28 M 17 17 V 27" stroke="#557b98" fill="#edf5fb"/><text x="38" y="25" font-size="16" font-weight="700" fill="#243e52">list_member</text><path d="M 258 16 L 268 16 L 263 23 Z" fill="#66899f"/>
+<path d="M 16 54 l 4 -4 l 4 4 l -4 4 Z" fill="#c7a02c"/><text x="33" y="59" font-size="14" fill="#263c4b">id [PK]</text>
+<path d="M 16 80 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="85" font-size="14" fill="#263c4b">list_id [FK]</text>
+<path d="M 16 106 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="111" font-size="14" fill="#263c4b">user_id [FK]</text>
+<path d="M 16 132 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="137" font-size="14" fill="#263c4b">role</text>
+<path d="M 16 158 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="163" font-size="14" fill="#263c4b">created_at</text>
+<path d="M 16 184 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="189" font-size="14" fill="#263c4b">updated_at</text>
+</g>
+<g transform="translate(780 420)" font-family="Segoe UI, Arial, sans-serif"><rect x="3" y="4" width="280" height="530" rx="7" fill="#d9e2eb" opacity="0.5"/><rect width="280" height="530" rx="7" fill="white" stroke="#8ca7bb"/><path d="M 7 0 H 273 Q 280 0 280 7 V 38 H 0 V 7 Q 0 0 7 0" fill="#a9c8dd"/><path d="M 12 12 H 28 V 27 H 12 Z M 12 17 H 28 M 17 17 V 27" stroke="#557b98" fill="#edf5fb"/><text x="38" y="25" font-size="16" font-weight="700" fill="#243e52">reminder</text><path d="M 258 16 L 268 16 L 263 23 Z" fill="#66899f"/>
+<path d="M 16 54 l 4 -4 l 4 4 l -4 4 Z" fill="#c7a02c"/><text x="33" y="59" font-size="14" fill="#263c4b">id [PK]</text>
+<path d="M 16 80 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="85" font-size="14" fill="#263c4b">user_id [FK]</text>
+<path d="M 16 106 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="111" font-size="14" fill="#263c4b">title</text>
+<path d="M 16 132 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="137" font-size="14" fill="#263c4b">memo</text>
+<path d="M 16 158 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="163" font-size="14" fill="#263c4b">completed</text>
+<path d="M 16 184 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="189" font-size="14" fill="#263c4b">flagged</text>
+<path d="M 16 210 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="215" font-size="14" fill="#263c4b">due_at</text>
+<path d="M 16 236 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="241" font-size="14" fill="#263c4b">priority</text>
+<path d="M 16 262 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="267" font-size="14" fill="#263c4b">completed_at</text>
+<path d="M 16 288 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="293" font-size="14" fill="#263c4b">repeat_rule</text>
+<path d="M 16 314 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="319" font-size="14" fill="#263c4b">repeat_interval</text>
+<path d="M 16 340 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="345" font-size="14" fill="#263c4b">next_occurrence_created</text>
+<path d="M 16 366 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="371" font-size="14" fill="#263c4b">sort_order</text>
+<path d="M 16 392 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="397" font-size="14" fill="#263c4b">list_id [FK]</text>
+<path d="M 16 418 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="423" font-size="14" fill="#263c4b">parent_id [FK]</text>
+<path d="M 16 444 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="449" font-size="14" fill="#263c4b">version</text>
+<path d="M 16 470 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="475" font-size="14" fill="#263c4b">created_at</text>
+<path d="M 16 496 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="501" font-size="14" fill="#263c4b">updated_at</text>
+</g>
+<g transform="translate(40 530)" font-family="Segoe UI, Arial, sans-serif"><rect x="3" y="4" width="280" height="192" rx="7" fill="#d9e2eb" opacity="0.5"/><rect width="280" height="192" rx="7" fill="white" stroke="#8ca7bb"/><path d="M 7 0 H 273 Q 280 0 280 7 V 38 H 0 V 7 Q 0 0 7 0" fill="#a9c8dd"/><path d="M 12 12 H 28 V 27 H 12 Z M 12 17 H 28 M 17 17 V 27" stroke="#557b98" fill="#edf5fb"/><text x="38" y="25" font-size="16" font-weight="700" fill="#243e52">tag</text><path d="M 258 16 L 268 16 L 263 23 Z" fill="#66899f"/>
+<path d="M 16 54 l 4 -4 l 4 4 l -4 4 Z" fill="#c7a02c"/><text x="33" y="59" font-size="14" fill="#263c4b">id [PK]</text>
+<path d="M 16 80 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="85" font-size="14" fill="#263c4b">user_id [FK]</text>
+<path d="M 16 106 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="111" font-size="14" fill="#263c4b">name</text>
+<path d="M 16 132 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="137" font-size="14" fill="#263c4b">created_at</text>
+<path d="M 16 158 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="163" font-size="14" fill="#263c4b">updated_at</text>
+</g>
+<g transform="translate(420 530)" font-family="Segoe UI, Arial, sans-serif"><rect x="3" y="4" width="280" height="192" rx="7" fill="#d9e2eb" opacity="0.5"/><rect width="280" height="192" rx="7" fill="white" stroke="#8ca7bb"/><path d="M 7 0 H 273 Q 280 0 280 7 V 38 H 0 V 7 Q 0 0 7 0" fill="#a9c8dd"/><path d="M 12 12 H 28 V 27 H 12 Z M 12 17 H 28 M 17 17 V 27" stroke="#557b98" fill="#edf5fb"/><text x="38" y="25" font-size="16" font-weight="700" fill="#243e52">reminder_tag</text><path d="M 258 16 L 268 16 L 263 23 Z" fill="#66899f"/>
+<path d="M 16 54 l 4 -4 l 4 4 l -4 4 Z" fill="#c7a02c"/><text x="33" y="59" font-size="14" fill="#263c4b">id [PK]</text>
+<path d="M 16 80 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="85" font-size="14" fill="#263c4b">reminder_id [FK]</text>
+<path d="M 16 106 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="111" font-size="14" fill="#263c4b">tag_id [FK]</text>
+<path d="M 16 132 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="137" font-size="14" fill="#263c4b">created_at</text>
+<path d="M 16 158 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="163" font-size="14" fill="#263c4b">updated_at</text>
+</g>
+<g transform="translate(1200 640)" font-family="Segoe UI, Arial, sans-serif"><rect x="3" y="4" width="280" height="192" rx="7" fill="#d9e2eb" opacity="0.5"/><rect width="280" height="192" rx="7" fill="white" stroke="#8ca7bb"/><path d="M 7 0 H 273 Q 280 0 280 7 V 38 H 0 V 7 Q 0 0 7 0" fill="#a9c8dd"/><path d="M 12 12 H 28 V 27 H 12 Z M 12 17 H 28 M 17 17 V 27" stroke="#557b98" fill="#edf5fb"/><text x="38" y="25" font-size="16" font-weight="700" fill="#243e52">reminder_repeat_day</text><path d="M 258 16 L 268 16 L 263 23 Z" fill="#66899f"/>
+<path d="M 16 54 l 4 -4 l 4 4 l -4 4 Z" fill="#c7a02c"/><text x="33" y="59" font-size="14" fill="#263c4b">id [PK]</text>
+<path d="M 16 80 l 4 -4 l 4 4 l -4 4 Z" fill="#bd7780"/><text x="33" y="85" font-size="14" fill="#263c4b">reminder_id [FK]</text>
+<path d="M 16 106 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="111" font-size="14" fill="#263c4b">day_of_week</text>
+<path d="M 16 132 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="137" font-size="14" fill="#263c4b">created_at</text>
+<path d="M 16 158 l 4 -4 l 4 4 l -4 4 Z" fill="#74a7b0"/><text x="33" y="163" font-size="14" fill="#263c4b">updated_at</text>
+</g>
+<g font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#42596c"><text x="40" y="1055">PK: Primary key   FK: Foreign key   UK: Unique key</text><text x="40" y="1082">|| exactly one   o| zero or one   o&lt; zero or many   - - - non-identifying relationship</text></g></svg>
