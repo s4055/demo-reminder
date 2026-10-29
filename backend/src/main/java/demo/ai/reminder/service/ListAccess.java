@@ -9,10 +9,6 @@ import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/**
- * 현재 사용자의 리스트 접근 권한을 확인한다.
- * 멤버가 아니면 리스트가 있는지 드러내지 않도록 404, 멤버지만 소유자 권한이 필요한 작업이면 403으로 응답한다.
- */
 @Component
 @RequiredArgsConstructor
 class ListAccess {

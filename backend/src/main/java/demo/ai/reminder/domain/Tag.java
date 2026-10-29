@@ -15,7 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.BatchSize;
 
-// 리마인더의 태그(ReminderTag)는 Tag를 지연 로딩하므로 여러 리마인더의 태그를 한 번에 읽도록 묶어서 조회한다.
 @Entity
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"}))
 @BatchSize(size = 100)

@@ -109,7 +109,6 @@ public class ReminderService {
         return new DeletedCountResponse(deletedCount);
     }
 
-    // 수정일(updatedAt)은 flush할 때 Auditing이 채우므로, 응답에 갱신된 값이 담기도록 먼저 flush한다.
     private ReminderResponse toFlushedResponse(Reminder reminder) {
         reminderRepository.flush();
         return ReminderResponse.from(reminder);

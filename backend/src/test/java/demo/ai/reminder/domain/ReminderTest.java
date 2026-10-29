@@ -525,12 +525,12 @@ class ReminderTest {
     void toggleComplete_whenCustomRecurrence_copiesIntervalAndDaysToNextOccurrence() {
         Recurrence everyTwoWeeksMonWed = new Recurrence(RepeatRule.WEEKLY, 2, Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
         Reminder reminder = new Reminder(owner, "운동", null, null,
-                LocalDateTime.of(2026, 10, 7, 7, 0), null, everyTwoWeeksMonWed); // 수요일
+                LocalDateTime.of(2026, 10, 7, 7, 0), null, everyTwoWeeksMonWed);
 
         Optional<Reminder> next = reminder.toggleComplete(LocalDateTime.of(2026, 10, 7, 8, 0));
 
         assertThat(next).hasValueSatisfying(occurrence -> {
-            assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 19, 7, 0)); // 2주 뒤 월요일
+            assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 19, 7, 0));
             assertThat(occurrence.getRecurrence()).isEqualTo(everyTwoWeeksMonWed);
             assertThat(occurrence.getRecurrence().interval()).isEqualTo(2);
             assertThat(occurrence.getRecurrence().daysOfWeek()).containsExactlyInAnyOrder(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);

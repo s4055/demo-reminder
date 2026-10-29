@@ -6,11 +6,6 @@ import demo.ai.reminder.security.LoginUser;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.test.context.TestSecurityContextHolder;
 
-/**
- * 테스트에서 로그인한 사용자를 만든다.
- * TestSecurityContextHolder에 넣은 인증은 서비스(SecurityContextHolder)와 MockMvc 요청 모두에 적용되고,
- * 각 테스트가 끝나면 spring-security-test가 지운다.
- */
 public final class TestAuth {
 
     private TestAuth() {

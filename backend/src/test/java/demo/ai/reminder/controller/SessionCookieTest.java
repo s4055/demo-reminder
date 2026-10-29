@@ -15,11 +15,6 @@ import java.net.http.HttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * 세션 쿠키 속성(SameSite, HttpOnly)을 검증한다.
- * server.servlet.session.cookie 설정은 내장 Tomcat이 적용하고 MockMvc는 세션 쿠키를 발급하지 않으므로 실제 서버로 확인한다.
- * 다른 테스트와 in-memory DB를 공유하고 트랜잭션 롤백도 되지 않으므로 만든 사용자는 테스트 후 지운다.
- */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class SessionCookieTest {
 

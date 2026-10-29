@@ -85,7 +85,7 @@ class RecurrenceTest {
     void nextDueAt_weeklyDays_fromUnlistedDay() {
         Recurrence recurrence = new Recurrence(RepeatRule.WEEKLY, 2, Set.of(MONDAY, WEDNESDAY));
 
-        assertThat(recurrence.nextDueAt(LocalDateTime.of(2026, 10, 6, 9, 30))) // 화요일
+        assertThat(recurrence.nextDueAt(LocalDateTime.of(2026, 10, 6, 9, 30)))
                 .isEqualTo(WEDNESDAY_DUE);
         assertThat(recurrence.nextDueAt(FRIDAY_DUE)).isEqualTo(LocalDateTime.of(2026, 10, 19, 9, 30));
     }

@@ -120,7 +120,6 @@ class ReminderListServiceTest {
         assertThat(response.updatedAt()).isEqualTo(result.getUpdatedAt());
     }
 
-    // 저장 직후 수정하면 시계 해상도에 따라 수정일이 같을 수 있으므로, 수정일을 과거로 돌려 두고 갱신 여부를 확인한다.
     private LocalDateTime backdateUpdatedAt(Long listId) {
         LocalDateTime past = LocalDateTime.of(2026, 1, 1, 0, 0);
         entityManager.createQuery("update ReminderList l set l.updatedAt = :past where l.id = :id")

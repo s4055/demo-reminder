@@ -52,7 +52,6 @@ public class TagService {
         Tag tag = tagRepository.findByIdAndUserId(id, currentUser.id())
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "Tag not found: " + id));
         reminderRepository.findByReminderTagsTagId(id).forEach(reminder -> reminder.removeTag(tag));
-        // 떼어낸 ReminderTag 행은 flush 때 orphanRemoval로 지워지는데, 태그 DELETE가 그보다 먼저 실행되면 FK에 걸리므로 먼저 반영한다.
         reminderRepository.flush();
         tagRepository.delete(tag);
     }

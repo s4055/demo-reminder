@@ -72,7 +72,6 @@ public class ReminderController {
         return ApiResponse.success(reminderService.createReminder(request.toCommand()));
     }
 
-    // "/{id}"보다 구체적인 경로라 이 매핑이 우선한다.
     @DeleteMapping("/completed")
     public ApiResponse<DeletedCountResponse> deleteCompletedReminders(@RequestParam Long listId) {
         return ApiResponse.success(reminderService.deleteCompletedReminders(listId));

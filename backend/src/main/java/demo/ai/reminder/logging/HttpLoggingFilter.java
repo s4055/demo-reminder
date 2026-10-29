@@ -33,7 +33,6 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     public static final String REQUEST_ID = "request_id";
 
-    // "password": "..." 형태 (이스케이프된 따옴표 포함)
     private static final Pattern PASSWORD_FIELD = Pattern.compile("(\"password\"\\s*:\\s*)\"(?:[^\"\\\\]|\\\\.)*\"");
 
     private static final String MASK = "****";
@@ -51,7 +50,6 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        // H2 콘솔은 로그인 값을 폼 파라미터로 읽는데, 본문을 미리 읽으면 파라미터가 비어 로그인할 수 없으므로 로깅하지 않고 그대로 넘긴다.
         if (isH2ConsoleRequest(request)) {
             filterChain.doFilter(request, response);
             return;
@@ -73,7 +71,6 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
                 wrappedResponse.copyBodyToResponse();
             }
         } finally {
-            // 요청 스레드는 스레드 풀에서 재사용되므로 다음 요청에 request_id가 남지 않도록 반드시 지운다.
             MDC.remove(REQUEST_ID);
         }
     }
@@ -100,10 +97,6 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
         return String.join(", ", Collections.list(request.getHeaders(name)));
     }
 
-    /**
-     * 세션 ID의 지문과 속성 이름만 [id=..., attributes=[...]] 형식으로 남긴다.
-     * 로깅 때문에 세션이 새로 생기지 않도록 기존 세션만 조회하고, 세션이 없으면 none을 남긴다.
-     */
     private String sessionInfo(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session == null) {

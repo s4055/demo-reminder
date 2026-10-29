@@ -20,11 +20,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * open-in-view를 끈 상태에서 지연 로딩되는 연관(태그, 하위 작업, 멤버의 사용자)이 응답에 담기는지 검증한다.
- * 다른 컨트롤러 테스트는 @Transactional이라 테스트 내내 영속성 컨텍스트가 열려 있어 이 문제가 드러나지 않으므로,
- * 트랜잭션 없이 실제 서버로 요청한다. in-memory DB를 다른 테스트와 공유하므로 만든 데이터는 테스트 후 지운다.
- */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class OpenInViewDisabledTest {
 
@@ -45,7 +40,6 @@ class OpenInViewDisabledTest {
 
     @AfterEach
     void deleteData() throws Exception {
-        // 태그 목록은 리마인더에 붙어 있는 태그만 보여주므로 리스트(와 리마인더)보다 먼저 지운다.
         if (listId != null) {
             List<Integer> tagIds = JsonPath.read(send("GET", "/api/tags", null).body(), "$.data[*].id");
             for (Integer tagId : tagIds) {

@@ -7,11 +7,6 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * 반복 규칙(주기 + 간격 + 요일)을 묶은 값 객체. 다음 회차의 마감일시를 계산한다.
- * - interval: 주기 단위로 몇 번마다 반복할지 (1~99). 반복하지 않으면 1로 둔다.
- * - daysOfWeek: 매주 반복할 요일. WEEKLY일 때만 지정할 수 있고, 비어 있으면 마감일의 요일로 반복한다.
- */
 public record Recurrence(RepeatRule rule, int interval, Set<DayOfWeek> daysOfWeek) {
 
     public static final int MIN_INTERVAL = 1;
@@ -42,11 +37,6 @@ public record Recurrence(RepeatRule rule, int interval, Set<DayOfWeek> daysOfWee
         return rule.isRepeating();
     }
 
-    /**
-     * 다음 회차의 마감일시를 계산한다. 시각은 그대로 둔다.
-     * - 요일을 지정한 WEEKLY: 같은 주(월요일 시작)에서 마감일 뒤의 가장 가까운 지정 요일, 없으면 interval주 뒤 주의 첫 지정 요일.
-     * - 그 밖에는 주기 단위로 interval만큼 더한다 (월말/윤년 처리는 {@link RepeatRule#nextDueAt}와 같다).
-     */
     public LocalDateTime nextDueAt(LocalDateTime dueAt) {
         if (rule != RepeatRule.WEEKLY || daysOfWeek.isEmpty()) {
             return rule.nextDueAt(dueAt, interval);
@@ -54,7 +44,7 @@ public record Recurrence(RepeatRule rule, int interval, Set<DayOfWeek> daysOfWee
         int dueDay = dueAt.getDayOfWeek().getValue();
         return daysOfWeek.stream()
                 .filter(day -> day.getValue() > dueDay)
-                .findFirst() // EnumSet은 월요일부터 순서대로 돈다.
+                .findFirst()
                 .map(day -> dueAt.plusDays(day.getValue() - dueDay))
                 .orElseGet(() -> {
                     LocalDateTime weekStart = dueAt.minusDays(dueDay - 1L);

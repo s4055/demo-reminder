@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.Locale;
 
-// 리스트/리마인더/태그의 소유자. user는 H2 예약어라 테이블 이름은 users로 둔다.
 @Entity
 @Table(name = "users")
 @Getter

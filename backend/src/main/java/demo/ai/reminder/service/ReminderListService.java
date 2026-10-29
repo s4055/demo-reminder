@@ -70,8 +70,6 @@ public class ReminderListService {
         reminderListRepository.delete(list);
     }
 
-    // 리스트 목록과 같은 요약 쿼리로 응답을 만들어 개수/역할 규칙을 한 곳에 둔다.
-    // 갱신된 수정일(updatedAt)과 새 리스트/멤버가 반영되도록 flush한 뒤 조회한다.
     private ReminderListResponse toResponse(ReminderList list) {
         reminderListRepository.flush();
         return ReminderListResponse.from(reminderListRepository.findSummary(currentUser.id(), list.getId())

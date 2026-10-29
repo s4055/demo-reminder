@@ -17,7 +17,6 @@ public class LoginSession {
     private final SecurityContextRepository securityContextRepository;
     private final LogoutHandler logoutHandler;
 
-    // 세션 고정 공격을 막기 위해 기존 세션이 있으면 세션 ID를 바꾼 뒤 인증 정보를 저장한다.
     public void start(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
         if (request.getSession(false) != null) {
             request.changeSessionId();

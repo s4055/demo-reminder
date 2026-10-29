@@ -10,10 +10,6 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * 세션에 저장되는 로그인 사용자. 엔티티 대신 id/email/name만 담는다.
- * 인증이 끝나면 비밀번호 해시는 지워지고(eraseCredentials), toString에도 나오지 않는다.
- */
 @Getter
 public class LoginUser implements UserDetails, CredentialsContainer, Serializable {
 

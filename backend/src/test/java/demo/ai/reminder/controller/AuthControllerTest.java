@@ -22,7 +22,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// 실제 보안 필터를 거쳐 세션(쿠키) 기반 인증을 검증한다. 로그인 상태는 응답으로 받은 세션으로 이어 간다.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

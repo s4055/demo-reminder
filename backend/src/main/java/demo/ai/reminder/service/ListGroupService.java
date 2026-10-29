@@ -39,7 +39,6 @@ public class ListGroupService {
         return ListGroupResponse.from(group);
     }
 
-    // 응답에 갱신된 수정일(updatedAt)이 담기도록 flush한 뒤 변환한다.
     @Transactional
     public ListGroupResponse renameGroup(Long id, String name) {
         ListGroup group = ownedGroup(id);

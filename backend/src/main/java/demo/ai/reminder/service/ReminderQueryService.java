@@ -65,11 +65,6 @@ public class ReminderQueryService {
         });
     }
 
-    /**
-     * 제목/메모/태그 이름에 검색어가 들어 있는(대소문자 무시) 리마인더를 하위 작업까지 개별 항목으로 찾는다.
-     * 미완료 항목을 먼저 마감일시 순(마감일 없는 항목은 뒤), 같으면 생성순으로 두고, 그다음 완료 항목을 완료일시 최신순으로 둔다.
-     * %와 _는 문자 그대로 검색한다. 검색어의 앞뒤 공백 정리와 빈 값·길이 검증은 컨트롤러가 한다.
-     */
     public List<ReminderResponse> searchReminders(String query) {
         return reminderRepository.searchAccessible(currentUser.id(), "%" + escapeLike(query.toLowerCase()) + "%")
                 .stream()
@@ -90,7 +85,6 @@ public class ReminderQueryService {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
-    // 응답 변환은 트랜잭션 안에서 해야 지연 로딩되는 태그/하위 작업/부모를 읽을 수 있다.
     private List<ReminderResponse> toResponses(List<Reminder> reminders) {
         return reminders.stream().map(ReminderResponse::from).toList();
     }
