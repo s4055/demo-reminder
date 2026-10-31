@@ -29,8 +29,7 @@ public class SecurityConfig {
     private static final String FRONTEND_ORIGIN = "http://localhost:3000";
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, ApiAuthenticationEntryPoint entryPoint)
-            throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, ApiAuthenticationEntryPoint entryPoint) {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
