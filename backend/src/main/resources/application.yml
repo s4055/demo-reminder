@@ -26,6 +26,12 @@ spring:
       hibernate:
         format_sql: true
 
+app:
+  logging:
+    http:
+      excluded-paths:
+        - ${spring.h2.console.path}
+
 logging:
   pattern:
     console: '[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%thread] [%logger{0}:%line] [%X{request_id:-startup}] - %msg%n'
