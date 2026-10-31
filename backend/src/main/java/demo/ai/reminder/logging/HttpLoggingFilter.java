@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -20,6 +19,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -41,19 +41,25 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     private static final int SESSION_FINGERPRINT_LENGTH = 12;
 
-    private final String h2ConsolePath;
+    private final List<String> excludedPaths;
 
-    public HttpLoggingFilter(@Value("${spring.h2.console.path:/h2-console}") String h2ConsolePath) {
-        this.h2ConsolePath = h2ConsolePath;
+    public HttpLoggingFilter(HttpLoggingProperties properties) {
+        this.excludedPaths = properties.excludedPaths();
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return excludedPaths.stream().anyMatch(excluded -> isUnder(path, excluded));
+    }
+
+    private static boolean isUnder(String path, String basePath) {
+        return path.equals(basePath) || path.startsWith(basePath + "/");
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if (isH2ConsoleRequest(request)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
         MDC.put(REQUEST_ID, UUID.randomUUID().toString());
         try {
             CachedBodyRequestWrapper cachedRequest = new CachedBodyRequestWrapper(request);
@@ -77,11 +83,6 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     static String maskPassword(String body) {
         return PASSWORD_FIELD.matcher(body).replaceAll("$1\"" + MASK + "\"");
-    }
-
-    private boolean isH2ConsoleRequest(HttpServletRequest request) {
-        String path = request.getRequestURI().substring(request.getContextPath().length());
-        return path.equals(h2ConsolePath) || path.startsWith(h2ConsolePath + "/");
     }
 
     private String requestHeaders(HttpServletRequest request) {
