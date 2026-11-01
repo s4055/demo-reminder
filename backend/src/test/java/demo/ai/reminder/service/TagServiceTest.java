@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -120,6 +121,18 @@ class TagServiceTest {
         assertThatThrownBy(() -> tagService.deleteTag(-1L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("태그 이름 컬럼은 최대 길이까지만 저장된다")
+    void tagNameColumn_rejectsNamesLongerThanMaxLength() {
+        String maxName = "가".repeat(Tag.NAME_MAX_LENGTH);
+
+        Tag saved = tagRepository.saveAndFlush(new Tag(owner, maxName));
+
+        assertThat(saved.getName()).isEqualTo(maxName);
+        assertThatThrownBy(() -> tagRepository.saveAndFlush(new Tag(owner, maxName + "가")))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private Reminder reminder(String title, Tag... tags) {

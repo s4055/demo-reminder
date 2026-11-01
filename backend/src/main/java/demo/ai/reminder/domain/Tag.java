@@ -32,7 +32,7 @@ public class Tag extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = NAME_MAX_LENGTH)
     private String name;
 
     public Tag(User user, String name) {
