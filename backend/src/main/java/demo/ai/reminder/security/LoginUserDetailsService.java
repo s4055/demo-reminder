@@ -1,6 +1,6 @@
 package demo.ai.reminder.security;
 
-import demo.ai.reminder.domain.User;
+import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;

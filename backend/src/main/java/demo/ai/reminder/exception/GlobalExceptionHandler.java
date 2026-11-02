@@ -2,7 +2,7 @@ package demo.ai.reminder.exception;
 
 import demo.ai.reminder.common.ApiResponse;
 import demo.ai.reminder.common.ResultCode;
-import demo.ai.reminder.domain.DomainException;
+import demo.ai.reminder.domain.common.DomainException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.ConversionNotSupportedException;
 import org.springframework.beans.TypeMismatchException;

@@ -1,4 +1,6 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.reminder;
+
+import demo.ai.reminder.domain.common.BaseTimeEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,35 +18,28 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.DayOfWeek;
+
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"list_id", "user_id"}))
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"reminder_id", "day_of_week"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ListMember extends BaseTimeEntity {
+public class ReminderRepeatDay extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "list_id", nullable = false)
-    private ReminderList list;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "reminder_id", nullable = false)
+    private Reminder reminder;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ListRole role;
+    @Column(name = "day_of_week", nullable = false)
+    private DayOfWeek dayOfWeek;
 
-    ListMember(ReminderList list, User user, ListRole role) {
-        this.list = list;
-        this.user = user;
-        this.role = role;
-    }
-
-    public boolean isOwner() {
-        return role == ListRole.OWNER;
+    ReminderRepeatDay(Reminder reminder, DayOfWeek dayOfWeek) {
+        this.reminder = reminder;
+        this.dayOfWeek = dayOfWeek;
     }
 }

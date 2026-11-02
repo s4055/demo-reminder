@@ -1,9 +1,10 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.tag;
+
+import demo.ai.reminder.domain.common.BaseTimeEntity;
+import demo.ai.reminder.domain.user.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,29 +16,30 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.DayOfWeek;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"reminder_id", "day_of_week"}))
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"}))
+@BatchSize(size = 100)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ReminderRepeatDay extends BaseTimeEntity {
+public class Tag extends BaseTimeEntity {
+
+    public static final int NAME_MAX_LENGTH = 50;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reminder_id", nullable = false)
-    private Reminder reminder;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "day_of_week", nullable = false)
-    private DayOfWeek dayOfWeek;
+    @Column(nullable = false, length = NAME_MAX_LENGTH)
+    private String name;
 
-    ReminderRepeatDay(Reminder reminder, DayOfWeek dayOfWeek) {
-        this.reminder = reminder;
-        this.dayOfWeek = dayOfWeek;
+    public Tag(User user, String name) {
+        this.user = user;
+        this.name = name;
     }
 }

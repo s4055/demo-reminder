@@ -1,4 +1,4 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.user;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

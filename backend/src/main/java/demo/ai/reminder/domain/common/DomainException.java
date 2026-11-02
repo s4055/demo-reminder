@@ -1,4 +1,4 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.common;
 
 public class DomainException extends RuntimeException {
 

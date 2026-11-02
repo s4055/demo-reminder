@@ -1,6 +1,6 @@
 package demo.ai.reminder.repository;
 
-import demo.ai.reminder.domain.ReminderList;
+import demo.ai.reminder.domain.list.ReminderList;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -26,8 +26,8 @@ public interface ReminderListRepository extends JpaRepository<ReminderList, Long
 
     @Query(MEMBER_SUMMARY + """
             order by
-                case when m.role = demo.ai.reminder.domain.ListRole.OWNER then 0 else 1 end,
-                case when m.role = demo.ai.reminder.domain.ListRole.OWNER then l.sortOrder else 0 end,
+                case when m.role = demo.ai.reminder.domain.list.ListRole.OWNER then 0 else 1 end,
+                case when m.role = demo.ai.reminder.domain.list.ListRole.OWNER then l.sortOrder else 0 end,
                 m.id
             """)
     List<ReminderListSummary> findAllWithReminderCount(Long userId);

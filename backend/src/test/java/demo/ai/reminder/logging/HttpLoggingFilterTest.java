@@ -1,6 +1,6 @@
 package demo.ai.reminder.logging;
 
-import demo.ai.reminder.domain.User;
+import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.servlet.FilterChain;

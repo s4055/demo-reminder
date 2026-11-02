@@ -1,7 +1,7 @@
 package demo.ai.reminder.exception;
 
 import demo.ai.reminder.common.ResultCode;
-import demo.ai.reminder.domain.DomainException;
+import demo.ai.reminder.domain.common.DomainException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

@@ -1,10 +1,10 @@
 package demo.ai.reminder.dto.response;
 
-import demo.ai.reminder.domain.Priority;
-import demo.ai.reminder.domain.Recurrence;
-import demo.ai.reminder.domain.Reminder;
-import demo.ai.reminder.domain.RepeatRule;
-import demo.ai.reminder.domain.Tag;
+import demo.ai.reminder.domain.reminder.Priority;
+import demo.ai.reminder.domain.reminder.Recurrence;
+import demo.ai.reminder.domain.reminder.Reminder;
+import demo.ai.reminder.domain.reminder.RepeatRule;
+import demo.ai.reminder.domain.tag.Tag;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;

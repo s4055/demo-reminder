@@ -1,9 +1,9 @@
 package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.ResultCode;
-import demo.ai.reminder.domain.DomainException;
-import demo.ai.reminder.domain.ListRole;
-import demo.ai.reminder.domain.User;
+import demo.ai.reminder.domain.common.DomainException;
+import demo.ai.reminder.domain.list.ListRole;
+import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.response.ListMemberResponse;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.UserRepository;

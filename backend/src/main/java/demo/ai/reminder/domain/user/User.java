@@ -1,4 +1,6 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.user;
+
+import demo.ai.reminder.domain.common.BaseTimeEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

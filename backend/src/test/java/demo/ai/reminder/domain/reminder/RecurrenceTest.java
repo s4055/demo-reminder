@@ -1,4 +1,6 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.reminder;
+
+import demo.ai.reminder.domain.common.DomainException;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
