@@ -1,6 +1,6 @@
 package demo.ai.reminder.repository;
 
-import demo.ai.reminder.domain.Tag;
+import demo.ai.reminder.domain.tag.Tag;
 
 public record TagSummary(Tag tag, long reminderCount) {
 }

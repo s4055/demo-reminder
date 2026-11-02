@@ -1,4 +1,4 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.reminder;
 
 public enum Priority {
     NONE,

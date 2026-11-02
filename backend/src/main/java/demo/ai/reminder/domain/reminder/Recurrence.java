@@ -1,4 +1,6 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.reminder;
+
+import demo.ai.reminder.domain.common.DomainException;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;

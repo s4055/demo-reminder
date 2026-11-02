@@ -1,4 +1,7 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.reminder;
+
+import demo.ai.reminder.domain.common.BaseTimeEntity;
+import demo.ai.reminder.domain.tag.Tag;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

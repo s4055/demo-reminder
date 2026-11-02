@@ -1,4 +1,4 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.common;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

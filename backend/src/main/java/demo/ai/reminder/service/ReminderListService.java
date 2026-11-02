@@ -1,6 +1,6 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.domain.ReminderList;
+import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;

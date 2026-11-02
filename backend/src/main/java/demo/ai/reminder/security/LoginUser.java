@@ -1,6 +1,6 @@
 package demo.ai.reminder.security;
 
-import demo.ai.reminder.domain.User;
+import demo.ai.reminder.domain.user.User;
 import lombok.Getter;
 import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;

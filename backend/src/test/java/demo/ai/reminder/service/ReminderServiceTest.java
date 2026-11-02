@@ -1,14 +1,14 @@
 package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.ResultCode;
-import demo.ai.reminder.domain.DomainException;
-import demo.ai.reminder.domain.Priority;
-import demo.ai.reminder.domain.Recurrence;
-import demo.ai.reminder.domain.Reminder;
-import demo.ai.reminder.domain.ReminderList;
-import demo.ai.reminder.domain.RepeatRule;
-import demo.ai.reminder.domain.Tag;
-import demo.ai.reminder.domain.User;
+import demo.ai.reminder.domain.common.DomainException;
+import demo.ai.reminder.domain.reminder.Priority;
+import demo.ai.reminder.domain.reminder.Recurrence;
+import demo.ai.reminder.domain.reminder.Reminder;
+import demo.ai.reminder.domain.list.ReminderList;
+import demo.ai.reminder.domain.reminder.RepeatRule;
+import demo.ai.reminder.domain.tag.Tag;
+import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.exception.BusinessException;

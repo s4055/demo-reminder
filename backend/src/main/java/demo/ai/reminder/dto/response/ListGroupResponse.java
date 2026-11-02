@@ -1,6 +1,6 @@
 package demo.ai.reminder.dto.response;
 
-import demo.ai.reminder.domain.ListGroup;
+import demo.ai.reminder.domain.list.ListGroup;
 
 import java.time.LocalDateTime;
 

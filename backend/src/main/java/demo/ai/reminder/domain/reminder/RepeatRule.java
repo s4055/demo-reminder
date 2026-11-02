@@ -1,4 +1,4 @@
-package demo.ai.reminder.domain;
+package demo.ai.reminder.domain.reminder;
 
 import java.time.LocalDateTime;
 

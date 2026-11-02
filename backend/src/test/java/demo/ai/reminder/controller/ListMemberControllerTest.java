@@ -1,7 +1,7 @@
 package demo.ai.reminder.controller;
 
-import demo.ai.reminder.domain.ReminderList;
-import demo.ai.reminder.domain.User;
+import demo.ai.reminder.domain.list.ReminderList;
+import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;

@@ -1,9 +1,9 @@
 package demo.ai.reminder.dto.request;
 
-import demo.ai.reminder.domain.DomainException;
-import demo.ai.reminder.domain.Priority;
-import demo.ai.reminder.domain.Recurrence;
-import demo.ai.reminder.domain.RepeatRule;
+import demo.ai.reminder.domain.common.DomainException;
+import demo.ai.reminder.domain.reminder.Priority;
+import demo.ai.reminder.domain.reminder.Recurrence;
+import demo.ai.reminder.domain.reminder.RepeatRule;
 import demo.ai.reminder.service.command.CreateReminderCommand;
 import demo.ai.reminder.service.command.UpdateReminderCommand;
 import org.junit.jupiter.api.DisplayName;
