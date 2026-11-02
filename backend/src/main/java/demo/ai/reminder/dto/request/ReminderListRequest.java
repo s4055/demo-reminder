@@ -1,7 +1,6 @@
 package demo.ai.reminder.dto.request;
 
 import demo.ai.reminder.dto.validation.HexColor;
-import demo.ai.reminder.service.command.CreateListCommand;
 import jakarta.validation.constraints.NotBlank;
 
 public record ReminderListRequest(
@@ -10,7 +9,7 @@ public record ReminderListRequest(
         String icon
 ) {
 
-    public CreateListCommand toCommand() {
-        return new CreateListCommand(name.strip(), color, icon);
+    public String strippedName() {
+        return name.strip();
     }
 }

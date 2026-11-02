@@ -4,13 +4,13 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.reminder.Reminder;
 import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.domain.user.User;
+import demo.ai.reminder.dto.request.ReminderRequest;
+import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.UserRepository;
-import demo.ai.reminder.service.command.CreateReminderCommand;
-import demo.ai.reminder.service.command.UpdateReminderCommand;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -184,7 +184,7 @@ class ReminderQueryServiceTest {
         newer.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
         reminderRepository.flush();
 
-        reminderService.updateReminder(older.getId(), new UpdateReminderCommand("먼저 완료(수정)", null, null, false, null, null, null, older.getVersion()));
+        reminderService.updateReminder(older.getId(), new ReminderUpdateRequest("먼저 완료(수정)", null, null, false, null, null, null, null, null, older.getVersion()));
         reminderRepository.flush();
         List<ReminderResponse> result = reminderQueryService.getSmartReminders(SmartView.COMPLETED);
 
@@ -195,9 +195,9 @@ class ReminderQueryServiceTest {
     @DisplayName("태그로 조회하면 해당 태그가 붙은 리마인더만 생성순으로 반환한다")
     void getReminders_byTag_returnsOnlyTaggedReminders() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        reminderService.createReminder(new CreateReminderCommand("우유", null, shopping.getId(), null, null, List.of("집"), null, null));
-        reminderService.createReminder(new CreateReminderCommand("보고서", null, null, null, null, List.of("회사"), null, null));
-        reminderService.createReminder(new CreateReminderCommand("빨래", null, null, null, null, List.of("집", "주말"), null, null));
+        reminderService.createReminder(new ReminderRequest("우유", null, shopping.getId(), null, null, List.of("집"), null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("보고서", null, null, null, null, List.of("회사"), null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("빨래", null, null, null, null, List.of("집", "주말"), null, null, null, null));
 
         List<ReminderResponse> result = reminderQueryService.getReminders(null, "집");
 
@@ -265,7 +265,7 @@ class ReminderQueryServiceTest {
     void getUpcomingReminders_includesSubtasks() {
         LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
         ReminderResponse parent = create("이사 준비", null);
-        reminderService.createReminder(new CreateReminderCommand("박스 구하기", null, null, from.plusMinutes(1), null, null, parent.id(), null));
+        reminderService.createReminder(new ReminderRequest("박스 구하기", null, null, from.plusMinutes(1), null, null, parent.id(), null, null, null));
 
         assertThat(reminderQueryService.getUpcomingReminders(from, from.plusMinutes(2)))
                 .extracting(ReminderResponse::title).containsExactly("박스 구하기");
@@ -288,9 +288,9 @@ class ReminderQueryServiceTest {
     @DisplayName("검색어가 제목, 메모, 태그 이름 중 하나에 들어 있으면 검색된다")
     void searchReminders_matchesTitleMemoAndTag() {
         create("우유 사기", null);
-        reminderService.createReminder(new CreateReminderCommand("장보기", "우유랑 빵", null, null, null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("장보기", "우유랑 빵", null, null, null, null, null, null, null, null));
         reminderService.createReminder(
-                new CreateReminderCommand("마트", null, null, null, null, List.of("우유팩"), null, null));
+                new ReminderRequest("마트", null, null, null, null, List.of("우유팩"), null, null, null, null));
         create("보고서 작성", null);
 
         List<ReminderResponse> result = reminderQueryService.searchReminders("우유");
@@ -304,7 +304,7 @@ class ReminderQueryServiceTest {
     void searchReminders_isCaseInsensitive() {
         create("Buy MILK", null);
         reminderService.createReminder(
-                new CreateReminderCommand("마트", null, null, null, null, List.of("Grocery"), null, null));
+                new ReminderRequest("마트", null, null, null, null, List.of("Grocery"), null, null, null, null));
 
         assertThat(reminderQueryService.searchReminders("milk")).extracting(ReminderResponse::title)
                 .containsExactly("Buy MILK");
@@ -330,7 +330,7 @@ class ReminderQueryServiceTest {
     @DisplayName("태그가 여러 개 일치해도 리마인더는 한 번만 나오고, 하위 작업도 개별 항목으로 검색된다")
     void searchReminders_returnsEachReminderOnce_includingSubtasks() {
         ReminderResponse parent = reminderService.createReminder(
-                new CreateReminderCommand("이사", null, null, null, null, List.of("짐싸기", "짐정리"), null, null));
+                new ReminderRequest("이사", null, null, null, null, List.of("짐싸기", "짐정리"), null, null, null, null));
         createSubtask("짐 박스 구하기", parent.id());
 
         assertThat(reminderQueryService.searchReminders("짐")).extracting(ReminderResponse::title)
@@ -363,14 +363,14 @@ class ReminderQueryServiceTest {
     }
 
     private ReminderResponse create(String title, Long listId) {
-        return reminderService.createReminder(new CreateReminderCommand(title, null, listId, null, null, null, null, null));
+        return reminderService.createReminder(new ReminderRequest(title, null, listId, null, null, null, null, null, null, null));
     }
 
     private ReminderResponse createWithDueAt(String title, LocalDateTime dueAt) {
-        return reminderService.createReminder(new CreateReminderCommand(title, null, null, dueAt, null, null, null, null));
+        return reminderService.createReminder(new ReminderRequest(title, null, null, dueAt, null, null, null, null, null, null));
     }
 
     private ReminderResponse createSubtask(String title, Long parentId) {
-        return reminderService.createReminder(new CreateReminderCommand(title, null, null, null, null, null, parentId, null));
+        return reminderService.createReminder(new ReminderRequest(title, null, null, null, null, null, parentId, null, null, null));
     }
 }

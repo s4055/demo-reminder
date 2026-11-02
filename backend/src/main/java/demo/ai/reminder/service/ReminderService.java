@@ -1,5 +1,7 @@
 package demo.ai.reminder.service;
 
+import demo.ai.reminder.dto.request.ReminderRequest;
+import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.reminder.Reminder;
@@ -8,8 +10,6 @@ import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
-import demo.ai.reminder.service.command.CreateReminderCommand;
-import demo.ai.reminder.service.command.UpdateReminderCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,27 +30,27 @@ public class ReminderService {
     private final Clock clock;
 
     @Transactional
-    public ReminderResponse createReminder(CreateReminderCommand command) {
-        Reminder parent = command.parentId() == null ? null : findReminderOrThrow(command.parentId());
-        ReminderList list = parent == null ? memberListOrNull(command.listId()) : null;
+    public ReminderResponse createReminder(ReminderRequest request) {
+        Reminder parent = request.parentId() == null ? null : findReminderOrThrow(request.parentId());
+        ReminderList list = parent == null ? memberListOrNull(request.listId()) : null;
         Reminder reminder = new Reminder(currentUser.reference(),
-                command.title(), command.memo(), list, command.dueAt(), command.priority(), command.recurrence());
+                request.strippedTitle(), request.memo(), list, request.dueAt(), request.priority(), request.recurrence());
         if (parent == null) {
             reminder.changeSortOrder(nextSortOrder(list));
         } else {
             parent.addSubtask(reminder);
         }
-        reminder.replaceTags(tagService.resolveTags(command.tagNames()));
+        reminder.replaceTags(tagService.resolveTags(request.strippedTagNames()));
         return ReminderResponse.from(reminderRepository.save(reminder));
     }
 
     @Transactional
-    public ReminderResponse updateReminder(Long id, UpdateReminderCommand command) {
+    public ReminderResponse updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
-        Versions.verify(reminder.getVersion(), command.version(), "Reminder " + id);
-        reminder.update(command.title(), command.memo(), command.dueAt(), command.flagged(), command.priority(),
-                command.recurrence());
-        reminder.replaceTags(tagService.resolveTags(command.tagNames()));
+        Versions.verify(reminder.getVersion(), request.version(), "Reminder " + id);
+        reminder.update(request.strippedTitle(), request.memo(), request.dueAt(), request.flagged(), request.priority(),
+                request.recurrence());
+        reminder.replaceTags(tagService.resolveTags(request.strippedTagNames()));
         return toFlushedResponse(reminder);
     }
 

@@ -1,12 +1,12 @@
 package demo.ai.reminder.service;
 
+import demo.ai.reminder.dto.request.SignupRequest;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.security.CurrentUser;
-import demo.ai.reminder.service.command.SignupCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,13 +27,13 @@ public class AuthService {
     private final CurrentUser currentUser;
 
     @Transactional
-    public UserResponse signup(SignupCommand command) {
-        String email = User.normalizeEmail(command.email());
+    public UserResponse signup(SignupRequest request) {
+        String email = User.normalizeEmail(request.email());
         if (userRepository.existsByEmail(email)) {
             throw new BusinessException(ResultCode.CONFLICT, "Email already registered: " + email);
         }
         return UserResponse.from(
-                userRepository.save(new User(email, passwordEncoder.encode(command.password()), command.name())));
+                userRepository.save(new User(email, passwordEncoder.encode(request.password()), request.strippedName())));
     }
 
     public UserResponse me() {

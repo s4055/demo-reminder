@@ -2,6 +2,8 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.User;
+import demo.ai.reminder.dto.request.ReminderListRequest;
+import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.response.ListGroupResponse;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
@@ -9,8 +11,6 @@ import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.ListGroupRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.UserRepository;
-import demo.ai.reminder.service.command.CreateListCommand;
-import demo.ai.reminder.service.command.CreateReminderCommand;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -110,7 +110,7 @@ class ListGroupServiceTest {
     @DisplayName("리스트를 그룹에 넣으면 응답과 리스트 목록에 groupId가 담기고, null로 그룹에서 뺄 수 있다")
     void changeGroup_assignsAndClearsGroup() {
         Long group = listGroupService.createGroup("생활").id();
-        Long list = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
+        Long list = reminderListService.createList(new ReminderListRequest("장보기", null, null)).id();
 
         assertThat(reminderListService.changeGroup(list, group).groupId()).isEqualTo(group);
         assertThat(groupIdOf(list)).isEqualTo(group);
@@ -123,10 +123,10 @@ class ListGroupServiceTest {
     @DisplayName("그룹을 삭제하면 소속 리스트는 그룹에서 빠질 뿐 리스트와 리마인더는 남는다")
     void deleteGroup_keepsListsAndReminders() {
         Long group = listGroupService.createGroup("생활").id();
-        Long list = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
+        Long list = reminderListService.createList(new ReminderListRequest("장보기", null, null)).id();
         reminderListService.changeGroup(list, group);
         ReminderResponse milk = reminderService.createReminder(
-                new CreateReminderCommand("우유 사기", null, list, null, null, null, null, null));
+                new ReminderRequest("우유 사기", null, list, null, null, null, null, null, null, null));
         entityManager.flush();
         entityManager.clear();
 
@@ -146,7 +146,7 @@ class ListGroupServiceTest {
     void otherUsersGroup_isIsolated() {
         Long othersGroup = listGroupService.createGroup("남의 그룹").id();
         TestAuth.signIn(userRepository, "other@example.com");
-        Long myList = reminderListService.createList(new CreateListCommand("내 리스트", null, null)).id();
+        Long myList = reminderListService.createList(new ReminderListRequest("내 리스트", null, null)).id();
 
         assertThat(listGroupService.getGroups()).isEmpty();
         assertThatThrownBy(() -> listGroupService.renameGroup(othersGroup, "가로채기"))
@@ -166,7 +166,7 @@ class ListGroupServiceTest {
     @Test
     @DisplayName("다른 사용자의 리스트를 내 그룹에 넣으려 하면 404다")
     void changeGroup_throwsNotFound_forOtherUsersList() {
-        Long othersList = reminderListService.createList(new CreateListCommand("남의 리스트", null, null)).id();
+        Long othersList = reminderListService.createList(new ReminderListRequest("남의 리스트", null, null)).id();
         TestAuth.signIn(userRepository, "other@example.com");
         Long myGroup = listGroupService.createGroup("내 그룹").id();
 
@@ -178,7 +178,7 @@ class ListGroupServiceTest {
     @Test
     @DisplayName("없는 그룹을 지정하거나 이름 변경/삭제하면 404다")
     void missingGroup_throwsNotFound() {
-        Long list = reminderListService.createList(new CreateListCommand("장보기", null, null)).id();
+        Long list = reminderListService.createList(new ReminderListRequest("장보기", null, null)).id();
 
         assertThatThrownBy(() -> reminderListService.changeGroup(list, -1L))
                 .isInstanceOf(BusinessException.class)

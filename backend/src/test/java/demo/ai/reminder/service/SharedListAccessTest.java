@@ -3,16 +3,16 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.list.ListRole;
 import demo.ai.reminder.domain.user.User;
+import demo.ai.reminder.dto.request.ReminderListRequest;
+import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
+import demo.ai.reminder.dto.request.ReminderRequest;
+import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.dto.response.TagResponse;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.ListMemberRepository;
 import demo.ai.reminder.repository.UserRepository;
-import demo.ai.reminder.service.command.CreateListCommand;
-import demo.ai.reminder.service.command.CreateReminderCommand;
-import demo.ai.reminder.service.command.UpdateListCommand;
-import demo.ai.reminder.service.command.UpdateReminderCommand;
 import demo.ai.reminder.support.TestAuth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -70,9 +70,9 @@ class SharedListAccessTest {
         carol = userRepository.save(new User("carol@example.com", "{noop}password", "캐럴"));
         alice = TestAuth.signIn(userRepository, "alice@example.com");
         today = LocalDate.now().atTime(23, 59);
-        sharedListId = reminderListService.createList(new CreateListCommand("가족", "#34C759", null)).id();
+        sharedListId = reminderListService.createList(new ReminderListRequest("가족", "#34C759", null)).id();
         aliceReminder = reminderService.createReminder(
-                new CreateReminderCommand("우유", null, sharedListId, today, null, List.of("장보기"), null, null));
+                new ReminderRequest("우유", null, sharedListId, today, null, List.of("장보기"), null, null, null, null));
         listMemberService.invite(sharedListId, "bob@example.com");
     }
 
@@ -80,7 +80,7 @@ class SharedListAccessTest {
     @DisplayName("초대받은 사용자의 리스트 목록에 공유 리스트가 EDITOR 역할로, 자기 리스트 뒤에 나온다")
     void getLists_includesSharedListAfterOwnLists() {
         TestAuth.signIn(bob);
-        Long bobListId = reminderListService.createList(new CreateListCommand("밥의 할 일", null, null)).id();
+        Long bobListId = reminderListService.createList(new ReminderListRequest("밥의 할 일", null, null)).id();
 
         List<ReminderListResponse> lists = reminderListService.getLists();
 
@@ -110,11 +110,11 @@ class SharedListAccessTest {
         assertThat(reminderQueryService.getReminders(sharedListId, null)).extracting(ReminderResponse::id)
                 .containsExactly(aliceReminder.id());
         ReminderResponse bobReminder = reminderService.createReminder(
-                new CreateReminderCommand("빵", null, sharedListId, null, null, null, null, null));
+                new ReminderRequest("빵", null, sharedListId, null, null, null, null, null, null, null));
         ReminderResponse subtask = reminderService.createReminder(
-                new CreateReminderCommand("통밀", null, null, null, null, null, aliceReminder.id(), null));
+                new ReminderRequest("통밀", null, null, null, null, null, aliceReminder.id(), null, null, null));
         reminderService.updateReminder(aliceReminder.id(),
-                new UpdateReminderCommand("저지방 우유", null, today, false, null, null, null, 0L));
+                new ReminderUpdateRequest("저지방 우유", null, today, false, null, null, null, null, null, 0L));
         reminderService.toggleFlag(aliceReminder.id());
         reminderService.reorderReminders(sharedListId, List.of(bobReminder.id(), aliceReminder.id()));
         reminderService.toggleComplete(subtask.id());
@@ -133,7 +133,7 @@ class SharedListAccessTest {
         reminderService.toggleComplete(aliceReminder.id());
         TestAuth.signIn(bob);
         ReminderResponse bobReminder = reminderService.createReminder(
-                new CreateReminderCommand("빵", null, sharedListId, null, null, null, null, null));
+                new ReminderRequest("빵", null, sharedListId, null, null, null, null, null, null, null));
 
         assertThat(reminderService.deleteCompletedReminders(sharedListId).deletedCount()).isEqualTo(1);
 
@@ -145,10 +145,10 @@ class SharedListAccessTest {
     @Test
     @DisplayName("검색 결과에 공유받은 리스트의 리마인더가 포함되고, 다른 사용자의 리스트 없는 리마인더는 제외된다")
     void searchReminders_includesSharedListReminders() {
-        reminderService.createReminder(new CreateReminderCommand("우유 영수증", null, null, null, null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("우유 영수증", null, null, null, null, null, null, null, null, null));
         TestAuth.signIn(bob);
         ReminderResponse bobReminder = reminderService.createReminder(
-                new CreateReminderCommand("우유 쿠폰", null, null, null, null, null, null, null));
+                new ReminderRequest("우유 쿠폰", null, null, null, null, null, null, null, null, null));
 
         assertThat(reminderQueryService.searchReminders("우유")).extracting(ReminderResponse::id)
                 .containsExactlyInAnyOrder(aliceReminder.id(), bobReminder.id());
@@ -158,9 +158,9 @@ class SharedListAccessTest {
     @DisplayName("편집자는 자기 리스트의 리마인더를 공유 리스트로, 공유 리스트의 리마인더를 자기 리스트로 옮길 수 있다")
     void editor_canMoveRemindersBetweenOwnAndSharedList() {
         TestAuth.signIn(bob);
-        Long bobListId = reminderListService.createList(new CreateListCommand("밥의 리스트", null, null)).id();
+        Long bobListId = reminderListService.createList(new ReminderListRequest("밥의 리스트", null, null)).id();
         ReminderResponse bobReminder = reminderService.createReminder(
-                new CreateReminderCommand("빵", null, bobListId, null, null, null, null, null));
+                new ReminderRequest("빵", null, bobListId, null, null, null, null, null, null, null));
 
         assertThat(reminderService.moveReminder(bobReminder.id(), sharedListId).listId()).isEqualTo(sharedListId);
         assertThat(reminderService.moveReminder(aliceReminder.id(), bobListId).listId()).isEqualTo(bobListId);
@@ -170,9 +170,9 @@ class SharedListAccessTest {
     @DisplayName("멤버가 아닌 사용자는 자기 리마인더를 공유 리스트로 옮길 수 없다 (404)")
     void nonMember_cannotMoveReminderIntoSharedList() {
         TestAuth.signIn(carol);
-        Long carolListId = reminderListService.createList(new CreateListCommand("캐럴의 리스트", null, null)).id();
+        Long carolListId = reminderListService.createList(new ReminderListRequest("캐럴의 리스트", null, null)).id();
         ReminderResponse carolReminder = reminderService.createReminder(
-                new CreateReminderCommand("커피", null, carolListId, null, null, null, null, null));
+                new ReminderRequest("커피", null, carolListId, null, null, null, null, null, null, null));
 
         assertThatThrownBy(() -> reminderService.moveReminder(carolReminder.id(), sharedListId))
                 .isInstanceOf(BusinessException.class)
@@ -184,7 +184,7 @@ class SharedListAccessTest {
     void owner_canManageEditorsReminders() {
         TestAuth.signIn(bob);
         ReminderResponse bobReminder = reminderService.createReminder(
-                new CreateReminderCommand("빵", null, sharedListId, null, null, null, null, null));
+                new ReminderRequest("빵", null, sharedListId, null, null, null, null, null, null, null));
 
         TestAuth.signIn(alice);
         reminderService.toggleComplete(bobReminder.id());
@@ -199,7 +199,7 @@ class SharedListAccessTest {
     void editor_cannotChangeTheListItself() {
         TestAuth.signIn(bob);
 
-        assertResultCode(() -> reminderListService.updateList(sharedListId, new UpdateListCommand("바꿈", null, null, 0L)),
+        assertResultCode(() -> reminderListService.updateList(sharedListId, new ReminderListUpdateRequest("바꿈", null, null, 0L)),
                 ResultCode.FORBIDDEN);
         assertResultCode(() -> reminderListService.deleteList(sharedListId), ResultCode.FORBIDDEN);
         assertResultCode(() -> reminderListService.reorderLists(List.of(sharedListId)), ResultCode.BAD_REQUEST);
@@ -224,7 +224,7 @@ class SharedListAccessTest {
     void smartViews_includeSharedListReminders() {
         reminderService.toggleFlag(aliceReminder.id());
         ReminderResponse done = reminderService.createReminder(
-                new CreateReminderCommand("세제", null, sharedListId, null, null, null, null, null));
+                new ReminderRequest("세제", null, sharedListId, null, null, null, null, null, null, null));
         reminderService.toggleComplete(done.id());
         TestAuth.signIn(bob);
 
@@ -247,7 +247,7 @@ class SharedListAccessTest {
     @DisplayName("공유 리스트와 관계없는 리마인더(리스트 없음)는 다른 멤버에게 보이지 않는다")
     void remindersWithoutList_stayPrivate() {
         ReminderResponse privateReminder = reminderService.createReminder(
-                new CreateReminderCommand("개인 메모", null, null, today, null, null, null, null));
+                new ReminderRequest("개인 메모", null, null, today, null, null, null, null, null, null));
         TestAuth.signIn(bob);
 
         assertThat(reminderQueryService.getSmartReminders(SmartView.ALL)).extracting(ReminderResponse::id)
@@ -267,16 +267,16 @@ class SharedListAccessTest {
         List<Executable> attempts = List.of(
                 () -> reminderQueryService.getReminders(sharedListId, null),
                 () -> reminderService.createReminder(
-                        new CreateReminderCommand("몰래", null, sharedListId, null, null, null, null, null)),
+                        new ReminderRequest("몰래", null, sharedListId, null, null, null, null, null, null, null)),
                 () -> reminderService.createReminder(
-                        new CreateReminderCommand("몰래", null, null, null, null, null, aliceReminder.id(), null)),
+                        new ReminderRequest("몰래", null, null, null, null, null, aliceReminder.id(), null, null, null)),
                 () -> reminderService.updateReminder(aliceReminder.id(),
-                        new UpdateReminderCommand("몰래", null, null, false, null, null, null, 0L)),
+                        new ReminderUpdateRequest("몰래", null, null, false, null, null, null, null, null, 0L)),
                 () -> reminderService.toggleComplete(aliceReminder.id()),
                 () -> reminderService.deleteReminder(aliceReminder.id()),
                 () -> reminderService.reorderReminders(sharedListId, List.of(aliceReminder.id())),
                 () -> reminderService.deleteCompletedReminders(sharedListId),
-                () -> reminderListService.updateList(sharedListId, new UpdateListCommand("몰래", null, null, 0L)),
+                () -> reminderListService.updateList(sharedListId, new ReminderListUpdateRequest("몰래", null, null, 0L)),
                 () -> reminderListService.deleteList(sharedListId)
         );
         for (Executable attempt : attempts) {
@@ -289,7 +289,7 @@ class SharedListAccessTest {
     void removedMember_losesAccessToOwnRemindersInList() {
         TestAuth.signIn(bob);
         ReminderResponse bobReminder = reminderService.createReminder(
-                new CreateReminderCommand("빵", null, sharedListId, today, null, null, null, null));
+                new ReminderRequest("빵", null, sharedListId, today, null, null, null, null, null, null));
         TestAuth.signIn(alice);
         listMemberService.removeMember(sharedListId, bob.getId());
 
@@ -306,7 +306,7 @@ class SharedListAccessTest {
     @DisplayName("소유자가 리스트를 삭제하면 멤버 정보와 다른 멤버가 만든 리마인더도 함께 삭제된다")
     void deleteList_removesMembersAndAllReminders() {
         TestAuth.signIn(bob);
-        reminderService.createReminder(new CreateReminderCommand("빵", null, sharedListId, null, null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("빵", null, sharedListId, null, null, null, null, null, null, null));
         TestAuth.signIn(alice);
 
         reminderListService.deleteList(sharedListId);
@@ -322,7 +322,7 @@ class SharedListAccessTest {
     void editorTags_areCreatedForEditor() {
         TestAuth.signIn(bob);
         ReminderResponse bobReminder = reminderService.createReminder(
-                new CreateReminderCommand("빵", null, sharedListId, null, null, List.of("빵집"), null, null));
+                new ReminderRequest("빵", null, sharedListId, null, null, List.of("빵집"), null, null, null, null));
 
         assertThat(bobReminder.tags()).containsExactly("빵집");
         assertThat(tagService.getTags()).extracting(TagResponse::name).containsExactly("빵집");
