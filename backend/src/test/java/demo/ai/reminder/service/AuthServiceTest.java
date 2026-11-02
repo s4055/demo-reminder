@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -53,6 +54,31 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.signup(new SignupRequest("ALICE@example.com", "password2", "앨리스2")))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.CONFLICT);
+    }
+
+    @Test
+    @DisplayName("이메일 컬럼은 최대 길이까지만 저장된다")
+    void emailColumn_rejectsEmailsLongerThanMaxLength() {
+        String domain = "@example.com";
+        String maxEmail = "a".repeat(User.EMAIL_MAX_LENGTH - domain.length()) + domain;
+
+        User saved = userRepository.saveAndFlush(new User(maxEmail, "password1", "앨리스"));
+
+        assertThat(saved.getEmail()).isEqualTo(maxEmail);
+        assertThatThrownBy(() -> userRepository.saveAndFlush(new User("a" + maxEmail, "password1", "앨리스")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("이름 컬럼은 최대 길이까지만 저장된다")
+    void nameColumn_rejectsNamesLongerThanMaxLength() {
+        String maxName = "가".repeat(User.NAME_MAX_LENGTH);
+
+        User saved = userRepository.saveAndFlush(new User("alice@example.com", "password1", maxName));
+
+        assertThat(saved.getName()).isEqualTo(maxName);
+        assertThatThrownBy(() -> userRepository.saveAndFlush(new User("bob@example.com", "password1", maxName + "가")))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test

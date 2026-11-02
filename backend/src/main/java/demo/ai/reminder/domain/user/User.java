@@ -20,17 +20,20 @@ import java.util.Locale;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
 
+    public static final int EMAIL_MAX_LENGTH = 100;
+    public static final int NAME_MAX_LENGTH = 50;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = EMAIL_MAX_LENGTH)
     private String email;
 
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = NAME_MAX_LENGTH)
     private String name;
 
     public User(String email, String password, String name) {
