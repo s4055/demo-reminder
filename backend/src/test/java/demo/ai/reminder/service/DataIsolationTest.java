@@ -2,15 +2,15 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.User;
+import demo.ai.reminder.dto.request.ReminderListRequest;
+import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
+import demo.ai.reminder.dto.request.ReminderRequest;
+import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.dto.response.TagResponse;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.UserRepository;
-import demo.ai.reminder.service.command.CreateListCommand;
-import demo.ai.reminder.service.command.CreateReminderCommand;
-import demo.ai.reminder.service.command.UpdateListCommand;
-import demo.ai.reminder.service.command.UpdateReminderCommand;
 import demo.ai.reminder.support.TestAuth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,9 +57,9 @@ class DataIsolationTest {
         bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
         alice = TestAuth.signIn(userRepository, "alice@example.com");
         LocalDateTime today = LocalDate.now().atTime(23, 59);
-        aliceListId = reminderListService.createList(new CreateListCommand("앨리스 장보기", null, null)).id();
+        aliceListId = reminderListService.createList(new ReminderListRequest("앨리스 장보기", null, null)).id();
         aliceReminder = reminderService.createReminder(
-                new CreateReminderCommand("우유", null, aliceListId, today, null, List.of("집"), null, null));
+                new ReminderRequest("우유", null, aliceListId, today, null, List.of("집"), null, null, null, null));
         reminderService.toggleFlag(aliceReminder.id());
         aliceTagId = tagService.getTags().getFirst().id();
     }
@@ -101,16 +101,16 @@ class DataIsolationTest {
         List<Executable> attempts = List.of(
                 () -> reminderQueryService.getReminders(aliceListId, null),
                 () -> reminderService.updateReminder(reminderId,
-                        new UpdateReminderCommand("가로채기", null, null, false, null, null, null, 0L)),
+                        new ReminderUpdateRequest("가로채기", null, null, false, null, null, null, null, null, 0L)),
                 () -> reminderService.toggleComplete(reminderId),
                 () -> reminderService.toggleFlag(reminderId),
                 () -> reminderService.deleteReminder(reminderId),
                 () -> reminderService.reorderReminders(aliceListId, List.of(reminderId)),
                 () -> reminderService.createReminder(
-                        new CreateReminderCommand("끼워넣기", null, aliceListId, null, null, null, null, null)),
+                        new ReminderRequest("끼워넣기", null, aliceListId, null, null, null, null, null, null, null)),
                 () -> reminderService.createReminder(
-                        new CreateReminderCommand("하위 작업", null, null, null, null, null, reminderId, null)),
-                () -> reminderListService.updateList(aliceListId, new UpdateListCommand("가로채기", null, null, 0L)),
+                        new ReminderRequest("하위 작업", null, null, null, null, null, reminderId, null, null, null)),
+                () -> reminderListService.updateList(aliceListId, new ReminderListUpdateRequest("가로채기", null, null, 0L)),
                 () -> reminderListService.deleteList(aliceListId),
                 () -> tagService.deleteTag(aliceTagId));
         for (Executable attempt : attempts) {
@@ -133,7 +133,7 @@ class DataIsolationTest {
     @DisplayName("리스트 순서 변경에 다른 사용자의 리스트 id를 넣으면 400 예외가 발생한다")
     void reorderLists_withOtherUsersListId_throwsBadRequest() {
         TestAuth.signIn(bob);
-        Long bobListId = reminderListService.createList(new CreateListCommand("밥 업무", null, null)).id();
+        Long bobListId = reminderListService.createList(new ReminderListRequest("밥 업무", null, null)).id();
 
         assertThatThrownBy(() -> reminderListService.reorderLists(List.of(bobListId, aliceListId)))
                 .isInstanceOf(BusinessException.class)
@@ -146,7 +146,7 @@ class DataIsolationTest {
         TestAuth.signIn(bob);
 
         reminderService.createReminder(
-                new CreateReminderCommand("빨래", null, null, null, null, List.of("집"), null, null));
+                new ReminderRequest("빨래", null, null, null, null, List.of("집"), null, null, null, null));
 
         Long bobTagId = tagService.getTags().getFirst().id();
         assertThat(bobTagId).isNotEqualTo(aliceTagId);
@@ -156,12 +156,12 @@ class DataIsolationTest {
     @Test
     @DisplayName("리스트 없는 리마인더와 리스트의 표시 순서는 사용자마다 0부터 매겨진다")
     void sortOrders_startFromZeroPerUser() {
-        reminderService.createReminder(new CreateReminderCommand("앨리스 메모", null, null, null, null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("앨리스 메모", null, null, null, null, null, null, null, null, null));
         TestAuth.signIn(bob);
 
         ReminderResponse bobReminder = reminderService.createReminder(
-                new CreateReminderCommand("밥 메모", null, null, null, null, null, null, null));
-        ReminderListResponse bobList = reminderListService.createList(new CreateListCommand("밥 업무", null, null));
+                new ReminderRequest("밥 메모", null, null, null, null, null, null, null, null, null));
+        ReminderListResponse bobList = reminderListService.createList(new ReminderListRequest("밥 업무", null, null));
 
         assertThat(bobReminder.sortOrder()).isZero();
         assertThat(bobList.sortOrder()).isZero();

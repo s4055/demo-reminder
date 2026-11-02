@@ -30,7 +30,7 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<UserResponse> signup(@Valid @RequestBody SignupRequest request,
                                             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-        UserResponse user = authService.signup(request.toCommand());
+        UserResponse user = authService.signup(request);
         loginSession.start(authService.authenticate(user.email(), request.password()), httpRequest, httpResponse);
         return ApiResponse.success(user);
     }

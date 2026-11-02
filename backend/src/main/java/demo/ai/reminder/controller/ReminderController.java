@@ -69,7 +69,7 @@ public class ReminderController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReminderResponse> createReminder(@Valid @RequestBody ReminderRequest request) {
-        return ApiResponse.success(reminderService.createReminder(request.toCommand()));
+        return ApiResponse.success(reminderService.createReminder(request));
     }
 
     @DeleteMapping("/completed")
@@ -85,7 +85,7 @@ public class ReminderController {
 
     @PutMapping("/{id}")
     public ApiResponse<ReminderResponse> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
-        return ApiResponse.success(reminderService.updateReminder(id, request.toCommand()));
+        return ApiResponse.success(reminderService.updateReminder(id, request));
     }
 
     @PatchMapping("/{id}/list")

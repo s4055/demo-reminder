@@ -1,12 +1,12 @@
 package demo.ai.reminder.service;
 
 import demo.ai.reminder.domain.list.ReminderList;
+import demo.ai.reminder.dto.request.ReminderListRequest;
+import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
-import demo.ai.reminder.service.command.CreateListCommand;
-import demo.ai.reminder.service.command.UpdateListCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,18 +31,18 @@ public class ReminderListService {
     }
 
     @Transactional
-    public ReminderListResponse createList(CreateListCommand command) {
+    public ReminderListResponse createList(ReminderListRequest request) {
         int sortOrder = reminderListRepository.findNextSortOrder(currentUser.id());
         ReminderList list = reminderListRepository.save(
-                new ReminderList(currentUser.reference(), command.name(), command.color(), command.icon(), sortOrder));
+                new ReminderList(currentUser.reference(), request.strippedName(), request.color(), request.icon(), sortOrder));
         return toResponse(list);
     }
 
     @Transactional
-    public ReminderListResponse updateList(Long id, UpdateListCommand command) {
+    public ReminderListResponse updateList(Long id, ReminderListUpdateRequest request) {
         ReminderList list = listAccess.ownedList(id);
-        Versions.verify(list.getVersion(), command.version(), "List " + id);
-        list.update(command.name(), command.color(), command.icon());
+        Versions.verify(list.getVersion(), request.version(), "List " + id);
+        list.update(request.strippedName(), request.color(), request.icon());
         return toResponse(list);
     }
 

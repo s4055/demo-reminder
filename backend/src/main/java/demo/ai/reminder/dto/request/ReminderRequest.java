@@ -4,7 +4,6 @@ import demo.ai.reminder.domain.reminder.Priority;
 import demo.ai.reminder.domain.reminder.Recurrence;
 import demo.ai.reminder.domain.reminder.RepeatRule;
 import demo.ai.reminder.domain.tag.Tag;
-import demo.ai.reminder.service.command.CreateReminderCommand;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -29,8 +28,15 @@ public record ReminderRequest(
         Set<@NotNull DayOfWeek> repeatDaysOfWeek
 ) {
 
-    public CreateReminderCommand toCommand() {
-        return new CreateReminderCommand(title.strip(), memo, listId, dueAt, priority, TagNames.strip(tagNames),
-                parentId, Recurrence.of(repeatRule, repeatInterval, repeatDaysOfWeek));
+    public String strippedTitle() {
+        return title.strip();
+    }
+
+    public List<String> strippedTagNames() {
+        return TagNames.strip(tagNames);
+    }
+
+    public Recurrence recurrence() {
+        return Recurrence.of(repeatRule, repeatInterval, repeatDaysOfWeek);
     }
 }
