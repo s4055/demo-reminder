@@ -35,26 +35,25 @@ public class ReminderListService {
         int sortOrder = reminderListRepository.findNextSortOrder(currentUser.id());
         ReminderList list = reminderListRepository.save(
                 new ReminderList(currentUser.reference(), request.strippedName(), request.color(), request.icon(), sortOrder));
-        return toResponse(list);
+        return ReminderListResponse.from(reminderListRepository.findSummary(currentUser.id(), list.getId())
+                .orElseThrow(() -> new IllegalStateException("No membership for a created list: " + list.getId())));
     }
 
     @Transactional
-    public ReminderListResponse updateList(Long id, ReminderListUpdateRequest request) {
+    public void updateList(Long id, ReminderListUpdateRequest request) {
         ReminderList list = listAccess.ownedList(id);
         Versions.verify(list.getVersion(), request.version(), "List " + id);
         list.update(request.strippedName(), request.color(), request.icon());
-        return toResponse(list);
     }
 
     @Transactional
-    public ReminderListResponse changeGroup(Long id, Long groupId) {
+    public void changeGroup(Long id, Long groupId) {
         ReminderList list = listAccess.ownedList(id);
         if (groupId == null) {
             list.leaveGroup();
         } else {
             list.changeGroup(listGroupService.ownedGroup(groupId));
         }
-        return toResponse(list);
     }
 
     @Transactional
@@ -68,11 +67,5 @@ public class ReminderListService {
         ReminderList list = listAccess.ownedList(id);
         reminderRepository.deleteAllByList(list);
         reminderListRepository.delete(list);
-    }
-
-    private ReminderListResponse toResponse(ReminderList list) {
-        reminderListRepository.flush();
-        return ReminderListResponse.from(reminderListRepository.findSummary(currentUser.id(), list.getId())
-                .orElseThrow(() -> new IllegalStateException("No membership for an accessed list: " + list.getId())));
     }
 }

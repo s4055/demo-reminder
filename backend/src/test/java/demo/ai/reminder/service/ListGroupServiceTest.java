@@ -107,15 +107,15 @@ class ListGroupServiceTest {
     }
 
     @Test
-    @DisplayName("리스트를 그룹에 넣으면 응답과 리스트 목록에 groupId가 담기고, null로 그룹에서 뺄 수 있다")
+    @DisplayName("리스트를 그룹에 넣으면 리스트 목록에 groupId가 담기고, null로 그룹에서 뺄 수 있다")
     void changeGroup_assignsAndClearsGroup() {
         Long group = listGroupService.createGroup("생활").id();
         Long list = reminderListService.createList(new ReminderListRequest("장보기", null, null)).id();
 
-        assertThat(reminderListService.changeGroup(list, group).groupId()).isEqualTo(group);
+        reminderListService.changeGroup(list, group);
         assertThat(groupIdOf(list)).isEqualTo(group);
 
-        assertThat(reminderListService.changeGroup(list, null).groupId()).isNull();
+        reminderListService.changeGroup(list, null);
         assertThat(groupIdOf(list)).isNull();
     }
 

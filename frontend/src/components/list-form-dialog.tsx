@@ -57,12 +57,12 @@ export function ListFormDialog({
   open,
   onOpenChange,
   list,
-  onSaved,
+  onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   list?: ReminderList
-  onSaved?: (list: ReminderList) => void
+  onCreated?: (list: ReminderList) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,10 +70,7 @@ export function ListFormDialog({
         <ListForm
           key={list?.id ?? "new"}
           list={list}
-          onSaved={(saved) => {
-            onOpenChange(false)
-            onSaved?.(saved)
-          }}
+          onCreated={onCreated}
           onClose={() => onOpenChange(false)}
         />
       </DialogContent>
@@ -83,11 +80,11 @@ export function ListFormDialog({
 
 function ListForm({
   list,
-  onSaved,
+  onCreated,
   onClose,
 }: {
   list?: ReminderList
-  onSaved: (list: ReminderList) => void
+  onCreated?: (list: ReminderList) => void
   onClose: () => void
 }) {
   const isEdit = list !== undefined
@@ -126,19 +123,23 @@ function ListForm({
       color: values.color,
       icon: values.icon,
     }
-    const options = { onSuccess: onSaved }
     if (isEdit) {
       updateList.mutate(
         { id: list.id, input: { ...input, version: version ?? list.version } },
         {
-          ...options,
+          onSuccess: onClose,
           onError: (error) => {
             if (isVersionConflict(error)) reloadLatest(list.id)
           },
         }
       )
     } else {
-      createList.mutate(input, options)
+      createList.mutate(input, {
+        onSuccess: (created) => {
+          onClose()
+          onCreated?.(created)
+        },
+      })
     }
   }
 

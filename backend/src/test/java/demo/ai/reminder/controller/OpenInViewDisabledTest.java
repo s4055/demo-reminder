@@ -74,10 +74,23 @@ class OpenInViewDisabledTest {
         assertThat(JsonPath.<List<String>>read(reminders.body(), "$.data[0].subtasks[*].title"))
                 .containsExactly("박스 구하기");
         assertThat(toggled.statusCode()).isEqualTo(200);
-        assertThat(JsonPath.<List<String>>read(toggled.body(), "$.data.subtasks[*].title"))
-                .containsExactly("박스 구하기");
+        assertThat(JsonPath.<Object>read(toggled.body(), "$.data")).isNull();
         assertThat(members.statusCode()).isEqualTo(200);
         assertThat(JsonPath.<String>read(members.body(), "$.data[0].email")).isEqualTo(EMAIL);
+    }
+
+    @Test
+    @DisplayName("수정 요청이 끝나면 변경 내용과 올라간 버전이 커밋되어 다음 조회에 보인다")
+    void mutation_isCommittedWithIncrementedVersion_whenRequestEnds() throws Exception {
+        send("POST", "/api/auth/signup", "{\"email\":\"" + EMAIL + "\",\"password\":\"password1\",\"name\":\"오시브\"}");
+        listId = idOf(send("POST", "/api/lists", "{\"name\":\"장보기\"}"));
+        Long reminderId = idOf(send("POST", "/api/reminders", "{\"title\":\"우유\",\"listId\":" + listId + "}"));
+
+        send("PATCH", "/api/reminders/" + reminderId + "/flag", null);
+        HttpResponse<String> reminders = send("GET", "/api/reminders?listId=" + listId, null);
+
+        assertThat(JsonPath.<Boolean>read(reminders.body(), "$.data[0].flagged")).isTrue();
+        assertThat(JsonPath.<Integer>read(reminders.body(), "$.data[0].version")).isEqualTo(1);
     }
 
     private static Long idOf(HttpResponse<String> response) {

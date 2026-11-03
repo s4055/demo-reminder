@@ -88,8 +88,8 @@ export function createReminder(input: CreateReminderInput): Promise<Reminder> {
 export function updateReminder(
   id: number,
   input: UpdateReminderInput
-): Promise<Reminder> {
-  return apiRequest<Reminder>(`/api/reminders/${id}`, jsonBody("PUT", input))
+): Promise<void> {
+  return apiRequest<void>(`/api/reminders/${id}`, jsonBody("PUT", input))
 }
 
 export function reorderReminders(listId: number, ids: number[]): Promise<void> {
@@ -99,21 +99,21 @@ export function reorderReminders(listId: number, ids: number[]): Promise<void> {
   )
 }
 
-export function moveReminder(id: number, listId: number): Promise<Reminder> {
-  return apiRequest<Reminder>(
+export function moveReminder(id: number, listId: number): Promise<void> {
+  return apiRequest<void>(
     `/api/reminders/${id}/list`,
     jsonBody("PATCH", { listId })
   )
 }
 
-export function toggleReminderComplete(id: number): Promise<Reminder> {
-  return apiRequest<Reminder>(`/api/reminders/${id}/complete`, {
+export function toggleReminderComplete(id: number): Promise<void> {
+  return apiRequest<void>(`/api/reminders/${id}/complete`, {
     method: "PATCH",
   })
 }
 
-export function toggleReminderFlag(id: number): Promise<Reminder> {
-  return apiRequest<Reminder>(`/api/reminders/${id}/flag`, {
+export function toggleReminderFlag(id: number): Promise<void> {
+  return apiRequest<void>(`/api/reminders/${id}/flag`, {
     method: "PATCH",
   })
 }

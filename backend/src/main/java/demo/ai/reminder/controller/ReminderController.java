@@ -84,23 +84,27 @@ public class ReminderController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<ReminderResponse> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
-        return ApiResponse.success(reminderService.updateReminder(id, request));
+    public ApiResponse<Void> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
+        reminderService.updateReminder(id, request);
+        return ApiResponse.success();
     }
 
     @PatchMapping("/{id}/list")
-    public ApiResponse<ReminderResponse> moveReminder(@PathVariable Long id, @Valid @RequestBody ReminderMoveRequest request) {
-        return ApiResponse.success(reminderService.moveReminder(id, request.listId()));
+    public ApiResponse<Void> moveReminder(@PathVariable Long id, @Valid @RequestBody ReminderMoveRequest request) {
+        reminderService.moveReminder(id, request.listId());
+        return ApiResponse.success();
     }
 
     @PatchMapping("/{id}/complete")
-    public ApiResponse<ReminderResponse> toggleComplete(@PathVariable Long id) {
-        return ApiResponse.success(reminderService.toggleComplete(id));
+    public ApiResponse<Void> toggleComplete(@PathVariable Long id) {
+        reminderService.toggleComplete(id);
+        return ApiResponse.success();
     }
 
     @PatchMapping("/{id}/flag")
-    public ApiResponse<ReminderResponse> toggleFlag(@PathVariable Long id) {
-        return ApiResponse.success(reminderService.toggleFlag(id));
+    public ApiResponse<Void> toggleFlag(@PathVariable Long id) {
+        reminderService.toggleFlag(id);
+        return ApiResponse.success();
     }
 
     @DeleteMapping("/{id}")

@@ -162,8 +162,13 @@ class SharedListAccessTest {
         ReminderResponse bobReminder = reminderService.createReminder(
                 new ReminderRequest("빵", null, bobListId, null, null, null, null, null, null, null));
 
-        assertThat(reminderService.moveReminder(bobReminder.id(), sharedListId).listId()).isEqualTo(sharedListId);
-        assertThat(reminderService.moveReminder(aliceReminder.id(), bobListId).listId()).isEqualTo(bobListId);
+        reminderService.moveReminder(bobReminder.id(), sharedListId);
+        reminderService.moveReminder(aliceReminder.id(), bobListId);
+
+        assertThat(reminderQueryService.getReminders(sharedListId, null)).extracting(ReminderResponse::id)
+                .contains(bobReminder.id()).doesNotContain(aliceReminder.id());
+        assertThat(reminderQueryService.getReminders(bobListId, null)).extracting(ReminderResponse::id)
+                .contains(aliceReminder.id()).doesNotContain(bobReminder.id());
     }
 
     @Test

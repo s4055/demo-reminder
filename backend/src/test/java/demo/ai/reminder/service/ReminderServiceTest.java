@@ -67,6 +67,12 @@ class ReminderServiceTest {
         owner = TestAuth.signIn(userRepository, "owner@example.com");
     }
 
+    private ReminderResponse stored(Long id) {
+        entityManager.flush();
+        entityManager.clear();
+        return ReminderResponse.from(reminderRepository.findById(id).orElseThrow());
+    }
+
     @Test
     @DisplayName("listId를 지정해 리마인더를 생성하면 해당 리스트에 소속된다")
     void createReminder_belongsToGivenList() {
@@ -104,9 +110,9 @@ class ReminderServiceTest {
     void toggleComplete_flipsCompletedState_whenReminderExists() {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
-        ReminderResponse result = reminderService.toggleComplete(saved.getId());
+        reminderService.toggleComplete(saved.getId());
 
-        assertThat(result.completed()).isTrue();
+        assertThat(stored(saved.getId()).completed()).isTrue();
     }
 
     @Test
@@ -115,13 +121,13 @@ class ReminderServiceTest {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
         LocalDateTime before = LocalDateTime.now();
 
-        ReminderResponse completed = reminderService.toggleComplete(saved.getId());
+        reminderService.toggleComplete(saved.getId());
 
-        assertThat(completed.completedAt()).isAfterOrEqualTo(before);
+        assertThat(stored(saved.getId()).completedAt()).isAfterOrEqualTo(before);
 
-        ReminderResponse uncompleted = reminderService.toggleComplete(saved.getId());
+        reminderService.toggleComplete(saved.getId());
 
-        assertThat(uncompleted.completedAt()).isNull();
+        assertThat(stored(saved.getId()).completedAt()).isNull();
     }
 
     @Test
@@ -163,14 +169,14 @@ class ReminderServiceTest {
 
         reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("계란 사기", null, null, false, null, null, null, null, null, 0L));
 
-        Reminder result = reminderRepository.findById(saved.getId()).orElseThrow();
-        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
-        assertThat(result.getUpdatedAt()).isAfter(updatedAt);
+        ReminderResponse result = stored(saved.getId());
+        assertThat(result.createdAt()).isEqualTo(createdAt);
+        assertThat(result.updatedAt()).isAfter(updatedAt);
     }
 
     @Test
-    @DisplayName("수정/완료/플래그 토글의 응답에는 갱신된 수정일이 담긴다")
-    void mutatingMethods_returnRefreshedUpdatedAt() {
+    @DisplayName("수정/완료/플래그 토글을 저장하면 수정일이 갱신된다")
+    void mutatingMethods_refreshStoredUpdatedAt() {
         Long toUpdate = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null)).getId();
         Long toComplete = reminderRepository.saveAndFlush(new Reminder(owner, "계란 사기", null, null, null, null, null)).getId();
         Long toFlag = reminderRepository.saveAndFlush(new Reminder(owner, "빵 사기", null, null, null, null, null)).getId();
@@ -178,14 +184,14 @@ class ReminderServiceTest {
         backdateUpdatedAt(toComplete);
         backdateUpdatedAt(toFlag);
 
-        ReminderResponse updated = reminderService.updateReminder(
+        reminderService.updateReminder(
                 toUpdate, new ReminderUpdateRequest("우유 사기(수정)", null, null, false, null, null, null, null, null, 0L));
-        ReminderResponse completed = reminderService.toggleComplete(toComplete);
-        ReminderResponse flagged = reminderService.toggleFlag(toFlag);
+        reminderService.toggleComplete(toComplete);
+        reminderService.toggleFlag(toFlag);
 
-        assertThat(updated.updatedAt()).isAfter(past);
-        assertThat(completed.updatedAt()).isAfter(past);
-        assertThat(flagged.updatedAt()).isAfter(past);
+        assertThat(stored(toUpdate).updatedAt()).isAfter(past);
+        assertThat(stored(toComplete).updatedAt()).isAfter(past);
+        assertThat(stored(toFlag).updatedAt()).isAfter(past);
     }
 
     @Test
@@ -195,15 +201,15 @@ class ReminderServiceTest {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
         LocalDateTime dueAt = LocalDate.now().atTime(18, 30);
 
-        ReminderResponse result = reminderService.updateReminder(
+        reminderService.updateReminder(
                 saved.getId(), new ReminderUpdateRequest("계란 사기", "12구", dueAt, true, null, null, null, null, null, 0L));
 
+        ReminderResponse result = stored(saved.getId());
         assertThat(result.title()).isEqualTo("계란 사기");
         assertThat(result.memo()).isEqualTo("12구");
         assertThat(result.dueAt()).isEqualTo(dueAt);
         assertThat(result.flagged()).isTrue();
         assertThat(result.listId()).isEqualTo(shopping.getId());
-        assertThat(reminderRepository.findById(saved.getId()).orElseThrow().getTitle()).isEqualTo("계란 사기");
     }
 
     @Test
@@ -251,9 +257,9 @@ class ReminderServiceTest {
     void updateReminder_resetsPriorityToNone_whenPriorityIsOmitted() {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, Priority.HIGH, null));
 
-        ReminderResponse result = reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, false, null, null, null, null, null, 0L));
+        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, false, null, null, null, null, null, 0L));
 
-        assertThat(result.priority()).isEqualTo(Priority.NONE);
+        assertThat(stored(saved.getId()).priority()).isEqualTo(Priority.NONE);
     }
 
     @Test
@@ -269,9 +275,9 @@ class ReminderServiceTest {
     void toggleFlag_flipsFlaggedState_whenReminderExists() {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
-        ReminderResponse result = reminderService.toggleFlag(saved.getId());
+        reminderService.toggleFlag(saved.getId());
 
-        assertThat(result.flagged()).isTrue();
+        assertThat(stored(saved.getId()).flagged()).isTrue();
     }
 
     @Test
@@ -397,13 +403,14 @@ class ReminderServiceTest {
         ReminderResponse saved = reminderService.createReminder(
                 new ReminderRequest("우유 사기", null, null, null, null, List.of("집", "심부름"), null, null, null, null));
 
-        ReminderResponse replaced = reminderService.updateReminder(saved.id(),
+        reminderService.updateReminder(saved.id(),
                 new ReminderUpdateRequest("우유 사기", null, null, false, null, List.of("급함"), null, null, null, 0L));
+        ReminderResponse replaced = stored(saved.id());
         assertThat(replaced.tags()).containsExactly("급함");
 
-        ReminderResponse cleared = reminderService.updateReminder(saved.id(),
+        reminderService.updateReminder(saved.id(),
                 new ReminderUpdateRequest("우유 사기", null, null, false, null, null, null, null, null, replaced.version()));
-        assertThat(cleared.tags()).isEmpty();
+        assertThat(stored(saved.id()).tags()).isEmpty();
     }
 
     @Test
@@ -616,13 +623,14 @@ class ReminderServiceTest {
         LocalDateTime dueAt = LocalDateTime.of(2026, 10, 4, 20, 0);
         ReminderResponse saved = createRepeating("분리수거", null, dueAt, RepeatRule.WEEKLY);
 
-        ReminderResponse monthly = reminderService.updateReminder(saved.id(),
+        reminderService.updateReminder(saved.id(),
                 new ReminderUpdateRequest("분리수거", null, dueAt, false, null, null, RepeatRule.MONTHLY, 1, null, 0L));
+        ReminderResponse monthly = stored(saved.id());
         assertThat(monthly.repeatRule()).isEqualTo(RepeatRule.MONTHLY);
 
-        ReminderResponse once = reminderService.updateReminder(saved.id(),
+        reminderService.updateReminder(saved.id(),
                 new ReminderUpdateRequest("분리수거", null, null, false, null, null, null, null, null, monthly.version()));
-        assertThat(once.repeatRule()).isEqualTo(RepeatRule.NONE);
+        assertThat(stored(saved.id()).repeatRule()).isEqualTo(RepeatRule.NONE);
     }
 
     @Test
@@ -650,12 +658,14 @@ class ReminderServiceTest {
         LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 7, 0);
         ReminderResponse saved = createRepeating("운동", null, dueAt, RepeatRule.WEEKLY);
 
-        ReminderResponse custom = reminderService.updateReminder(saved.id(), new ReminderUpdateRequest("운동", null, dueAt, false, null, null, RepeatRule.WEEKLY, 3, Set.of(DayOfWeek.FRIDAY), 0L));
+        reminderService.updateReminder(saved.id(), new ReminderUpdateRequest("운동", null, dueAt, false, null, null, RepeatRule.WEEKLY, 3, Set.of(DayOfWeek.FRIDAY), 0L));
+        ReminderResponse custom = stored(saved.id());
         assertThat(custom.repeatInterval()).isEqualTo(3);
         assertThat(custom.repeatDaysOfWeek()).containsExactly(DayOfWeek.FRIDAY);
 
-        ReminderResponse once = reminderService.updateReminder(saved.id(),
+        reminderService.updateReminder(saved.id(),
                 new ReminderUpdateRequest("운동", null, dueAt, false, null, null, null, null, null, custom.version()));
+        ReminderResponse once = stored(saved.id());
         assertThat(once.repeatRule()).isEqualTo(RepeatRule.NONE);
         assertThat(once.repeatInterval()).isEqualTo(1);
         assertThat(once.repeatDaysOfWeek()).isEmpty();
@@ -671,12 +681,10 @@ class ReminderServiceTest {
         entityManager.clear();
         Long wednesdayRowId = repeatDayRowId(saved.id(), DayOfWeek.WEDNESDAY);
 
-        ReminderResponse updated = reminderService.updateReminder(saved.id(), new ReminderUpdateRequest("운동", null, dueAt,
+        reminderService.updateReminder(saved.id(), new ReminderUpdateRequest("운동", null, dueAt,
                 false, null, null, RepeatRule.WEEKLY, 1, Set.of(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), saved.version()));
-        entityManager.flush();
-        entityManager.clear();
 
-        assertThat(updated.repeatDaysOfWeek()).containsExactly(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY);
+        assertThat(stored(saved.id()).repeatDaysOfWeek()).containsExactly(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY);
         assertThat(repeatDayRowId(saved.id(), DayOfWeek.WEDNESDAY)).isEqualTo(wednesdayRowId);
         assertThat(countRows("ReminderRepeatDay", saved.id())).isEqualTo(2L);
     }
@@ -750,8 +758,8 @@ class ReminderServiceTest {
         ReminderResponse trash = createRepeating("분리수거", home.getId(), LocalDateTime.of(2026, 10, 4, 20, 0), RepeatRule.DAILY);
 
         reminderService.toggleComplete(trash.id());
-        ReminderResponse undone = reminderService.toggleComplete(trash.id());
-        assertThat(undone.completed()).isFalse();
+        reminderService.toggleComplete(trash.id());
+        assertThat(stored(trash.id()).completed()).isFalse();
         assertThat(reminderQueryService.getReminders(home.getId(), null)).hasSize(2);
 
         reminderService.toggleComplete(trash.id());
@@ -889,10 +897,9 @@ class ReminderServiceTest {
         entityManager.flush();
         entityManager.clear();
 
-        ReminderResponse result = reminderService.moveReminder(moving.id(), work.getId());
-        entityManager.flush();
-        entityManager.clear();
+        reminderService.moveReminder(moving.id(), work.getId());
 
+        ReminderResponse result = stored(moving.id());
         assertThat(result.listId()).isEqualTo(work.getId());
         assertThat(result.subtasks()).extracting(ReminderResponse::listId).containsOnly(work.getId());
         assertThat(reminderQueryService.getReminders(work.getId(), null)).extracting(ReminderResponse::id)
@@ -912,8 +919,9 @@ class ReminderServiceTest {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         ReminderResponse noList = create("우유 사기", null);
 
-        ReminderResponse result = reminderService.moveReminder(noList.id(), home.getId());
+        reminderService.moveReminder(noList.id(), home.getId());
 
+        ReminderResponse result = stored(noList.id());
         assertThat(result.listId()).isEqualTo(home.getId());
         assertThat(result.sortOrder()).isZero();
     }
@@ -925,9 +933,9 @@ class ReminderServiceTest {
         ReminderResponse first = create("빨래", home.getId());
         ReminderResponse second = create("청소", home.getId());
 
-        ReminderResponse result = reminderService.moveReminder(first.id(), home.getId());
+        reminderService.moveReminder(first.id(), home.getId());
 
-        assertThat(result.sortOrder()).isEqualTo(first.sortOrder());
+        assertThat(stored(first.id()).sortOrder()).isEqualTo(first.sortOrder());
         assertThat(reminderQueryService.getReminders(home.getId(), null)).extracting(ReminderResponse::id)
                 .containsExactly(first.id(), second.id());
     }

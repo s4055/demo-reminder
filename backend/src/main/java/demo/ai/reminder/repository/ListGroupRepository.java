@@ -1,7 +1,6 @@
 package demo.ai.reminder.repository;
 
 import demo.ai.reminder.domain.list.ListGroup;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -10,7 +9,7 @@ import java.util.Optional;
 
 public interface ListGroupRepository extends JpaRepository<ListGroup, Long> {
 
-    List<ListGroup> findByUserId(Long userId, Sort sort);
+    List<ListGroup> findByUserIdOrderBySortOrderAscIdAsc(Long userId);
 
     List<ListGroup> findByUserId(Long userId);
 

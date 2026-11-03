@@ -77,11 +77,14 @@ class VersionConflictTest {
     void updateReminder_updatesAndIncrementsVersion_whenVersionMatches() {
         ReminderResponse created = createReminder("우유 사기");
 
-        ReminderResponse updated = reminderService.updateReminder(created.id(), updateRequest("저지방 우유", 0L));
+        reminderService.updateReminder(created.id(), updateRequest("저지방 우유", 0L));
 
-        assertThat(updated.title()).isEqualTo("저지방 우유");
-        assertThat(updated.version()).isEqualTo(1L);
-        assertThat(reminderService.updateReminder(created.id(), updateRequest("두유", 1L)).version()).isEqualTo(2L);
+        assertThat(storedReminderVersion(created.id())).isEqualTo(1L);
+        assertThat(reminderRepository.findById(created.id()).orElseThrow().getTitle()).isEqualTo("저지방 우유");
+
+        reminderService.updateReminder(created.id(), updateRequest("두유", 1L));
+
+        assertThat(storedReminderVersion(created.id())).isEqualTo(2L);
     }
 
     @Test
@@ -89,6 +92,7 @@ class VersionConflictTest {
     void updateReminder_throwsVersionConflict_whenVersionIsStale() {
         ReminderResponse created = createReminder("우유 사기");
         reminderService.updateReminder(created.id(), updateRequest("먼저 저장", 0L));
+        entityManager.flush();
 
         assertThatThrownBy(() -> reminderService.updateReminder(created.id(), updateRequest("나중 저장", 0L)))
                 .isInstanceOf(BusinessException.class)
@@ -108,9 +112,12 @@ class VersionConflictTest {
         Long target = reminderListService.createList(new ReminderListRequest("업무", null, null)).id();
         ReminderResponse created = createReminder("우유 사기");
 
-        assertThat(reminderService.toggleFlag(created.id()).version()).isEqualTo(1L);
-        assertThat(reminderService.toggleComplete(created.id()).version()).isEqualTo(2L);
-        assertThat(reminderService.moveReminder(created.id(), target).version()).isEqualTo(3L);
+        reminderService.toggleFlag(created.id());
+        assertThat(storedReminderVersion(created.id())).isEqualTo(1L);
+        reminderService.toggleComplete(created.id());
+        assertThat(storedReminderVersion(created.id())).isEqualTo(2L);
+        reminderService.moveReminder(created.id(), target);
+        assertThat(storedReminderVersion(created.id())).isEqualTo(3L);
         assertThatThrownBy(() -> reminderService.updateReminder(created.id(), updateRequest("나중 저장", 0L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.VERSION_CONFLICT);
@@ -137,11 +144,11 @@ class VersionConflictTest {
     void updateList_checksVersion() {
         ReminderListResponse created = reminderListService.createList(new ReminderListRequest("장보기", null, null));
 
-        ReminderListResponse updated = reminderListService.updateList(created.id(),
+        reminderListService.updateList(created.id(),
                 new ReminderListUpdateRequest("마트", "#FF9500", null, 0L));
 
-        assertThat(updated.name()).isEqualTo("마트");
-        assertThat(updated.version()).isEqualTo(1L);
+        assertThat(storedListVersion(created.id())).isEqualTo(1L);
+        assertThat(reminderListRepository.findById(created.id()).orElseThrow().getName()).isEqualTo("마트");
         assertThatThrownBy(() -> reminderListService.updateList(created.id(),
                 new ReminderListUpdateRequest("시장", null, null, 0L)))
                 .isInstanceOf(BusinessException.class)
@@ -155,7 +162,8 @@ class VersionConflictTest {
         Long work = reminderListService.createList(new ReminderListRequest("업무", null, null)).id();
         Long groupId = listGroupService.createGroup("개인").id();
 
-        assertThat(reminderListService.changeGroup(shopping, groupId).version()).isEqualTo(1L);
+        reminderListService.changeGroup(shopping, groupId);
+        assertThat(storedListVersion(shopping)).isEqualTo(1L);
         reminderListService.reorderLists(List.of(work, shopping));
         entityManager.flush();
 
@@ -175,7 +183,8 @@ class VersionConflictTest {
         entityManager.clear();
 
         assertThat(reminderRepository.findById(parent.id()).orElseThrow().getVersion()).isZero();
-        assertThat(reminderService.updateReminder(parent.id(), updateRequest("마트 장보기", 0L)).version()).isEqualTo(1L);
+        reminderService.updateReminder(parent.id(), updateRequest("마트 장보기", 0L));
+        assertThat(storedReminderVersion(parent.id())).isEqualTo(1L);
     }
 
     @Test
@@ -212,7 +221,20 @@ class VersionConflictTest {
         assertThat(reminderRepository.findById(reminderId).orElseThrow().getVersion()).isZero();
         assertThat(reminderListRepository.findAll()).singleElement()
                 .satisfies(list -> assertThat(list.getVersion()).isZero());
-        assertThat(reminderService.updateReminder(reminderId, updateRequest("수정", 0L)).version()).isEqualTo(1L);
+        reminderService.updateReminder(reminderId, updateRequest("수정", 0L));
+        assertThat(storedReminderVersion(reminderId)).isEqualTo(1L);
+    }
+
+    private Long storedReminderVersion(Long id) {
+        entityManager.flush();
+        entityManager.clear();
+        return reminderRepository.findById(id).orElseThrow().getVersion();
+    }
+
+    private Long storedListVersion(Long id) {
+        entityManager.flush();
+        entityManager.clear();
+        return reminderListRepository.findById(id).orElseThrow().getVersion();
     }
 
     private ReminderResponse createReminder(String title) {

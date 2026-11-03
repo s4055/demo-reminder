@@ -5,7 +5,6 @@ export type ListGroup = {
   name: string
   sortOrder: number
   createdAt: string
-  updatedAt: string
 }
 
 export function getListGroups(): Promise<ListGroup[]> {

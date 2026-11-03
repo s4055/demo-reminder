@@ -8,12 +8,10 @@ public record ListGroupResponse(
         Long id,
         String name,
         int sortOrder,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime createdAt
 ) {
 
     public static ListGroupResponse from(ListGroup group) {
-        return new ListGroupResponse(group.getId(), group.getName(), group.getSortOrder(),
-                group.getCreatedAt(), group.getUpdatedAt());
+        return new ListGroupResponse(group.getId(), group.getName(), group.getSortOrder(), group.getCreatedAt());
     }
 }

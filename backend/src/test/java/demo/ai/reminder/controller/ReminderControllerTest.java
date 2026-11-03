@@ -10,6 +10,7 @@ import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.ReminderRepository;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,9 @@ class ReminderControllerTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     private User owner;
 
@@ -104,8 +108,8 @@ class ReminderControllerTest {
     }
 
     @Test
-    @DisplayName("리마인더 수정 응답은 변경된 priority를 담는다")
-    void updateReminder_returnsChangedPriority() throws Exception {
+    @DisplayName("리마인더 수정은 200과 data가 null인 성공 응답을 반환하고, 변경된 priority는 목록에서 조회된다")
+    void updateReminder_returnsNoData_andPriorityIsListed() throws Exception {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
@@ -113,7 +117,10 @@ class ReminderControllerTest {
                         .content("{\"title\":\"우유 사기\",\"flagged\":false,\"priority\":\"LOW\",\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.priority").value("LOW"));
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        mockMvc.perform(get("/api/reminders"))
+                .andExpect(jsonPath("$.data[0].priority").value("LOW"));
     }
 
     @Test
@@ -129,9 +136,8 @@ class ReminderControllerTest {
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"저지방 우유\",\"flagged\":false,\"version\":0}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.title").value("저지방 우유"))
-                .andExpect(jsonPath("$.data.version").value(1));
+                .andExpect(status().isOk());
+        entityManager.flush();
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"두유\",\"flagged\":false,\"version\":0}"))
@@ -163,15 +169,32 @@ class ReminderControllerTest {
     }
 
     @Test
-    @DisplayName("완료 토글 응답은 토글된 리마인더와 완료일시를 data에 담는다")
-    void toggleComplete_returnsToggledReminderInData() throws Exception {
+    @DisplayName("완료 토글은 200과 data가 null인 성공 응답을 반환하고, 완료 상태와 완료일시는 목록에서 조회된다")
+    void toggleComplete_returnsNoData_andCompletionIsListed() throws Exception {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/{id}/complete", saved.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.completed").value(true))
-                .andExpect(jsonPath("$.data.completedAt").isString());
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        mockMvc.perform(get("/api/reminders"))
+                .andExpect(jsonPath("$.data[0].completed").value(true))
+                .andExpect(jsonPath("$.data[0].completedAt").isString());
+    }
+
+    @Test
+    @DisplayName("플래그 토글은 200과 data가 null인 성공 응답을 반환하고, 플래그는 목록에서 조회된다")
+    void toggleFlag_returnsNoData_andFlagIsListed() throws Exception {
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+
+        mockMvc.perform(patch("/api/reminders/{id}/flag", saved.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        mockMvc.perform(get("/api/reminders"))
+                .andExpect(jsonPath("$.data[0].flagged").value(true));
     }
 
     @Test
@@ -267,16 +290,15 @@ class ReminderControllerTest {
     }
 
     @Test
-    @DisplayName("반복 리마인더를 완료하면 완료된 현재 항목을 반환하고, 다음 회차가 조회된다")
-    void toggleComplete_whenRepeating_returnsCompletedReminder_andNextOccurrenceIsListed() throws Exception {
+    @DisplayName("반복 리마인더를 완료하면 data 없이 응답하고, 다음 회차가 조회된다")
+    void toggleComplete_whenRepeating_returnsNoData_andNextOccurrenceIsListed() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         Reminder saved = reminderRepository.save(new Reminder(owner, "분리수거", null, home,
                 LocalDateTime.of(2026, 10, 4, 20, 0), null, new Recurrence(RepeatRule.WEEKLY, 1, null)));
 
         mockMvc.perform(patch("/api/reminders/{id}/complete", saved.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(saved.getId()))
-                .andExpect(jsonPath("$.data.completed").value(true));
+                .andExpect(jsonPath("$.data").doesNotExist());
 
         mockMvc.perform(get("/api/reminders").param("listId", String.valueOf(home.getId())))
                 .andExpect(status().isOk())
@@ -382,9 +404,11 @@ class ReminderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\" 청소 \",\"flagged\":false,\"tagNames\":[\" 집안일 \"],\"version\":"
                                 + reminder.getVersion() + "}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.title").value("청소"))
-                .andExpect(jsonPath("$.data.tags").value(contains("집안일")));
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/reminders"))
+                .andExpect(jsonPath("$.data[?(@.id == " + reminder.getId() + ")].title").value(contains("청소")))
+                .andExpect(jsonPath("$.data[?(@.id == " + reminder.getId() + ")].tags[*]").value(contains("집안일")));
     }
 
     @Test
@@ -441,8 +465,8 @@ class ReminderControllerTest {
     }
 
     @Test
-    @DisplayName("리마인더 이동은 200과 함께 대상 리스트로 옮겨진 리마인더를 반환한다")
-    void moveReminder_returnsMovedReminder() throws Exception {
+    @DisplayName("리마인더 이동은 200과 data가 null인 성공 응답을 반환하고, 대상 리스트에서 조회된다")
+    void moveReminder_returnsNoData_andReminderIsListedInTarget() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null, null, 0));
         Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null, null, null));
@@ -452,8 +476,11 @@ class ReminderControllerTest {
                         .content("{\"listId\":" + work.getId() + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.id").value(saved.getId()))
-                .andExpect(jsonPath("$.data.listId").value(work.getId()));
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        mockMvc.perform(get("/api/reminders").param("listId", String.valueOf(work.getId())))
+                .andExpect(jsonPath("$.data[0].id").value(saved.getId()))
+                .andExpect(jsonPath("$.data[0].listId").value(work.getId()));
     }
 
     @Test
@@ -585,15 +612,17 @@ class ReminderControllerTest {
     }
 
     @Test
-    @DisplayName("리마인더 수정 응답은 교체된 tags를 담는다")
-    void updateReminder_returnsReplacedTags() throws Exception {
+    @DisplayName("리마인더를 수정하면 교체된 tags가 목록에서 조회된다")
+    void updateReminder_replacesTagsInList() throws Exception {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"우유 사기\",\"flagged\":false,\"tagNames\":[\"급함\"],\"version\":0}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.tags", contains("급함")));
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/reminders"))
+                .andExpect(jsonPath("$.data[0].tags", contains("급함")));
     }
 
     @Test

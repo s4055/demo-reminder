@@ -5,6 +5,7 @@ import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.repository.UserRepository;
 import demo.ai.reminder.support.TestAuth;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,9 @@ class ReminderListControllerTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     private User owner;
 
@@ -97,7 +101,9 @@ class ReminderListControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\" 마트 \",\"color\":\"#00FF00\",\"version\":" + list.getVersion() + "}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("마트"));
+                .andExpect(jsonPath("$.data").doesNotExist());
+        mockMvc.perform(get("/api/lists"))
+                .andExpect(jsonPath("$.data[0].name").value("마트"));
 
         mockMvc.perform(put("/api/lists/" + list.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -147,9 +153,8 @@ class ReminderListControllerTest {
         mockMvc.perform(put("/api/lists/{id}", list.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"마트\",\"version\":0}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("마트"))
-                .andExpect(jsonPath("$.data.version").value(1));
+                .andExpect(status().isOk());
+        entityManager.flush();
         mockMvc.perform(put("/api/lists/{id}", list.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"시장\",\"version\":0}"))
