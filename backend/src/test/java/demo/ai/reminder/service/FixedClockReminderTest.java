@@ -76,9 +76,9 @@ class FixedClockReminderTest {
     void toggleComplete_recordsCompletedAtFromClock() {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
 
-        ReminderResponse result = reminderService.toggleComplete(saved.getId());
+        reminderService.toggleComplete(saved.getId());
 
-        assertThat(result.completedAt()).isEqualTo(NOW);
+        assertThat(saved.getCompletedAt()).isEqualTo(NOW);
     }
 
     private void saveDueAt(String title, LocalDateTime dueAt) {

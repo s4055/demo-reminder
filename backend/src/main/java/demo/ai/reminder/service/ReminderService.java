@@ -45,13 +45,12 @@ public class ReminderService {
     }
 
     @Transactional
-    public ReminderResponse updateReminder(Long id, ReminderUpdateRequest request) {
+    public void updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
         Versions.verify(reminder.getVersion(), request.version(), "Reminder " + id);
         reminder.update(request.strippedTitle(), request.memo(), request.dueAt(), request.flagged(), request.priority(),
                 request.recurrence());
         reminder.replaceTags(tagService.resolveTags(request.strippedTagNames()));
-        return toFlushedResponse(reminder);
     }
 
     @Transactional
@@ -62,15 +61,14 @@ public class ReminderService {
     }
 
     @Transactional
-    public ReminderResponse moveReminder(Long id, Long listId) {
+    public void moveReminder(Long id, Long listId) {
         Reminder reminder = findReminderOrThrow(id);
         ReminderList target = listAccess.memberList(listId);
         reminder.moveTo(target, () -> nextSortOrder(target));
-        return toFlushedResponse(reminder);
     }
 
     @Transactional
-    public ReminderResponse toggleComplete(Long id) {
+    public void toggleComplete(Long id) {
         Reminder reminder = findReminderOrThrow(id);
         reminder.toggleComplete(LocalDateTime.now(clock)).ifPresent(next -> {
             if (!next.isSubtask()) {
@@ -78,14 +76,11 @@ public class ReminderService {
             }
             reminderRepository.save(next);
         });
-        return toFlushedResponse(reminder);
     }
 
     @Transactional
-    public ReminderResponse toggleFlag(Long id) {
-        Reminder reminder = findReminderOrThrow(id);
-        reminder.toggleFlag();
-        return toFlushedResponse(reminder);
+    public void toggleFlag(Long id) {
+        findReminderOrThrow(id).toggleFlag();
     }
 
     @Transactional
@@ -107,11 +102,6 @@ public class ReminderService {
             reminderRepository.delete(reminder);
         });
         return new DeletedCountResponse(deletedCount);
-    }
-
-    private ReminderResponse toFlushedResponse(Reminder reminder) {
-        reminderRepository.flush();
-        return ReminderResponse.from(reminder);
     }
 
     private ReminderList memberListOrNull(Long listId) {

@@ -52,8 +52,8 @@ export function createList(input: ReminderListInput): Promise<ReminderList> {
 export function updateList(
   id: number,
   input: UpdateReminderListInput
-): Promise<ReminderList> {
-  return apiRequest<ReminderList>(`/api/lists/${id}`, jsonBody("PUT", input))
+): Promise<void> {
+  return apiRequest<void>(`/api/lists/${id}`, jsonBody("PUT", input))
 }
 
 export function reorderLists(ids: number[]): Promise<void> {
@@ -63,8 +63,8 @@ export function reorderLists(ids: number[]): Promise<void> {
 export function changeListGroup(
   id: number,
   groupId: number | null
-): Promise<ReminderList> {
-  return apiRequest<ReminderList>(
+): Promise<void> {
+  return apiRequest<void>(
     `/api/lists/${id}/group`,
     jsonBody("PATCH", { groupId })
   )

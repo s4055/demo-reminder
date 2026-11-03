@@ -58,16 +58,19 @@ class ListGroupControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.name").value("생활"))
-                .andExpect(jsonPath("$.data.sortOrder").value(0));
+                .andExpect(jsonPath("$.data.sortOrder").value(0))
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
         Long id = listGroupRepository.findByUserId(owner.getId()).getFirst().getId();
 
         mockMvc.perform(get("/api/list-groups"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].id").value(id));
+                .andExpect(jsonPath("$.data[0].id").value(id))
+                .andExpect(jsonPath("$.data[0].updatedAt").doesNotExist());
         mockMvc.perform(put("/api/list-groups/{id}", id).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"집안일\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("집안일"));
+                .andExpect(jsonPath("$.data.name").value("집안일"))
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
         mockMvc.perform(patch("/api/list-groups/order").contentType(MediaType.APPLICATION_JSON).content("{\"ids\":[" + id + "]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"));
@@ -102,7 +105,7 @@ class ListGroupControllerTest {
     }
 
     @Test
-    @DisplayName("리스트 그룹 지정은 groupId를 담아 응답하고, groupId가 null이면 그룹에서 뺀다")
+    @DisplayName("리스트 그룹 지정은 data 없이 응답하고 목록에 groupId가 담기며, groupId가 null이면 그룹에서 뺀다")
     void changeGroup_assignsAndClears() throws Exception {
         ListGroup group = listGroupRepository.save(new ListGroup(owner, "생활", 0));
         ReminderList list = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
@@ -110,11 +113,15 @@ class ListGroupControllerTest {
         mockMvc.perform(patch("/api/lists/{id}/group", list.getId())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"groupId\":" + group.getId() + "}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.groupId").value(group.getId()));
+                .andExpect(jsonPath("$.data").doesNotExist());
+        mockMvc.perform(get("/api/lists"))
+                .andExpect(jsonPath("$.data[0].groupId").value(group.getId()));
         mockMvc.perform(patch("/api/lists/{id}/group", list.getId())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"groupId\":null}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.groupId").value(nullValue()));
+                .andExpect(jsonPath("$.data").doesNotExist());
+        mockMvc.perform(get("/api/lists"))
+                .andExpect(jsonPath("$.data[0].groupId").value(nullValue()));
     }
 
     @Test

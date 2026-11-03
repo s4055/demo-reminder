@@ -103,9 +103,7 @@ export function Sidebar({
         open={listForm.open}
         onOpenChange={(open) => setListForm((prev) => ({ ...prev, open }))}
         list={listForm.list}
-        onSaved={(list) => {
-          if (!listForm.list) onSelect({ type: "list", listId: list.id })
-        }}
+        onCreated={(list) => onSelect({ type: "list", listId: list.id })}
       />
       <ListDeleteDialog
         list={listToDelete}

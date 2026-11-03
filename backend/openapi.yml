@@ -226,11 +226,11 @@ paths:
               $ref: "#/components/schemas/ReminderListUpdateRequest"
       responses:
         "200":
-          description: 수정된 리스트
+          description: 수정 성공 (data는 null)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderListApiResponse"
+                $ref: "#/components/schemas/EmptyApiResponse"
         "400":
           description: 유효성 검증 실패 (name 누락, color 형식 오류, 허용 목록에 없는 icon 등)
           content:
@@ -288,11 +288,11 @@ paths:
               $ref: "#/components/schemas/ListGroupAssignRequest"
       responses:
         "200":
-          description: 그룹이 바뀐 리스트
+          description: 그룹 변경 성공 (data는 null)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderListApiResponse"
+                $ref: "#/components/schemas/EmptyApiResponse"
         "403":
           $ref: "#/components/responses/OwnerOnly"
         "404":
@@ -767,11 +767,11 @@ paths:
         - $ref: "#/components/parameters/ReminderId"
       responses:
         "200":
-          description: 플래그 상태가 토글된 리마인더
+          description: 플래그 토글 성공 (data는 null)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderApiResponse"
+                $ref: "#/components/schemas/EmptyApiResponse"
         "404":
           description: 리마인더를 찾을 수 없음
           content:
@@ -799,11 +799,11 @@ paths:
               $ref: "#/components/schemas/ReminderMoveRequest"
       responses:
         "200":
-          description: 이동한 리마인더 (하위 작업 포함)
+          description: 이동 성공 (data는 null)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderApiResponse"
+                $ref: "#/components/schemas/EmptyApiResponse"
         "400":
           description: listId 누락 또는 하위 작업 단독 이동
           content:
@@ -828,17 +828,17 @@ paths:
         - 최상위 리마인더의 다음 회차는 같은 리스트의 마지막 순서로, 하위 작업의 다음 회차는 같은 부모의 마지막 하위 작업으로 추가된다. 하위 작업은 복사하지 않는다.
         - 완료를 취소해도 이미 만든 다음 회차는 유지되며, 다시 완료해도 다음 회차를 또 만들지 않는다.
         - 부모 완료로 함께 완료된 하위 작업은 반복이어도 다음 회차를 만들지 않는다.
-        응답 data는 완료 상태가 토글된 현재 리마인더이며, 새 회차는 목록 조회로 확인한다.
+        응답 data는 null이며, 토글 결과와 새 회차는 목록 조회로 확인한다.
       operationId: toggleReminderComplete
       parameters:
         - $ref: "#/components/parameters/ReminderId"
       responses:
         "200":
-          description: 완료 상태가 토글된 리마인더
+          description: 완료 토글 성공 (data는 null)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderApiResponse"
+                $ref: "#/components/schemas/EmptyApiResponse"
         "404":
           description: 리마인더를 찾을 수 없음
           content:
@@ -862,11 +862,11 @@ paths:
               $ref: "#/components/schemas/ReminderUpdateRequest"
       responses:
         "200":
-          description: 수정된 리마인더
+          description: 수정 성공 (data는 null)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderApiResponse"
+                $ref: "#/components/schemas/EmptyApiResponse"
         "400":
           description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule/요일 값, 빈 태그 이름이나 50자를 넘는 태그 이름, 1~99를 벗어난 repeatInterval, version 누락 등), dueAt 없이 반복을 지정한 경우, 또는 WEEKLY가 아닌데 repeatDaysOfWeek를 지정한 경우
           content:
@@ -1352,9 +1352,6 @@ components:
           type: integer
           description: 사이드바 표시 순서. 작을수록 위
         createdAt:
-          type: string
-          format: date-time
-        updatedAt:
           type: string
           format: date-time
 

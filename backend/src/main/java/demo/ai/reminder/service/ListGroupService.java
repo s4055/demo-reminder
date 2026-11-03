@@ -9,7 +9,6 @@ import demo.ai.reminder.repository.ListGroupRepository;
 import demo.ai.reminder.repository.ReminderListRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,14 +19,12 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ListGroupService {
 
-    private static final Sort GROUP_SORT = Sort.by("sortOrder", "id");
-
     private final ListGroupRepository listGroupRepository;
     private final ReminderListRepository reminderListRepository;
     private final CurrentUser currentUser;
 
     public List<ListGroupResponse> getGroups() {
-        return listGroupRepository.findByUserId(currentUser.id(), GROUP_SORT).stream()
+        return listGroupRepository.findByUserIdOrderBySortOrderAscIdAsc(currentUser.id()).stream()
                 .map(ListGroupResponse::from)
                 .toList();
     }
@@ -43,7 +40,6 @@ public class ListGroupService {
     public ListGroupResponse renameGroup(Long id, String name) {
         ListGroup group = ownedGroup(id);
         group.rename(name);
-        listGroupRepository.flush();
         return ListGroupResponse.from(group);
     }
 

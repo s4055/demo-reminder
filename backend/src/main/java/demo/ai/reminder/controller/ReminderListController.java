@@ -48,13 +48,15 @@ public class ReminderListController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<ReminderListResponse> updateList(@PathVariable Long id, @Valid @RequestBody ReminderListUpdateRequest request) {
-        return ApiResponse.success(reminderListService.updateList(id, request));
+    public ApiResponse<Void> updateList(@PathVariable Long id, @Valid @RequestBody ReminderListUpdateRequest request) {
+        reminderListService.updateList(id, request);
+        return ApiResponse.success();
     }
 
     @PatchMapping("/{id}/group")
-    public ApiResponse<ReminderListResponse> changeGroup(@PathVariable Long id, @Valid @RequestBody ListGroupAssignRequest request) {
-        return ApiResponse.success(reminderListService.changeGroup(id, request.groupId()));
+    public ApiResponse<Void> changeGroup(@PathVariable Long id, @Valid @RequestBody ListGroupAssignRequest request) {
+        reminderListService.changeGroup(id, request.groupId());
+        return ApiResponse.success();
     }
 
     @DeleteMapping("/{id}")

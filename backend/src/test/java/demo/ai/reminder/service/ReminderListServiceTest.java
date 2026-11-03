@@ -112,12 +112,18 @@ class ReminderListServiceTest {
         LocalDateTime updatedAt = backdateUpdatedAt(saved.getId());
         LocalDateTime createdAt = reminderListRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
 
-        ReminderListResponse response = reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", null, null, 0L));
+        reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", null, null, 0L));
+        entityManager.flush();
 
         ReminderList result = reminderListRepository.findById(saved.getId()).orElseThrow();
         assertThat(result.getCreatedAt()).isEqualTo(createdAt);
         assertThat(result.getUpdatedAt()).isAfter(updatedAt);
-        assertThat(response.updatedAt()).isEqualTo(result.getUpdatedAt());
+    }
+
+    private ReminderListResponse listed(Long id) {
+        return reminderListService.getLists().stream()
+                .filter(list -> list.id().equals(id))
+                .findFirst().orElseThrow();
     }
 
     private LocalDateTime backdateUpdatedAt(Long listId) {
@@ -136,8 +142,9 @@ class ReminderListServiceTest {
         ReminderList saved = reminderListRepository.save(new ReminderList(owner, "장보기", "#FF9500", null, 0));
         reminderRepository.save(new Reminder(owner, "우유 사기", null, saved, null, null, null));
 
-        ReminderListResponse result = reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", "#007AFF", null, 0L));
+        reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", "#007AFF", null, 0L));
 
+        ReminderListResponse result = listed(saved.getId());
         assertThat(result.name()).isEqualTo("업무");
         assertThat(result.color()).isEqualTo("#007AFF");
         assertThat(result.reminderCount()).isEqualTo(1L);
@@ -150,15 +157,14 @@ class ReminderListServiceTest {
                 new ReminderListRequest("장보기", "#FF9500", "shopping-cart"));
         assertThat(created.icon()).isEqualTo("shopping-cart");
 
-        ReminderListResponse updated = reminderListService.updateList(created.id(),
+        reminderListService.updateList(created.id(),
                 new ReminderListUpdateRequest("장보기", "#FF9500", "gift", 0L));
+        ReminderListResponse updated = listed(created.id());
         assertThat(updated.icon()).isEqualTo("gift");
-        assertThat(reminderListService.getLists()).filteredOn(list -> list.id().equals(created.id()))
-                .singleElement().extracting(ReminderListResponse::icon).isEqualTo("gift");
 
-        ReminderListResponse cleared = reminderListService.updateList(created.id(),
+        reminderListService.updateList(created.id(),
                 new ReminderListUpdateRequest("장보기", "#FF9500", null, updated.version()));
-        assertThat(cleared.icon()).isNull();
+        assertThat(listed(created.id()).icon()).isNull();
     }
 
     @Test
@@ -228,13 +234,13 @@ class ReminderListServiceTest {
                 .filteredOn(list -> list.id().equals(home.getId()))
                 .extracting(ReminderListResponse::reminderCount)
                 .containsExactly(2L);
-        assertThat(reminderListService.updateList(home.getId(), new ReminderListUpdateRequest("우리 집", null, null, 0L)).reminderCount())
-                .isEqualTo(2L);
+        reminderListService.updateList(home.getId(), new ReminderListUpdateRequest("우리 집", null, null, 0L));
+        assertThat(listed(home.getId()).reminderCount()).isEqualTo(2L);
     }
 
     @Test
-    @DisplayName("공유된 리스트를 수정한 응답의 리마인더 개수, 역할, 멤버 수는 리스트 목록과 같다")
-    void updateList_returnsSameCountsAndRoleAsGetLists() {
+    @DisplayName("공유된 리스트를 수정해도 리스트 목록의 리마인더 개수, 역할, 멤버 수는 유지된다")
+    void updateList_keepsCountsAndRoleInGetLists() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         home.addMember(userRepository.save(new User("editor@example.com", "password", "편집자")));
         reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null));
@@ -243,15 +249,12 @@ class ReminderListServiceTest {
         entityManager.flush();
         entityManager.clear();
 
-        ReminderListResponse updated = reminderListService.updateList(home.getId(),
-                new ReminderListUpdateRequest("우리 집", null, null, 0L));
-        ReminderListResponse listed = reminderListService.getLists().stream()
-                .filter(list -> list.id().equals(home.getId()))
-                .findFirst().orElseThrow();
+        reminderListService.updateList(home.getId(), new ReminderListUpdateRequest("우리 집", null, null, 0L));
 
-        assertThat(updated.reminderCount()).isEqualTo(1L).isEqualTo(listed.reminderCount());
-        assertThat(updated.memberCount()).isEqualTo(2L).isEqualTo(listed.memberCount());
-        assertThat(updated.role()).isEqualTo(ListRole.OWNER).isEqualTo(listed.role());
+        ReminderListResponse result = listed(home.getId());
+        assertThat(result.reminderCount()).isEqualTo(1L);
+        assertThat(result.memberCount()).isEqualTo(2L);
+        assertThat(result.role()).isEqualTo(ListRole.OWNER);
     }
 
     @Test
