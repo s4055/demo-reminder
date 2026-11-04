@@ -21,6 +21,10 @@ class ListAccess {
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "List not found: " + listId));
     }
 
+    void verifyMember(Long listId) {
+        membership(listId);
+    }
+
     ReminderList memberList(Long listId) {
         return membership(listId).getList();
     }
