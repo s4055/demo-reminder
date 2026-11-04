@@ -53,8 +53,6 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
             """ + ACCESSIBLE)
     List<Reminder> searchAccessible(Long userId, String pattern);
 
-    List<Reminder> findByReminderTagsTagId(Long tagId);
-
     List<Reminder> findByListAndParentIsNull(ReminderList list, Sort sort);
 
     void deleteAllByList(ReminderList list);

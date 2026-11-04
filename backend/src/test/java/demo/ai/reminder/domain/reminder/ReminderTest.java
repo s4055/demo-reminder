@@ -279,19 +279,6 @@ class ReminderTest {
     }
 
     @Test
-    @DisplayName("removeTag를 호출하면 해당 태그만 떨어진다")
-    void removeTag_removesOnlyGivenTag() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
-        Tag home = new Tag(owner, "집");
-        Tag errand = new Tag(owner, "심부름");
-        reminder.replaceTags(List.of(home, errand));
-
-        reminder.removeTag(home);
-
-        assertThat(reminder.getTags()).containsExactly(errand);
-    }
-
-    @Test
     @DisplayName("getTags로 받은 태그 목록은 직접 수정할 수 없다")
     void getTags_isUnmodifiable() {
         Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);

@@ -146,10 +146,6 @@ public class Reminder extends BaseTimeEntity {
         tags.forEach(this::addTag);
     }
 
-    public void removeTag(Tag tag) {
-        reminderTags.removeIf(reminderTag -> reminderTag.isFor(tag));
-    }
-
     public Set<Tag> getTags() {
         return reminderTags.stream()
                 .map(ReminderTag::getTag)
