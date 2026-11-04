@@ -14,7 +14,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -55,7 +54,6 @@ public class ReminderList extends BaseTimeEntity {
 
     @OptimisticLock(excluded = true)
     @OneToMany(mappedBy = "list", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("id ASC")
     private List<ListMember> members = new ArrayList<>();
 
     @Version

@@ -26,7 +26,8 @@ public class ListMemberService {
     private final CurrentUser currentUser;
 
     public List<ListMemberResponse> getMembers(Long listId) {
-        return listAccess.memberList(listId).getMembers().stream()
+        listAccess.verifyMember(listId);
+        return listMemberRepository.findByListIdOrderByIdAsc(listId).stream()
                 .map(ListMemberResponse::from)
                 .toList();
     }

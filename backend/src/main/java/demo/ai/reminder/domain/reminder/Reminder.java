@@ -96,7 +96,6 @@ public class Reminder extends BaseTimeEntity {
 
     @Getter(AccessLevel.NONE)
     @OneToMany(mappedBy = "reminder", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("id ASC")
     @BatchSize(size = 100)
     private List<ReminderTag> reminderTags = new ArrayList<>();
 
