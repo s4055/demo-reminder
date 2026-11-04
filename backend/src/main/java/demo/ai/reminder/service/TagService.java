@@ -4,7 +4,7 @@ import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.tag.Tag;
 import demo.ai.reminder.dto.response.TagResponse;
-import demo.ai.reminder.repository.ReminderRepository;
+import demo.ai.reminder.repository.ReminderTagRepository;
 import demo.ai.reminder.repository.TagRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class TagService {
 
     private final TagRepository tagRepository;
-    private final ReminderRepository reminderRepository;
+    private final ReminderTagRepository reminderTagRepository;
     private final CurrentUser currentUser;
 
     public List<TagResponse> getTags() {
@@ -51,8 +51,7 @@ public class TagService {
     public void deleteTag(Long id) {
         Tag tag = tagRepository.findByIdAndUserId(id, currentUser.id())
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "Tag not found: " + id));
-        reminderRepository.findByReminderTagsTagId(id).forEach(reminder -> reminder.removeTag(tag));
-        reminderRepository.flush();
+        reminderTagRepository.deleteByTag_Id(id);
         tagRepository.delete(tag);
     }
 }
