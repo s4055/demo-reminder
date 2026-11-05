@@ -43,9 +43,6 @@ class FixedClockReminderTest {
     private ReminderService reminderService;
 
     @Autowired
-    private ReminderQueryService reminderQueryService;
-
-    @Autowired
     private ReminderRepository reminderRepository;
 
     @Autowired
@@ -66,7 +63,7 @@ class FixedClockReminderTest {
         saveDueAt("오늘 마지막", LocalDateTime.of(2026, 10, 28, 23, 59, 59));
         saveDueAt("내일 자정", LocalDateTime.of(2026, 10, 29, 0, 0));
 
-        assertThat(reminderQueryService.getSmartReminders(SmartView.TODAY))
+        assertThat(reminderService.getSmartReminders(SmartView.TODAY))
                 .extracting(ReminderResponse::title)
                 .containsExactly("오늘 자정", "오늘 마지막");
     }

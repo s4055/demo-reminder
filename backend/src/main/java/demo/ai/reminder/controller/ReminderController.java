@@ -7,7 +7,6 @@ import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
-import demo.ai.reminder.service.ReminderQueryService;
 import demo.ai.reminder.service.ReminderService;
 import demo.ai.reminder.service.SmartView;
 import jakarta.validation.Valid;
@@ -39,31 +38,30 @@ public class ReminderController {
     static final int SEARCH_QUERY_MAX_LENGTH = 100;
 
     private final ReminderService reminderService;
-    private final ReminderQueryService reminderQueryService;
 
     @GetMapping
     public ApiResponse<List<ReminderResponse>> getReminders(
             @RequestParam(required = false) Long listId,
             @RequestParam(required = false) String tag) {
-        return ApiResponse.success(reminderQueryService.getReminders(listId, tag == null ? null : tag.strip()));
+        return ApiResponse.success(reminderService.getReminders(listId, tag == null ? null : tag.strip()));
     }
 
     @GetMapping("/smart/{view}")
     public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable SmartView view) {
-        return ApiResponse.success(reminderQueryService.getSmartReminders(view));
+        return ApiResponse.success(reminderService.getSmartReminders(view));
     }
 
     @GetMapping("/search")
     public ApiResponse<List<ReminderResponse>> searchReminders(
             @RequestParam @NotBlank @Size(max = SEARCH_QUERY_MAX_LENGTH) String q) {
-        return ApiResponse.success(reminderQueryService.searchReminders(q.strip()));
+        return ApiResponse.success(reminderService.searchReminders(q.strip()));
     }
 
     @GetMapping("/upcoming")
     public ApiResponse<List<ReminderResponse>> getUpcomingReminders(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        return ApiResponse.success(reminderQueryService.getUpcomingReminders(from, to));
+        return ApiResponse.success(reminderService.getUpcomingReminders(from, to));
     }
 
     @PostMapping
