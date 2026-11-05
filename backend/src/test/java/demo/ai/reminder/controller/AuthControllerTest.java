@@ -1,6 +1,6 @@
 package demo.ai.reminder.controller;
 
-import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.repository.user.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

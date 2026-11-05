@@ -8,7 +8,7 @@ import demo.ai.reminder.domain.reminder.Reminder;
 import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
-import demo.ai.reminder.repository.ReminderRepository;
+import demo.ai.reminder.repository.reminder.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -26,10 +26,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ReminderService {
 
-    private static final Sort DEFAULT_SORT = Sort.by("id");
     private static final Sort LIST_SORT = Sort.by("sortOrder", "id");
-    private static final Sort DUE_DATE_SORT = Sort.by("dueAt", "id");
-    private static final Sort COMPLETED_SORT = Sort.by(Sort.Order.desc("completedAt"), Sort.Order.desc("id"));
     private static final Comparator<Reminder> SEARCH_ORDER = Comparator
             .comparing(Reminder::isCompleted)
             .thenComparing(reminder -> reminder.isCompleted() ? null : reminder.getDueAt(),
@@ -50,9 +47,9 @@ public class ReminderService {
             return toResponses(reminderRepository.findByListAndParentIsNull(list, LIST_SORT));
         }
         if (tag != null) {
-            return toResponses(reminderRepository.findAccessibleByTagName(currentUser.id(), tag, DEFAULT_SORT));
+            return toResponses(reminderRepository.findAccessibleByTagName(currentUser.id(), tag));
         }
-        return toResponses(reminderRepository.findAccessible(currentUser.id(), DEFAULT_SORT));
+        return toResponses(reminderRepository.findAccessible(currentUser.id()));
     }
 
     public List<ReminderResponse> getSmartReminders(SmartView view) {
@@ -60,12 +57,12 @@ public class ReminderService {
             case TODAY -> {
                 LocalDate today = LocalDate.now(clock);
                 yield reminderRepository.findAccessibleIncompleteDueBetween(
-                        currentUser.id(), today.atStartOfDay(), today.plusDays(1).atStartOfDay(), DUE_DATE_SORT);
+                        currentUser.id(), today.atStartOfDay(), today.plusDays(1).atStartOfDay());
             }
-            case SCHEDULED -> reminderRepository.findAccessibleIncompleteWithDueAt(currentUser.id(), DUE_DATE_SORT);
-            case ALL -> reminderRepository.findAccessibleIncomplete(currentUser.id(), DEFAULT_SORT);
-            case FLAGGED -> reminderRepository.findAccessibleIncompleteFlagged(currentUser.id(), DEFAULT_SORT);
-            case COMPLETED -> reminderRepository.findAccessibleCompleted(currentUser.id(), COMPLETED_SORT);
+            case SCHEDULED -> reminderRepository.findAccessibleIncompleteWithDueAt(currentUser.id());
+            case ALL -> reminderRepository.findAccessibleIncomplete(currentUser.id());
+            case FLAGGED -> reminderRepository.findAccessibleIncompleteFlagged(currentUser.id());
+            case COMPLETED -> reminderRepository.findAccessibleCompleted(currentUser.id());
         });
     }
 
@@ -81,8 +78,7 @@ public class ReminderService {
         if (!from.isBefore(to)) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "from must be before to: from=" + from + ", to=" + to);
         }
-        return toResponses(reminderRepository.findAccessibleIncompleteDueBetween(
-                currentUser.id(), from, to, DUE_DATE_SORT));
+        return toResponses(reminderRepository.findAccessibleIncompleteDueBetween(currentUser.id(), from, to));
     }
 
     @Transactional

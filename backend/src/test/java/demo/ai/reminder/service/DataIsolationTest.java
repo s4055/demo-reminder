@@ -10,7 +10,7 @@ import demo.ai.reminder.dto.response.ReminderListResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.dto.response.TagResponse;
 import demo.ai.reminder.exception.BusinessException;
-import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.support.TestAuth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

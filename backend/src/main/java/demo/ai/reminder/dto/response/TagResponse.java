@@ -1,6 +1,6 @@
 package demo.ai.reminder.dto.response;
 
-import demo.ai.reminder.repository.TagSummary;
+import demo.ai.reminder.repository.tag.TagSummary;
 
 import java.time.LocalDateTime;
 

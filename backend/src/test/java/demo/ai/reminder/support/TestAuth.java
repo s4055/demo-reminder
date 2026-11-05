@@ -1,7 +1,7 @@
 package demo.ai.reminder.support;
 
 import demo.ai.reminder.domain.user.User;
-import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.security.LoginUser;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.test.context.TestSecurityContextHolder;
