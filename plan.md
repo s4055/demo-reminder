@@ -660,6 +660,83 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 
 ---
 
+# v6 — JWT 인증 (spec.md 14번)
+
+### 공통 원칙 (Phase 27~29)
+- 인증 방식 외의 기능과 API 동작은 바꾸지 않는다.
+- 토큰 원문은 DB와 로그에 남기지 않는다.
+- 권한은 토큰에 담지 않고 지금처럼 요청마다 DB의 멤버 정보로 확인한다. 토큰에는 사용자 ID만 담는다.
+- 서버와 프론트엔드가 함께 바뀌어야 동작하는 전환은 한 Phase에서 끝낸다.
+- 학습 목적에 맞게 토큰 검증 흐름이 코드로 드러나도록 JJWT와 직접 만든 인증 필터로 구현한다.
+
+---
+
+## Phase 27 — 토큰 발급·검증 기반
+**목표**: 기존 세션 인증을 유지한 채 토큰 발급과 검증에 필요한 부품을 만든다.
+
+### 백엔드
+- JJWT 의존성을 추가한다
+- `app.jwt` 설정(서명 키, 액세스/리프레시 수명, 쿠키 `secure`)을 `@ConfigurationProperties`로 받고, 서명 키가 32바이트 미만이면 시작 시 실패시킨다
+- 서명 키는 `application.yml`에 로컬 전용 기본값을 두고, 운영에서는 `JWT_SECRET` 환경 변수로 주입한다
+- 액세스 토큰을 발급하고 검증하는 `JwtProvider`를 만든다 (`sub`=사용자 ID, 시각은 주입한 `Clock` 기준)
+- `RefreshToken` 엔티티와 도메인 메서드(`rotate`, `revoke`, 만료/폐기 판단)를 만든다
+- `RefreshTokenRepository`를 `repository.user`에 추가한다
+- 발급, 회전, 폐기를 담당하는 `RefreshTokenService`를 만든다 (무작위 토큰 생성, SHA-256 해시 저장, 동시 회전은 `@Version`으로 감지)
+
+### 완료 기준
+- 만료, 위조, 형식 오류 토큰이 검증에서 거부되는 테스트가 있다.
+- 리프레시 토큰 원문이 DB에 저장되지 않는 테스트가 있다.
+- 기존 세션 로그인과 전체 테스트가 그대로 통과한다.
+
+---
+
+## Phase 28 — 세션에서 JWT로 전환
+**목표**: 백엔드와 프론트엔드의 인증을 JWT로 함께 전환한다.
+
+### 백엔드
+- Bearer 토큰으로 인증 정보를 설정하는 `JwtAuthenticationFilter`를 추가한다. 토큰이 유효하지 않으면 인증 없이 통과시켜 기존 `ApiAuthenticationEntryPoint`가 401을 반환하게 한다
+- `SecurityConfig`를 `SessionCreationPolicy.STATELESS`로 바꾸고 `/api/auth/refresh`를 허용한다
+- 필터는 DB 조회 없이 토큰의 사용자 ID로 인증 정보를 만들고, `CurrentUser` 호출부는 바꾸지 않는다
+- `LoginSession`, `SecurityContextRepository`, `LogoutHandler` 빈을 제거한다
+- 로그인, 회원가입, 재발급은 `AuthResponse(accessToken, user)`를 반환하고 리프레시 토큰 쿠키(`HttpOnly`, `SameSite=Lax`, `Path=/api/auth`)를 설정한다
+- `POST /api/auth/refresh`를 추가하고 `logout`을 토큰 폐기와 쿠키 삭제로 바꾼다
+- `HttpLoggingFilter`에서 응답 본문의 `accessToken`을 마스킹하고, 세션 로그를 제거한다
+- `backend/openapi.yml`의 인증 설명과 `securitySchemes`, 인증 API를 갱신한다
+- `SessionCookieTest`를 리프레시 쿠키 검증으로 교체하고 인증 관련 테스트를 갱신한다
+
+### 프론트엔드
+- `api.ts`가 메모리의 액세스 토큰을 `Authorization` 헤더로 보낸다. 리프레시 쿠키 때문에 `credentials: "include"`는 유지하고, 이를 설명하는 기존 주석은 리프레시 쿠키 기준으로 내용만 고친다
+- 앱 시작 시 `/api/auth/refresh`로 로그인 상태를 복원한다
+- 401 응답 시 한 번만 재발급하고 원래 요청을 다시 보낸다. 재발급이 실패하면 기존 `unauthorizedHandler`를 호출한다 (`login`, `signup`, `refresh`, `logout`은 재시도 제외)
+- 동시에 발생한 401은 재발급 한 번을 공유하고, 탭 간에는 Web Locks API로 재발급을 순서대로 처리한다
+- `auth-api.ts`의 응답 타입과 로그인/로그아웃 처리를 갱신한다
+
+### 완료 기준
+- 로그인 후 `JSESSIONID` 쿠키가 없고, 리프레시 쿠키에 `HttpOnly`가 설정되어 있다.
+- 액세스 토큰 수명을 짧게 설정해 실행했을 때 작업 중 로그아웃되지 않는다.
+- 새로고침과 여러 탭에서 로그인이 유지된다.
+- 로그인과 재발급 응답 로그에 토큰 값이 없다.
+- `/h2-console`이 계속 동작한다.
+
+---
+
+## Phase 29 — 재사용 감지·정리
+**목표**: 리프레시 토큰 탈취에 대응하고 만료 토큰이 쌓이지 않게 한 뒤 문서를 마무리한다.
+
+### 백엔드
+- 폐기된 리프레시 토큰이 다시 사용되면 해당 사용자의 리프레시 토큰을 모두 폐기하고 401을 반환한다. 동시 회전 충돌도 401로 처리한다
+- 로그인 시 해당 사용자의 만료된 리프레시 토큰을 삭제한다
+
+### 문서
+- `CLAUDE.md`의 인증/세션 관례를 토큰 기준으로 바꾼다 (`LoginSession` 언급 제거)
+- `README.md`의 세션 쿠키 설명을 갱신한다
+
+### 완료 기준
+- 교체 전 토큰으로 재발급하면 401이 되고, 최신 토큰도 함께 무효가 되는 테스트가 있다.
+- 로그인 후 해당 사용자의 만료 토큰이 삭제되는 테스트가 있다.
+
+---
+
 ## 참고
 - 각 Phase는 이전 Phase 위에서 빌드/실행 가능한 상태를 유지하며 순차 진행한다.
 - spec.md 3번의 Out-of-Scope 중 10번에 포함되지 않은 항목(자연어 날짜 입력, 첨부파일, 위치 기반 리마인더)과 Web Push, 실시간(WebSocket) 동기화는 이 계획 범위 밖이며 필요 시 별도 논의한다.
