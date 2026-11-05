@@ -1,4 +1,4 @@
-package demo.ai.reminder.repository;
+package demo.ai.reminder.repository.reminder;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;

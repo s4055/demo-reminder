@@ -2,8 +2,8 @@ package demo.ai.reminder.controller;
 
 import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.domain.user.User;
-import demo.ai.reminder.repository.ReminderListRepository;
-import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.repository.list.ReminderListRepository;
+import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;

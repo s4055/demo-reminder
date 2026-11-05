@@ -1,4 +1,4 @@
-package demo.ai.reminder.repository;
+package demo.ai.reminder.repository.tag;
 
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.JPAExpressions;

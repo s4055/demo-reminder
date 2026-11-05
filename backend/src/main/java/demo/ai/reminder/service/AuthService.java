@@ -5,7 +5,7 @@ import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.response.UserResponse;
-import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;

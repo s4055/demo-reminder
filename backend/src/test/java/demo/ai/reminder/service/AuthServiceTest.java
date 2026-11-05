@@ -5,7 +5,7 @@ import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.request.SignupRequest;
 import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.exception.BusinessException;
-import demo.ai.reminder.repository.UserRepository;
+import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.security.LoginUser;
 import demo.ai.reminder.support.TestAuth;
 import org.junit.jupiter.api.DisplayName;

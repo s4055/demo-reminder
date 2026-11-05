@@ -2,7 +2,7 @@ package demo.ai.reminder.dto.response;
 
 import demo.ai.reminder.domain.list.ListRole;
 import demo.ai.reminder.domain.list.ReminderList;
-import demo.ai.reminder.repository.ReminderListSummary;
+import demo.ai.reminder.repository.list.ReminderListSummary;
 
 import java.time.LocalDateTime;
 

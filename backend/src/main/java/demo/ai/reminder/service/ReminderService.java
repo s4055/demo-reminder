@@ -8,7 +8,7 @@ import demo.ai.reminder.domain.reminder.Reminder;
 import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
-import demo.ai.reminder.repository.ReminderRepository;
+import demo.ai.reminder.repository.reminder.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;

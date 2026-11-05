@@ -1,4 +1,4 @@
-package demo.ai.reminder.repository;
+package demo.ai.reminder.repository.tag;
 
 import demo.ai.reminder.domain.tag.Tag;
 import org.springframework.data.jpa.repository.JpaRepository;
