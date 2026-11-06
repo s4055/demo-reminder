@@ -3,6 +3,7 @@ package demo.ai.reminder.service;
 import demo.ai.reminder.dto.request.LoginRequest;
 import demo.ai.reminder.dto.request.SignupRequest;
 import demo.ai.reminder.exception.BusinessException;
+import demo.ai.reminder.exception.RefreshTokenReuseException;
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.response.UserResponse;
@@ -44,10 +45,11 @@ public class AuthService {
     @Transactional
     public AuthTokens login(LoginRequest request) {
         Long userId = authenticate(request.email(), request.password());
+        refreshTokenService.deleteExpired(userId);
         return issueTokens(loadUser(userId), refreshTokenService.issue(userId));
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = RefreshTokenReuseException.class)
     public AuthTokens refresh(String refreshToken) {
         IssuedRefreshToken rotated = refreshTokenService.rotate(refreshToken);
         return issueTokens(loadUser(rotated.userId()), rotated);

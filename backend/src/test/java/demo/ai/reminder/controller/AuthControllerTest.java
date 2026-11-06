@@ -229,6 +229,22 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("교체 전 리프레시 쿠키로 재발급하면 401이고, 최신 리프레시 쿠키도 무효가 된다")
+    void refresh_withReusedCookie_returnsUnauthorized_andInvalidatesLatestCookie() throws Exception {
+        Tokens signedUp = signup("alice@example.com", "password1", "앨리스");
+        Tokens latest = tokensOf(mockMvc.perform(post("/api/auth/refresh").cookie(signedUp.refreshCookie()))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        mockMvc.perform(post("/api/auth/refresh").cookie(signedUp.refreshCookie()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.resultCode").value("UNAUTHORIZED"));
+
+        mockMvc.perform(post("/api/auth/refresh").cookie(latest.refreshCookie()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("리프레시 쿠키로 재발급하면 새 액세스 토큰과 사용자 정보를 반환하고 쿠키를 교체한다")
     void refresh_returnsNewAccessToken_andRotatesCookie() throws Exception {
         Tokens signedUp = signup("alice@example.com", "password1", "앨리스");

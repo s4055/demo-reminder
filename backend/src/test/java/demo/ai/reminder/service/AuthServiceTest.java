@@ -1,6 +1,7 @@
 package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.user.RefreshToken;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.request.LoginRequest;
 import demo.ai.reminder.dto.request.SignupRequest;
@@ -18,6 +19,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -121,6 +124,24 @@ class AuthServiceTest {
         assertThat(tokens.user().email()).isEqualTo("alice@example.com");
         assertThat(jwtProvider.verifyAccessToken(tokens.accessToken())).contains(aliceId);
         assertThat(tokens.toString()).doesNotContain(tokens.accessToken(), tokens.refreshToken());
+    }
+
+    @Test
+    @DisplayName("로그인하면 그 사용자의 만료된 리프레시 토큰을 삭제하고 유효한 토큰은 남긴다")
+    void login_deletesExpiredRefreshTokensOfUser() {
+        AuthTokens signedUp = signupAlice();
+        User alice = userRepository.findById(signedUp.user().id()).orElseThrow();
+        User bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
+        LocalDateTime past = LocalDateTime.now().minusMinutes(1);
+        RefreshToken aliceExpired = refreshTokenRepository.save(new RefreshToken(alice, "alice-expired", past));
+        RefreshToken bobExpired = refreshTokenRepository.save(new RefreshToken(bob, "bob-expired", past));
+
+        authService.login(new LoginRequest("alice@example.com", "password1"));
+
+        assertThat(refreshTokenRepository.findById(aliceExpired.getId())).isEmpty();
+        assertThat(refreshTokenRepository.findById(bobExpired.getId())).isPresent();
+        assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(alice.getId())).hasSize(2);
+        assertThat(authService.refresh(signedUp.refreshToken()).user().id()).isEqualTo(alice.getId());
     }
 
     @Test

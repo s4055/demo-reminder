@@ -4,6 +4,7 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.RefreshToken;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.exception.BusinessException;
+import demo.ai.reminder.exception.RefreshTokenReuseException;
 import demo.ai.reminder.repository.user.RefreshTokenRepository;
 import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.security.JwtProperties;
@@ -156,6 +157,73 @@ class RefreshTokenServiceTest {
         refreshTokenService.rotate(original);
 
         assertUnauthorized(() -> refreshTokenService.rotate(original));
+    }
+
+    @Test
+    @DisplayName("교체된 토큰을 다시 쓰면 재사용으로 보고 그 사용자의 리프레시 토큰을 모두 폐기한다")
+    void rotate_revokesAllTokensOfUser_whenRotatedTokenIsReused() throws Exception {
+        String original = refreshTokenService.issue(alice.getId()).token();
+        String latest = refreshTokenService.rotate(original).token();
+        String otherDevice = refreshTokenService.issue(alice.getId()).token();
+        User bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
+        String bobToken = refreshTokenService.issue(bob.getId()).token();
+        clock.advance(Duration.ofMinutes(5));
+
+        assertThatThrownBy(() -> refreshTokenService.rotate(original))
+                .isInstanceOf(RefreshTokenReuseException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.UNAUTHORIZED);
+
+        assertThat(stored(latest).getRevokedAt()).isEqualTo(NOW.plusMinutes(5));
+        assertThat(stored(otherDevice).getRevokedAt()).isEqualTo(NOW.plusMinutes(5));
+        assertThat(stored(original).getRevokedAt()).isEqualTo(NOW);
+        assertThat(stored(bobToken).isRevoked()).isFalse();
+        assertUnauthorized(() -> refreshTokenService.rotate(latest));
+    }
+
+    @Test
+    @DisplayName("로그아웃으로 폐기한 토큰을 다시 써도 그 사용자의 리프레시 토큰을 모두 폐기한다")
+    void rotate_revokesAllTokensOfUser_whenLoggedOutTokenIsReused() throws Exception {
+        String loggedOut = refreshTokenService.issue(alice.getId()).token();
+        String otherDevice = refreshTokenService.issue(alice.getId()).token();
+        refreshTokenService.revoke(loggedOut);
+
+        assertThatThrownBy(() -> refreshTokenService.rotate(loggedOut))
+                .isInstanceOf(RefreshTokenReuseException.class);
+
+        assertThat(stored(otherDevice).isRevoked()).isTrue();
+    }
+
+    @Test
+    @DisplayName("만료되기만 한 토큰은 재사용으로 보지 않아 다른 토큰을 폐기하지 않는다")
+    void rotate_doesNotRevokeOthers_whenTokenIsOnlyExpired() throws Exception {
+        String expired = refreshTokenService.issue(alice.getId()).token();
+        clock.advance(Duration.ofDays(1));
+        String fresh = refreshTokenService.issue(alice.getId()).token();
+        clock.advance(jwtProperties.refreshTokenTtl().minusDays(1));
+
+        assertThatThrownBy(() -> refreshTokenService.rotate(expired))
+                .isInstanceOf(BusinessException.class)
+                .isNotInstanceOf(RefreshTokenReuseException.class);
+
+        assertThat(stored(fresh).isRevoked()).isFalse();
+    }
+
+    @Test
+    @DisplayName("만료 토큰 삭제는 해당 사용자의 만료 시각이 지난 토큰만 지운다")
+    void deleteExpired_removesOnlyExpiredTokensOfUser() throws Exception {
+        String expired = refreshTokenService.issue(alice.getId()).token();
+        User bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
+        String bobExpired = refreshTokenService.issue(bob.getId()).token();
+        clock.advance(Duration.ofHours(1));
+        String valid = refreshTokenService.issue(alice.getId()).token();
+        clock.advance(jwtProperties.refreshTokenTtl().minusHours(1));
+
+        long deleted = refreshTokenService.deleteExpired(alice.getId());
+
+        assertThat(deleted).isEqualTo(1);
+        assertThat(refreshTokenRepository.findByTokenHash(sha256Hex(expired))).isEmpty();
+        assertThat(refreshTokenRepository.findByTokenHash(sha256Hex(valid))).isPresent();
+        assertThat(refreshTokenRepository.findByTokenHash(sha256Hex(bobExpired))).isPresent();
     }
 
     @Test
