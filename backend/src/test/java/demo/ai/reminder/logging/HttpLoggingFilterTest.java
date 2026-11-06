@@ -1,9 +1,12 @@
 package demo.ai.reminder.logging;
 
+import com.jayway.jsonpath.JsonPath;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.repository.user.UserRepository;
+import demo.ai.reminder.security.RefreshTokenCookie;
 import demo.ai.reminder.support.TestAuth;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,10 +22,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockHttpSession;
-import org.springframework.security.test.context.TestSecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -77,54 +78,24 @@ class HttpLoggingFilterTest {
     }
 
     @Test
-    @DisplayName("요청 헤더와 세션은 [Request] 다음에 [Header], [Session] 로그로 따로 남기고 응답 로그에는 남기지 않는다")
-    void logsHeaderAndSessionAsSeparateLinesAfterRequest(CapturedOutput output) throws Exception {
+    @DisplayName("요청 헤더는 [Request] 다음에 [Header] 로그로 따로 남기고, 세션 로그는 남기지 않는다")
+    void logsHeaderAsSeparateLineAfterRequest_withoutSessionLog(CapturedOutput output) throws Exception {
         mockMvc.perform(get("/api/lists").header("X-Client-Version", "1.2.0"))
                 .andExpect(status().isOk());
 
         String log = output.getOut();
         int requestLog = log.indexOf("- [Request] GET /api/lists body=");
         int headerLog = log.indexOf("- [Header] [", requestLog);
-        int sessionLog = log.indexOf("- [Session] ", headerLog);
-        int responseLog = log.indexOf("- [Response] status=200 body=", sessionLog);
+        int responseLog = log.indexOf("- [Response] status=200 body=", headerLog);
         assertThat(requestLog).isNotNegative();
         assertThat(headerLog).isGreaterThan(requestLog);
-        assertThat(sessionLog).isGreaterThan(headerLog);
-        assertThat(responseLog).isGreaterThan(sessionLog);
+        assertThat(responseLog).isGreaterThan(headerLog);
         assertThat(output).containsPattern("\\[Header] \\[[^]]*X-Client-Version=1\\.2\\.0]");
+        assertThat(output).doesNotContain("[Session]");
 
-        List<String> requestIds = requestIdsOf(output, "[Request]", "[Header]", "[Session]", "[Response]");
-        assertThat(requestIds).hasSize(4);
+        List<String> requestIds = requestIdsOf(output, "[Request]", "[Header]", "[Response]");
+        assertThat(requestIds).hasSize(3);
         assertThat(requestIds).containsOnly(requestIds.get(0));
-    }
-
-    @Test
-    @DisplayName("세션이 있으면 세션 ID 대신 지문과 속성 이름만 남기고, 없으면 none을 남긴다")
-    void logsSessionFingerprintAndAttributeNamesOnly(CapturedOutput output) throws Exception {
-        MockHttpSession session = new MockHttpSession(null, "raw-session-id-123");
-        session.setAttribute("loginUser", "tester");
-        session.setAttribute("theme", "dark");
-
-        mockMvc.perform(get("/api/lists").session(session)).andExpect(status().isOk());
-        TestSecurityContextHolder.clearContext();
-        mockMvc.perform(get("/api/lists")).andExpect(status().isUnauthorized());
-
-        String fingerprint = HttpLoggingFilter.sessionFingerprint("raw-session-id-123");
-        assertThat(output).containsPattern("\\[Session] \\[id=" + fingerprint + ", attributes=\\[[^]]*loginUser");
-        assertThat(output).containsPattern("\\[Session] \\[id=" + fingerprint + ", attributes=\\[[^]]*theme");
-        assertThat(output).doesNotContain("raw-session-id-123", "tester", "dark");
-        assertThat(output).contains("[Session] none");
-    }
-
-    @Test
-    @DisplayName("세션 지문은 같은 세션 ID에 대해 항상 같고 원래 값을 드러내지 않는 12자리 16진수다")
-    void sessionFingerprint_isStableShortHexAndHidesSessionId() {
-        String fingerprint = HttpLoggingFilter.sessionFingerprint("ABC123");
-
-        assertThat(fingerprint).matches("[0-9a-f]{12}");
-        assertThat(fingerprint).isEqualTo(HttpLoggingFilter.sessionFingerprint("ABC123"));
-        assertThat(fingerprint).isNotEqualTo(HttpLoggingFilter.sessionFingerprint("ABC124"));
-        assertThat(fingerprint).doesNotContain("ABC123");
     }
 
     @Test
@@ -143,16 +114,24 @@ class HttpLoggingFilterTest {
     }
 
     @Test
-    @DisplayName("로그인 세션의 보안 컨텍스트 내용은 세션 로그에 남지 않는다")
-    void doesNotLogSecurityContextOfLoggedInSession(CapturedOutput output) throws Exception {
-        MockHttpSession session = new MockHttpSession(null, "logged-in-session-id");
-        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-                TestSecurityContextHolder.getContext());
+    @DisplayName("로그인과 재발급 응답의 액세스 토큰과 리프레시 토큰 값은 로그에 남지 않는다")
+    void doesNotLogTokensOfLoginAndRefresh(CapturedOutput output) throws Exception {
+        MvcResult login = mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"alice@example.com\",\"password\":\"password1\",\"name\":\"앨리스\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Cookie refreshCookie = login.getResponse().getCookie(RefreshTokenCookie.NAME);
+        MvcResult refresh = mockMvc.perform(post("/api/auth/refresh").cookie(refreshCookie))
+                .andExpect(status().isOk())
+                .andReturn();
 
-        mockMvc.perform(get("/api/lists").session(session)).andExpect(status().isOk());
-
-        assertThat(output).containsPattern("\\[Session] \\[id=[0-9a-f]{12}, attributes=\\[[^]]*SPRING_SECURITY_CONTEXT");
-        assertThat(output).doesNotContain("logged-in-session-id", "SecurityContextImpl");
+        for (MvcResult result : new MvcResult[]{login, refresh}) {
+            String accessToken = JsonPath.read(result.getResponse().getContentAsString(), "$.data.accessToken");
+            String refreshToken = result.getResponse().getCookie(RefreshTokenCookie.NAME).getValue();
+            assertThat(output).doesNotContain(accessToken, refreshToken);
+        }
+        assertThat(output).contains("\"accessToken\":\"****\"", "\"email\":\"alice@example.com\"");
     }
 
     @Test
@@ -168,10 +147,12 @@ class HttpLoggingFilterTest {
     }
 
     @Test
-    @DisplayName("JSON의 password 값만 가리고 다른 필드는 그대로 둔다")
-    void maskPassword_replacesOnlyPasswordValue() {
-        assertThat(HttpLoggingFilter.maskPassword("{\"name\":\"a\", \"password\" : \"x\\\"y\", \"memo\":\"password\"}"))
+    @DisplayName("JSON의 password와 accessToken 값만 가리고 다른 필드는 그대로 둔다")
+    void maskSecrets_replacesOnlyPasswordAndAccessTokenValues() {
+        assertThat(HttpLoggingFilter.maskSecrets("{\"name\":\"a\", \"password\" : \"x\\\"y\", \"memo\":\"password\"}"))
                 .isEqualTo("{\"name\":\"a\", \"password\" : \"****\", \"memo\":\"password\"}");
+        assertThat(HttpLoggingFilter.maskSecrets("{\"data\":{\"accessToken\":\"eyJ.abc.def\",\"user\":{\"id\":1}}}"))
+                .isEqualTo("{\"data\":{\"accessToken\":\"****\",\"user\":{\"id\":1}}}");
     }
 
     @Test

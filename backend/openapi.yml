@@ -7,9 +7,12 @@ info:
     모든 응답(성공/실패)은 `{ resultCode, resultMsg, data }` 형태다. 성공 시 `resultCode`는 `SUCCESS`이고 결과는 `data`에 담긴다.
     실패 시 HTTP 상태 코드와 함께 `resultCode`에 오류 종류, `resultMsg`에 원인이 담기며 `data`는 null이다.
 
-    **인증**: 세션(쿠키) 기반이다. `/api/auth/signup` 또는 `/api/auth/login`이 성공하면 `JSESSIONID` 쿠키가 발급되고,
-    이후 요청에 이 쿠키를 보내야 한다 (브라우저에서는 `credentials: "include"`). 회원가입/로그인/로그아웃을 제외한 모든 API는
-    로그인이 필요하며, 로그인하지 않으면 401(`UNAUTHORIZED`)로 응답한다.
+    **인증**: JWT 액세스 토큰과 리프레시 토큰 기반이며 서버 세션은 만들지 않는다. `/api/auth/signup`, `/api/auth/login`,
+    `/api/auth/refresh`가 성공하면 응답 `data`로 액세스 토큰(HS256, 수명 15분)을 반환하고, 리프레시 토큰(수명 14일)은
+    `refresh_token` 쿠키(`HttpOnly`, `SameSite=Lax`, `Path=/api/auth`)로 발급한다. 이후 요청은 `Authorization: Bearer <accessToken>`
+    헤더로 인증한다. 액세스 토큰이 만료되면 `/api/auth/refresh`로 새 토큰을 받는다 (브라우저에서는 쿠키 전송을 위해 `credentials: "include"`).
+    리프레시 토큰은 재발급할 때마다 교체되며 이전 토큰은 더 이상 쓸 수 없다. 회원가입/로그인/재발급/로그아웃을 제외한 모든 API는
+    유효한 액세스 토큰이 필요하며, 토큰이 없거나 만료·위조·형식 오류이면 401(`UNAUTHORIZED`)로 응답한다.
 
     **데이터 격리**: 리스트/리마인더/태그는 사용자별로 분리된다. 목록 조회는 로그인한 사용자의 데이터만 반환하고,
     다른 사용자의 리소스 id로 조회/수정/삭제하면 존재 여부를 드러내지 않도록 404(`NOT_FOUND`)로 응답한다.
@@ -30,11 +33,11 @@ servers:
     description: 로컬 개발 서버
 
 security:
-  - sessionCookie: []
+  - bearerAuth: []
 
 tags:
   - name: Auth
-    description: 회원가입/로그인/로그아웃, 현재 사용자 조회 (세션 쿠키 기반)
+    description: 회원가입/로그인/토큰 재발급/로그아웃, 현재 사용자 조회 (JWT 액세스 토큰 + 리프레시 토큰 쿠키)
   - name: Lists
     description: 리스트 조회/생성/수정/삭제
   - name: List Groups
@@ -53,7 +56,7 @@ paths:
       summary: 회원가입 (가입 즉시 로그인)
       description: |
         이메일은 앞뒤 공백을 지우고 소문자로 저장하므로 대소문자만 다른 이메일로는 다시 가입할 수 없다.
-        비밀번호는 BCrypt 해시로 저장한다. 가입에 성공하면 로그인된 세션의 `JSESSIONID` 쿠키를 발급한다.
+        비밀번호는 BCrypt 해시로 저장한다. 가입에 성공하면 액세스 토큰과 사용자 정보를 반환하고 리프레시 토큰 쿠키를 발급한다.
       operationId: signup
       security: []
       requestBody:
@@ -64,11 +67,14 @@ paths:
               $ref: "#/components/schemas/SignupRequest"
       responses:
         "201":
-          description: 가입한 사용자 (Set-Cookie로 세션 쿠키 발급)
+          description: 액세스 토큰과 가입한 사용자
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/RefreshTokenCookie"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserApiResponse"
+                $ref: "#/components/schemas/AuthApiResponse"
         "400":
           description: 유효성 검증 실패 (이메일 형식, 비밀번호 8자 미만 또는 72바이트 초과, 이름 누락 등)
           content:
@@ -86,7 +92,7 @@ paths:
     post:
       tags: [Auth]
       summary: 로그인
-      description: 성공하면 세션 ID를 새로 발급하고(세션 고정 방지) 로그인 정보를 세션에 저장한다. 이메일 대소문자는 구분하지 않는다.
+      description: 성공하면 액세스 토큰과 사용자 정보를 반환하고 리프레시 토큰 쿠키를 발급한다. 이메일 대소문자는 구분하지 않는다.
       operationId: login
       security: []
       requestBody:
@@ -97,11 +103,14 @@ paths:
               $ref: "#/components/schemas/LoginRequest"
       responses:
         "200":
-          description: 로그인한 사용자 (Set-Cookie로 세션 쿠키 발급)
+          description: 액세스 토큰과 로그인한 사용자
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/RefreshTokenCookie"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserApiResponse"
+                $ref: "#/components/schemas/AuthApiResponse"
         "400":
           description: email 또는 password 누락
           content:
@@ -115,11 +124,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: 액세스 토큰 재발급
+      description: |
+        `refresh_token` 쿠키의 리프레시 토큰으로 새 액세스 토큰과 사용자 정보를 반환하고, 리프레시 토큰을 새 값으로 교체한다.
+        교체된 이전 리프레시 토큰은 더 이상 쓸 수 없다.
+      operationId: refresh
+      security:
+        - refreshCookie: []
+      responses:
+        "200":
+          description: 새 액세스 토큰과 사용자
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/RefreshTokenCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthApiResponse"
+        "401":
+          description: 리프레시 토큰 쿠키가 없거나 만료·폐기·교체된 토큰
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/auth/logout:
     post:
       tags: [Auth]
       summary: 로그아웃
-      description: 세션을 무효화한다. 로그인하지 않은 상태에서 호출해도 성공으로 응답한다.
+      description: |
+        `refresh_token` 쿠키의 리프레시 토큰을 폐기하고 쿠키를 삭제한다(`Max-Age=0`). 쿠키가 없어도 성공으로 응답한다.
+        이미 발급한 액세스 토큰은 만료될 때까지 유효하다.
       operationId: logout
       security: []
       responses:
@@ -944,15 +982,27 @@ paths:
 
 components:
   securitySchemes:
-    sessionCookie:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 회원가입/로그인/재발급 응답의 `accessToken` (HS256, `sub`=사용자 ID, 수명 15분)
+    refreshCookie:
       type: apiKey
       in: cookie
-      name: JSESSIONID
-      description: 회원가입/로그인 응답의 Set-Cookie로 발급되는 세션 쿠키 (`HttpOnly`, `SameSite=Lax`)
+      name: refresh_token
+      description: 회원가입/로그인/재발급 응답의 Set-Cookie로 발급되는 리프레시 토큰 (`HttpOnly`, `SameSite=Lax`, `Path=/api/auth`, 수명 14일)
+
+  headers:
+    RefreshTokenCookie:
+      description: 리프레시 토큰 쿠키 발급
+      schema:
+        type: string
+        example: refresh_token=Zm9v...; Path=/api/auth; Max-Age=1209600; HttpOnly; SameSite=Lax
 
   responses:
     Unauthorized:
-      description: 로그인하지 않음 (세션 쿠키가 없거나 만료됨). 로그인이 필요한 모든 API에 공통으로 적용된다.
+      description: 인증되지 않음 (액세스 토큰이 없거나 만료·위조·형식 오류). 로그인이 필요한 모든 API에 공통으로 적용된다.
       content:
         application/json:
           schema:
@@ -1524,6 +1574,24 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    AuthResponse:
+      type: object
+      description: 액세스 토큰과 사용자 정보 (리프레시 토큰은 본문이 아닌 쿠키로 발급한다)
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature
+        user:
+          $ref: "#/components/schemas/UserResponse"
+
+    AuthApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AuthResponse"
 
     UserApiResponse:
       allOf:

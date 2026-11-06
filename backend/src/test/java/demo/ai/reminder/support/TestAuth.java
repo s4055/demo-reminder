@@ -2,9 +2,11 @@ package demo.ai.reminder.support;
 
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.repository.user.UserRepository;
-import demo.ai.reminder.security.LoginUser;
+import demo.ai.reminder.security.AuthenticatedUser;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.test.context.TestSecurityContextHolder;
+
+import java.util.List;
 
 public final class TestAuth {
 
@@ -18,8 +20,7 @@ public final class TestAuth {
     }
 
     public static void signIn(User user) {
-        LoginUser loginUser = new LoginUser(user);
-        TestSecurityContextHolder.setAuthentication(
-                UsernamePasswordAuthenticationToken.authenticated(loginUser, null, loginUser.getAuthorities()));
+        TestSecurityContextHolder.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+                new AuthenticatedUser(user.getId()), null, List.of()));
     }
 }

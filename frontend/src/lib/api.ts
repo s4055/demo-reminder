@@ -7,7 +7,19 @@ type ApiResponse<T> = {
   data: T
 }
 
+export type TokenResponse = {
+  accessToken: string
+}
+
 const SUCCESS = "SUCCESS"
+const REFRESH_PATH = "/api/auth/refresh"
+const REFRESH_LOCK = "demoreminder-token-refresh"
+const NO_REFRESH_RETRY_PATHS = new Set([
+  "/api/auth/login",
+  "/api/auth/signup",
+  REFRESH_PATH,
+  "/api/auth/logout",
+])
 
 export class ApiError extends Error {
   constructor(
@@ -33,20 +45,82 @@ export function setUnauthorizedHandler(handler: (() => void) | undefined) {
   unauthorizedHandler = handler
 }
 
+let accessToken: string | null = null
+let refreshInFlight: Promise<TokenResponse | null> | null = null
+
+export function setAccessToken(token: string | null) {
+  accessToken = token
+}
+
+export function hasAccessToken(): boolean {
+  return accessToken !== null
+}
+
+export function refreshAccessToken(): Promise<TokenResponse | null> {
+  refreshInFlight ??= withRefreshLock(requestRefresh).finally(() => {
+    refreshInFlight = null
+  })
+  return refreshInFlight
+}
+
+function withRefreshLock<T>(task: () => Promise<T>): Promise<T> {
+  if (typeof navigator === "undefined" || !navigator.locks) return task()
+  return navigator.locks.request(REFRESH_LOCK, task) as Promise<T>
+}
+
+async function requestRefresh(): Promise<TokenResponse | null> {
+  try {
+    const tokens = await readData<TokenResponse>(
+      await send(REFRESH_PATH, { method: "POST" })
+    )
+    accessToken = tokens.accessToken
+    return tokens
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      accessToken = null
+      return null
+    }
+    throw error
+  }
+}
+
+async function renewAccessToken(sentToken: string | null): Promise<boolean> {
+  if (accessToken !== null && accessToken !== sentToken) return true
+  return (await refreshAccessToken()) !== null
+}
+
 export async function apiRequest<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  // 세션 쿠키(JSESSIONID)는 다른 포트(백엔드)로 보내야 하므로 credentials를 include로 둔다.
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    credentials: "include",
-  })
-  const body = (await response.json().catch(() => null)) as ApiResponse<T> | null
-  if (!response.ok || body?.resultCode !== SUCCESS) {
-    if (response.status === 401 && !path.startsWith("/api/auth/")) {
+  const sentToken = accessToken
+  let response = await send(path, init)
+  if (response.status === 401 && !NO_REFRESH_RETRY_PATHS.has(path)) {
+    if (await renewAccessToken(sentToken)) {
+      response = await send(path, init)
+    }
+    if (response.status === 401) {
+      accessToken = null
       unauthorizedHandler?.()
     }
+  }
+  return readData<T>(response)
+}
+
+function send(path: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers)
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`)
+  // 리프레시 토큰 쿠키(refresh_token)는 다른 포트(백엔드)로 보내야 하므로 credentials를 include로 둔다.
+  return fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "include",
+  })
+}
+
+async function readData<T>(response: Response): Promise<T> {
+  const body = (await response.json().catch(() => null)) as ApiResponse<T> | null
+  if (!response.ok || body?.resultCode !== SUCCESS) {
     const message = body?.resultMsg ?? `status: ${response.status}`
     throw new ApiError(
       `요청에 실패했습니다. (${message})`,
