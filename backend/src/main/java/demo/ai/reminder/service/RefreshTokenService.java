@@ -4,10 +4,12 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.RefreshToken;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.exception.BusinessException;
+import demo.ai.reminder.exception.RefreshTokenReuseException;
 import demo.ai.reminder.repository.user.RefreshTokenRepository;
 import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.security.JwtProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,11 +42,21 @@ public class RefreshTokenService {
         return new IssuedRefreshToken(userId, token);
     }
 
+    @Transactional(noRollbackFor = RefreshTokenReuseException.class)
     public IssuedRefreshToken rotate(String token) {
         LocalDateTime now = now();
-        RefreshToken current = findUsable(token, now);
+        RefreshToken current = find(token);
+        if (current.isRevoked()) {
+            Long userId = current.getUser().getId();
+            revokeAll(userId, now);
+            throw new RefreshTokenReuseException(userId);
+        }
+        if (current.isExpired(now)) {
+            throw invalidToken("Refresh token is expired");
+        }
         String newToken = generateToken();
         refreshTokenRepository.save(current.rotate(hash(newToken), expiresAt(now), now));
+        flushRotation();
         return new IssuedRefreshToken(current.getUser().getId(), newToken);
     }
 
@@ -56,17 +68,33 @@ public class RefreshTokenService {
                 .ifPresent(refreshToken -> refreshToken.revoke(now()));
     }
 
-    private RefreshToken findUsable(String token, LocalDateTime now) {
-        if (token == null || token.isBlank()) {
-            throw invalidToken();
-        }
-        return refreshTokenRepository.findByTokenHash(hash(token))
-                .filter(refreshToken -> refreshToken.isUsable(now))
-                .orElseThrow(this::invalidToken);
+    public long deleteExpired(Long userId) {
+        return refreshTokenRepository.deleteByUserIdAndExpiresAtLessThanEqual(userId, now());
     }
 
-    private BusinessException invalidToken() {
-        return new BusinessException(ResultCode.UNAUTHORIZED, "Refresh token is missing, expired, or revoked");
+    private RefreshToken find(String token) {
+        if (token == null || token.isBlank()) {
+            throw invalidToken("Refresh token is missing");
+        }
+        return refreshTokenRepository.findByTokenHash(hash(token))
+                .orElseThrow(() -> invalidToken("Refresh token is unknown"));
+    }
+
+    private void revokeAll(Long userId, LocalDateTime now) {
+        refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(userId)
+                .forEach(refreshToken -> refreshToken.revoke(now));
+    }
+
+    private void flushRotation() {
+        try {
+            refreshTokenRepository.flush();
+        } catch (OptimisticLockingFailureException e) {
+            throw invalidToken("Refresh token was rotated concurrently");
+        }
+    }
+
+    private static BusinessException invalidToken(String message) {
+        return new BusinessException(ResultCode.UNAUTHORIZED, message);
     }
 
     private LocalDateTime now() {

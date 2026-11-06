@@ -30,9 +30,12 @@
 - 필드가 여러 개인 요청은 서비스에 요청 DTO를 그대로 넘기고, 필드 하나짜리는 값을 직접 넘긴다. 공백 정리나 생략 시 기본값 같은 API 입력 해석은 요청 DTO의 메서드(`strippedTitle()`, `recurrence()` 등)에서 한다.
 - 입력 검증 위치: 값 하나의 형식·길이 검증과 문자열→enum 같은 형식 변환은 웹 경계(요청 DTO의 `@Valid`, 컨트롤러 파라미터 제약, 컨트롤러)에서 하고, 여러 값 사이의 관계(예: `from < to`)는 서비스, 도메인 규칙은 도메인에서 검증한다.
 
-### 인증/세션
+### 인증/토큰
 
-- 세션의 시작(세션 고정 방어 포함)과 종료는 `security.LoginSession`이 맡는다. 컨트롤러는 `SecurityContextHolder`나 세션을 직접 다루지 않는다.
+- 서버 세션을 쓰지 않는다(`STATELESS`). API 인증은 `security.JwtAuthenticationFilter`가 Bearer 액세스 토큰을 검증해 `AuthenticatedUser(id)`로 설정하고, 서비스는 `CurrentUser`로 현재 사용자를 얻는다. 컨트롤러는 `SecurityContextHolder`나 세션을 직접 다루지 않는다.
+- 액세스 토큰에는 사용자 ID(`sub`)만 담고, 권한은 지금처럼 요청마다 DB의 멤버 정보로 확인한다.
+- 리프레시 토큰의 발급·회전·폐기는 `RefreshTokenService`가, 쿠키 설정·삭제는 `security.RefreshTokenCookie`가 맡는다. 토큰 원문은 DB와 로그에 남기지 않는다(DB에는 SHA-256 해시, 로그는 `HttpLoggingFilter`가 마스킹).
+- 토큰과 관련된 시각은 주입한 `Clock` 기준으로 계산한다.
 
 ### API 명세
 
