@@ -1,4 +1,11 @@
-import { apiRequest, jsonBody } from "@/lib/api"
+import {
+  ApiError,
+  apiRequest,
+  hasAccessToken,
+  jsonBody,
+  refreshAccessToken,
+  setAccessToken,
+} from "@/lib/api"
 
 export type User = {
   id: number
@@ -18,18 +25,38 @@ export type LoginInput = {
   password: string
 }
 
-export function signup(input: SignupInput): Promise<User> {
-  return apiRequest<User>("/api/auth/signup", jsonBody("POST", input))
+type AuthResponse = {
+  accessToken: string
+  user: User
 }
 
-export function login(input: LoginInput): Promise<User> {
-  return apiRequest<User>("/api/auth/login", jsonBody("POST", input))
+function startSession(response: AuthResponse): User {
+  setAccessToken(response.accessToken)
+  return response.user
 }
 
-export function logout(): Promise<void> {
-  return apiRequest<void>("/api/auth/logout", { method: "POST" })
+export async function signup(input: SignupInput): Promise<User> {
+  return startSession(
+    await apiRequest<AuthResponse>("/api/auth/signup", jsonBody("POST", input))
+  )
 }
 
-export function getMe(): Promise<User> {
-  return apiRequest<User>("/api/auth/me")
+export async function login(input: LoginInput): Promise<User> {
+  return startSession(
+    await apiRequest<AuthResponse>("/api/auth/login", jsonBody("POST", input))
+  )
+}
+
+export async function logout(): Promise<void> {
+  await apiRequest<void>("/api/auth/logout", { method: "POST" })
+  setAccessToken(null)
+}
+
+export async function getMe(): Promise<User> {
+  if (hasAccessToken()) return apiRequest<User>("/api/auth/me")
+  const session = (await refreshAccessToken()) as AuthResponse | null
+  if (session === null) {
+    throw new ApiError("요청에 실패했습니다. (로그인이 필요합니다.)", 401, "UNAUTHORIZED")
+  }
+  return session.user
 }

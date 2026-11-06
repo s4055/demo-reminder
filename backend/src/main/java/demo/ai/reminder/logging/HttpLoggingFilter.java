@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
@@ -15,10 +14,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -33,13 +29,12 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
 
     public static final String REQUEST_ID = "request_id";
 
-    private static final Pattern PASSWORD_FIELD = Pattern.compile("(\"password\"\\s*:\\s*)\"(?:[^\"\\\\]|\\\\.)*\"");
+    private static final Pattern SECRET_FIELD =
+            Pattern.compile("(\"(?:password|accessToken)\"\\s*:\\s*)\"(?:[^\"\\\\]|\\\\.)*\"");
 
     private static final String MASK = "****";
 
     private static final Set<String> MASKED_HEADERS = Set.of("cookie", "authorization");
-
-    private static final int SESSION_FINGERPRINT_LENGTH = 12;
 
     private final List<String> excludedPaths;
 
@@ -64,16 +59,15 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
         try {
             CachedBodyRequestWrapper cachedRequest = new CachedBodyRequestWrapper(request);
             log.info("[Request] {} {} body={}", request.getMethod(), request.getRequestURI(),
-                    maskPassword(new String(cachedRequest.getBody(), StandardCharsets.UTF_8)));
+                    maskSecrets(new String(cachedRequest.getBody(), StandardCharsets.UTF_8)));
             log.info("[Header] {}", requestHeaders(request));
-            log.info("[Session] {}", sessionInfo(request));
 
             ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
             try {
                 filterChain.doFilter(cachedRequest, wrappedResponse);
             } finally {
                 log.info("[Response] status={} body={}", wrappedResponse.getStatus(),
-                        new String(wrappedResponse.getContentAsByteArray(), StandardCharsets.UTF_8));
+                        maskSecrets(new String(wrappedResponse.getContentAsByteArray(), StandardCharsets.UTF_8)));
                 wrappedResponse.copyBodyToResponse();
             }
         } finally {
@@ -81,8 +75,8 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
         }
     }
 
-    static String maskPassword(String body) {
-        return PASSWORD_FIELD.matcher(body).replaceAll("$1\"" + MASK + "\"");
+    static String maskSecrets(String body) {
+        return SECRET_FIELD.matcher(body).replaceAll("$1\"" + MASK + "\"");
     }
 
     private String requestHeaders(HttpServletRequest request) {
@@ -96,23 +90,5 @@ public class HttpLoggingFilter extends OncePerRequestFilter {
             return MASK;
         }
         return String.join(", ", Collections.list(request.getHeaders(name)));
-    }
-
-    private String sessionInfo(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session == null) {
-            return "none";
-        }
-        String attributeNames = String.join(", ", Collections.list(session.getAttributeNames()));
-        return "[id=" + sessionFingerprint(session.getId()) + ", attributes=[" + attributeNames + "]]";
-    }
-
-    static String sessionFingerprint(String sessionId) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(sessionId.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest).substring(0, SESSION_FINGERPRINT_LENGTH);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is not available", e);
-        }
     }
 }

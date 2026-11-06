@@ -1,6 +1,7 @@
 package demo.ai.reminder.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import demo.ai.reminder.repository.user.RefreshTokenRepository;
 import demo.ai.reminder.repository.user.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,7 +12,6 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContext;
 import org.springframework.orm.jpa.support.OpenEntityManagerInViewInterceptor;
 
-import java.net.CookieManager;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -34,9 +34,14 @@ class OpenInViewDisabledTest {
     @Autowired
     private UserRepository userRepository;
 
-    private final HttpClient httpClient = HttpClient.newBuilder().cookieHandler(new CookieManager()).build();
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     private Long listId;
+
+    private String accessToken;
 
     @AfterEach
     void deleteData() throws Exception {
@@ -47,6 +52,7 @@ class OpenInViewDisabledTest {
             }
             send("DELETE", "/api/lists/" + listId, null);
         }
+        refreshTokenRepository.deleteAll();
         userRepository.findByEmail(EMAIL).ifPresent(userRepository::delete);
     }
 
@@ -59,7 +65,7 @@ class OpenInViewDisabledTest {
     @Test
     @DisplayName("트랜잭션 밖에서도 리마인더의 태그/하위 작업과 멤버의 사용자 정보가 응답에 담긴다")
     void responses_includeLazyAssociations_withoutOpenInView() throws Exception {
-        send("POST", "/api/auth/signup", "{\"email\":\"" + EMAIL + "\",\"password\":\"password1\",\"name\":\"오시브\"}");
+        signup();
         listId = idOf(send("POST", "/api/lists", "{\"name\":\"장보기\"}"));
         Long parentId = idOf(send("POST", "/api/reminders",
                 "{\"title\":\"이사 준비\",\"listId\":" + listId + ",\"tagNames\":[\"집\"]}"));
@@ -82,7 +88,7 @@ class OpenInViewDisabledTest {
     @Test
     @DisplayName("수정 요청이 끝나면 변경 내용과 올라간 버전이 커밋되어 다음 조회에 보인다")
     void mutation_isCommittedWithIncrementedVersion_whenRequestEnds() throws Exception {
-        send("POST", "/api/auth/signup", "{\"email\":\"" + EMAIL + "\",\"password\":\"password1\",\"name\":\"오시브\"}");
+        signup();
         listId = idOf(send("POST", "/api/lists", "{\"name\":\"장보기\"}"));
         Long reminderId = idOf(send("POST", "/api/reminders", "{\"title\":\"우유\",\"listId\":" + listId + "}"));
 
@@ -98,10 +104,20 @@ class OpenInViewDisabledTest {
         return JsonPath.<Number>read(response.body(), "$.data.id").longValue();
     }
 
+    private void signup() throws Exception {
+        HttpResponse<String> response = send("POST", "/api/auth/signup",
+                "{\"email\":\"" + EMAIL + "\",\"password\":\"password1\",\"name\":\"오시브\"}");
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
+        accessToken = JsonPath.read(response.body(), "$.data.accessToken");
+    }
+
     private HttpResponse<String> send(String method, String path, String json) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .header("Content-Type", "application/json")
                 .method(method, json == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(json));
+        if (accessToken != null) {
+            builder.header("Authorization", "Bearer " + accessToken);
+        }
         return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 }

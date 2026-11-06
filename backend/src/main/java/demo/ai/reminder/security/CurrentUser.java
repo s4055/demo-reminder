@@ -17,10 +17,10 @@ public class CurrentUser {
 
     public Long id() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof LoginUser loginUser)) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "Login required");
         }
-        return loginUser.getId();
+        return user.id();
     }
 
     public User reference() {
