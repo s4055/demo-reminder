@@ -27,6 +27,11 @@ spring:
         format_sql: true
 
 app:
+  jwt:
+    secret: ${JWT_SECRET:local-only-jwt-secret-key-do-not-use-in-production}
+    access-token-ttl: 15m
+    refresh-token-ttl: 14d
+    cookie-secure: ${JWT_COOKIE_SECURE:false}
   logging:
     http:
       excluded-paths:

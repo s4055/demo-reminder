@@ -493,18 +493,18 @@
 # v6 — JWT 인증 (spec.md 14번)
 
 ## Phase 27 — 토큰 발급·검증 기반
-- [ ] JJWT 의존성 추가
-- [ ] `app.jwt` 설정 추가, 서명 키 길이 시작 시 검증
-- [ ] `application.yml`에 로컬 전용 서명 키 기본값 추가, 운영은 `JWT_SECRET`으로 주입
-- [ ] `JwtProvider` 구현 (`sub`=사용자 ID, `Clock` 기준 시각)
-- [ ] `RefreshToken` 엔티티와 도메인 메서드 구현
-- [ ] `RefreshTokenRepository` 추가
-- [ ] `RefreshTokenService` 구현 (생성, 해시 저장, 회전, 폐기)
-- [ ] 테스트: 토큰 발급·검증, 만료·위조·형식 오류 거부, 서명 키 길이 검증
-- [ ] 테스트: 리프레시 토큰 해시 저장, 회전, 폐기, 만료 판단
+- [x] JJWT 의존성 추가
+- [x] `app.jwt` 설정 추가, 서명 키 길이 시작 시 검증
+- [x] `application.yml`에 로컬 전용 서명 키 기본값 추가, 운영은 `JWT_SECRET`으로 주입
+- [x] `JwtProvider` 구현 (`sub`=사용자 ID, `Clock` 기준 시각)
+- [x] `RefreshToken` 엔티티와 도메인 메서드 구현
+- [x] `RefreshTokenRepository` 추가
+- [x] `RefreshTokenService` 구현 (생성, 해시 저장, 회전, 폐기)
+- [x] 테스트: 토큰 발급·검증, 만료·위조·형식 오류 거부, 서명 키 길이 검증
+- [x] 테스트: 리프레시 토큰 해시 저장, 회전, 폐기, 만료 판단
 
 ### 완료 기준 검증
-- [ ] 기존 세션 로그인과 전체 테스트가 그대로 동작하는지 확인
+- [x] 기존 세션 로그인과 전체 테스트가 그대로 동작하는지 확인
 
 ## Phase 28 — 세션에서 JWT로 전환
 ### 백엔드
