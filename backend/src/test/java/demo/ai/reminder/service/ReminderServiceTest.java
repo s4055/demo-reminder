@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 
@@ -116,7 +117,7 @@ class ReminderServiceTest {
     @DisplayName("완료 토글 시 완료일시가 기록되고, 다시 토글하면 비워진다")
     void toggleComplete_recordsAndClearsCompletedAt() {
         Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
-        LocalDateTime before = LocalDateTime.now();
+        LocalDateTime before = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
 
         reminderService.toggleComplete(saved.getId());
 

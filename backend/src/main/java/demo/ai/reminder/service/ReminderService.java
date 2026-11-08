@@ -139,7 +139,7 @@ public class ReminderService {
             reminder.detachFromParent();
             reminderRepository.delete(reminder);
         });
-        return new DeletedCountResponse(deletedCount);
+        return DeletedCountResponse.from(deletedCount);
     }
 
     private static String escapeLike(String value) {
