@@ -47,15 +47,15 @@ class RefreshTokenRotationCommitTest {
         });
     }
 
-    private AuthTokens signup() {
+    private AuthResult signup() {
         return authService.signup(new SignupRequest(EMAIL, "password1", "회전"));
     }
 
     @Test
     @DisplayName("교체 전 토큰을 재사용하면 401을 반환하면서도 최신 토큰 폐기는 커밋되어 다시 로그인해야 한다")
     void refresh_withReusedToken_commitsRevocationOfLatestToken() {
-        AuthTokens signedUp = signup();
-        AuthTokens refreshed = authService.refresh(signedUp.refreshToken());
+        AuthResult signedUp = signup();
+        AuthResult refreshed = authService.refresh(signedUp.refreshToken());
 
         assertThatThrownBy(() -> authService.refresh(signedUp.refreshToken()))
                 .isInstanceOf(RefreshTokenReuseException.class)
@@ -69,11 +69,11 @@ class RefreshTokenRotationCommitTest {
     @Test
     @DisplayName("같은 토큰을 동시에 회전해 버전이 충돌하면 늦은 쪽만 401이 되고 먼저 회전한 토큰은 유지된다")
     void refresh_concurrentRotation_rejectsLaterOneWithUnauthorized() {
-        AuthTokens signedUp = signup();
+        AuthResult signedUp = signup();
         TransactionTemplate later = new TransactionTemplate(transactionManager);
         TransactionTemplate earlier = new TransactionTemplate(transactionManager);
         earlier.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        AtomicReference<AuthTokens> winner = new AtomicReference<>();
+        AtomicReference<AuthResult> winner = new AtomicReference<>();
 
         assertThatThrownBy(() -> later.executeWithoutResult(status -> {
             refreshTokenRepository.findAll();

@@ -6,8 +6,8 @@ import demo.ai.reminder.dto.request.SignupRequest;
 import demo.ai.reminder.dto.response.AuthResponse;
 import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.security.RefreshTokenCookie;
+import demo.ai.reminder.service.AuthResult;
 import demo.ai.reminder.service.AuthService;
-import demo.ai.reminder.service.AuthTokens;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -60,8 +60,8 @@ public class AuthController {
         return ApiResponse.success(authService.me());
     }
 
-    private AuthResponse respond(AuthTokens tokens, HttpServletResponse response) {
-        refreshTokenCookie.write(response, tokens.refreshToken());
-        return tokens.toResponse();
+    private AuthResponse respond(AuthResult result, HttpServletResponse response) {
+        refreshTokenCookie.write(response, result.refreshToken());
+        return new AuthResponse(result.accessToken(), result.user());
     }
 }

@@ -45,7 +45,7 @@ class AuthServiceTest {
     @Autowired
     private JwtProvider jwtProvider;
 
-    private AuthTokens signupAlice() {
+    private AuthResult signupAlice() {
         return authService.signup(new SignupRequest("alice@example.com", "password1", "앨리스"));
     }
 
@@ -70,7 +70,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("가입하면 가입한 사용자의 액세스 토큰과 리프레시 토큰을 발급한다")
     void signup_issuesTokensForNewUser() {
-        AuthTokens tokens = signupAlice();
+        AuthResult tokens = signupAlice();
 
         assertThat(jwtProvider.verifyAccessToken(tokens.accessToken())).contains(tokens.user().id());
         assertThat(tokens.refreshToken()).isNotBlank();
@@ -118,7 +118,7 @@ class AuthServiceTest {
     void login_withValidCredentials_issuesTokens() {
         Long aliceId = signupAlice().user().id();
 
-        AuthTokens tokens = authService.login(new LoginRequest("Alice@example.com", "password1"));
+        AuthResult tokens = authService.login(new LoginRequest("Alice@example.com", "password1"));
 
         assertThat(tokens.user().id()).isEqualTo(aliceId);
         assertThat(tokens.user().email()).isEqualTo("alice@example.com");
@@ -129,7 +129,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("로그인하면 그 사용자의 만료된 리프레시 토큰을 삭제하고 유효한 토큰은 남긴다")
     void login_deletesExpiredRefreshTokensOfUser() {
-        AuthTokens signedUp = signupAlice();
+        AuthResult signedUp = signupAlice();
         User alice = userRepository.findById(signedUp.user().id()).orElseThrow();
         User bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
         LocalDateTime past = LocalDateTime.now().minusMinutes(1);
@@ -156,9 +156,9 @@ class AuthServiceTest {
     @Test
     @DisplayName("리프레시 토큰으로 재발급하면 새 토큰과 사용자 정보를 반환하고 이전 리프레시 토큰은 쓸 수 없다")
     void refresh_rotatesRefreshToken() {
-        AuthTokens signedUp = signupAlice();
+        AuthResult signedUp = signupAlice();
 
-        AuthTokens refreshed = authService.refresh(signedUp.refreshToken());
+        AuthResult refreshed = authService.refresh(signedUp.refreshToken());
 
         assertThat(refreshed.user().email()).isEqualTo("alice@example.com");
         assertThat(jwtProvider.verifyAccessToken(refreshed.accessToken())).contains(signedUp.user().id());
@@ -176,7 +176,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("로그아웃하면 리프레시 토큰이 폐기되어 재발급할 수 없다")
     void logout_revokesRefreshToken() {
-        AuthTokens tokens = signupAlice();
+        AuthResult tokens = signupAlice();
 
         authService.logout(tokens.refreshToken());
 

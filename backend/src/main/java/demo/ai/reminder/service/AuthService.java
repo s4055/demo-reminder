@@ -32,7 +32,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
 
     @Transactional
-    public AuthTokens signup(SignupRequest request) {
+    public AuthResult signup(SignupRequest request) {
         String email = User.normalizeEmail(request.email());
         if (userRepository.existsByEmail(email)) {
             throw new BusinessException(ResultCode.CONFLICT, "Email already registered: " + email);
@@ -43,14 +43,14 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthTokens login(LoginRequest request) {
+    public AuthResult login(LoginRequest request) {
         Long userId = authenticate(request.email(), request.password());
         refreshTokenService.deleteExpired(userId);
         return issueTokens(loadUser(userId), refreshTokenService.issue(userId));
     }
 
     @Transactional(noRollbackFor = RefreshTokenReuseException.class)
-    public AuthTokens refresh(String refreshToken) {
+    public AuthResult refresh(String refreshToken) {
         IssuedRefreshToken rotated = refreshTokenService.rotate(refreshToken);
         return issueTokens(loadUser(rotated.userId()), rotated);
     }
@@ -79,8 +79,8 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED, "User not found: " + userId));
     }
 
-    private AuthTokens issueTokens(User user, IssuedRefreshToken refreshToken) {
-        return new AuthTokens(jwtProvider.issueAccessToken(user.getId()), refreshToken.token(),
+    private AuthResult issueTokens(User user, IssuedRefreshToken refreshToken) {
+        return new AuthResult(jwtProvider.issueAccessToken(user.getId()), refreshToken.token(),
                 UserResponse.from(user));
     }
 }
