@@ -1,6 +1,9 @@
 package demo.ai.reminder.repository.reminder;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.DateTimeExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -84,7 +87,24 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
                 .where(reminder.title.lower().like(pattern, LIKE_ESCAPE)
                         .or(reminder.memo.lower().like(pattern, LIKE_ESCAPE))
                         .or(hasTagNameLike(pattern)))
+                .orderBy(
+                        reminder.completed.asc(),
+                        dueAtIfIncomplete().asc().nullsLast(),
+                        completedAtIfCompleted().desc().nullsLast(),
+                        reminder.id.asc())
                 .fetch();
+    }
+
+    private DateTimeExpression<LocalDateTime> dueAtIfIncomplete() {
+        return new CaseBuilder()
+                .when(reminder.completed.isFalse()).then(reminder.dueAt)
+                .otherwise(Expressions.nullExpression(LocalDateTime.class));
+    }
+
+    private DateTimeExpression<LocalDateTime> completedAtIfCompleted() {
+        return new CaseBuilder()
+                .when(reminder.completed.isTrue()).then(reminder.completedAt)
+                .otherwise(Expressions.nullExpression(LocalDateTime.class));
     }
 
     private JPAQuery<Reminder> accessible(Long userId) {

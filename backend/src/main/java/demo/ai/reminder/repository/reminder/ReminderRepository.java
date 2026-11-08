@@ -2,7 +2,6 @@ package demo.ai.reminder.repository.reminder;
 
 import demo.ai.reminder.domain.reminder.Reminder;
 import demo.ai.reminder.domain.list.ReminderList;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -10,7 +9,7 @@ import java.util.List;
 
 public interface ReminderRepository extends JpaRepository<Reminder, Long>, ReminderRepositoryCustom {
 
-    List<Reminder> findByListAndParentIsNull(ReminderList list, Sort sort);
+    List<Reminder> findByListAndParentIsNullOrderBySortOrderAscIdAsc(ReminderList list);
 
     void deleteAllByList(ReminderList list);
 

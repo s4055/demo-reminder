@@ -11,29 +11,18 @@ import demo.ai.reminder.dto.response.ReminderResponse;
 import demo.ai.reminder.repository.reminder.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReminderService {
-
-    private static final Sort LIST_SORT = Sort.by("sortOrder", "id");
-    private static final Comparator<Reminder> SEARCH_ORDER = Comparator
-            .comparing(Reminder::isCompleted)
-            .thenComparing(reminder -> reminder.isCompleted() ? null : reminder.getDueAt(),
-                    Comparator.nullsLast(Comparator.naturalOrder()))
-            .thenComparing(reminder -> reminder.isCompleted() ? reminder.getCompletedAt() : null,
-                    Comparator.nullsLast(Comparator.<LocalDateTime>reverseOrder()))
-            .thenComparing(Reminder::getId);
 
     private final ReminderRepository reminderRepository;
     private final ListAccess listAccess;
@@ -44,7 +33,7 @@ public class ReminderService {
     public List<ReminderResponse> getReminders(Long listId, String tag) {
         if (listId != null) {
             ReminderList list = listAccess.memberList(listId);
-            return toResponses(reminderRepository.findByListAndParentIsNull(list, LIST_SORT));
+            return toResponses(reminderRepository.findByListAndParentIsNullOrderBySortOrderAscIdAsc(list));
         }
         if (tag != null) {
             return toResponses(reminderRepository.findAccessibleByTagName(currentUser.id(), tag));
@@ -67,11 +56,8 @@ public class ReminderService {
     }
 
     public List<ReminderResponse> searchReminders(String query) {
-        return reminderRepository.searchAccessible(currentUser.id(), "%" + escapeLike(query.toLowerCase()) + "%")
-                .stream()
-                .sorted(SEARCH_ORDER)
-                .map(ReminderResponse::from)
-                .toList();
+        return toResponses(
+                reminderRepository.searchAccessible(currentUser.id(), "%" + escapeLike(query.toLowerCase()) + "%"));
     }
 
     public List<ReminderResponse> getUpcomingReminders(LocalDateTime from, LocalDateTime to) {

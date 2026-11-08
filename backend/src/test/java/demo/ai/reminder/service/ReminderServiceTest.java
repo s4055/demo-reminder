@@ -1274,6 +1274,27 @@ class ReminderServiceTest {
                 sooner.id(), later.id(), noDue.id(), noDue2.id(), completedSecond.id(), completedFirst.id());
     }
 
+    @Test
+    @DisplayName("완료 항목은 마감일시와 관계없이 완료일시 최신순으로 나온다")
+    void searchReminders_ignoresDueAtForCompletedReminders() {
+        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 10, 9, 0);
+        ReminderResponse dueSoonerCompletedEarlier = createWithDueAt("업무 A", dueAt);
+        ReminderResponse dueLaterCompletedRecently = createWithDueAt("업무 B", dueAt.plusDays(1));
+        reminderService.toggleComplete(dueSoonerCompletedEarlier.id());
+        entityManager.flush();
+        entityManager.createQuery("update Reminder r set r.completedAt = :at where r.id = :id")
+                .setParameter("at", dueAt.minusDays(1))
+                .setParameter("id", dueSoonerCompletedEarlier.id())
+                .executeUpdate();
+        entityManager.clear();
+        reminderService.toggleComplete(dueLaterCompletedRecently.id());
+
+        List<ReminderResponse> result = reminderService.searchReminders("업무");
+
+        assertThat(result).extracting(ReminderResponse::id).containsExactly(
+                dueLaterCompletedRecently.id(), dueSoonerCompletedEarlier.id());
+    }
+
     private LocalDateTime backdateUpdatedAt(Long reminderId) {
         LocalDateTime past = LocalDateTime.of(2026, 1, 1, 0, 0);
         entityManager.createQuery("update Reminder r set r.updatedAt = :past where r.id = :id")
