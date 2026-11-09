@@ -28,7 +28,7 @@ public record ReminderListResponse(
                 list.getName(),
                 list.getColor(),
                 list.getIcon(),
-                groupIdVisibleTo(summary.role(), list),
+                list.groupIdVisibleTo(summary.role()),
                 list.getSortOrder(),
                 summary.reminderCount(),
                 summary.role(),
@@ -37,12 +37,5 @@ public record ReminderListResponse(
                 list.getCreatedAt(),
                 list.getUpdatedAt()
         );
-    }
-
-    private static Long groupIdVisibleTo(ListRole role, ReminderList list) {
-        if (role != ListRole.OWNER || list.getGroup() == null) {
-            return null;
-        }
-        return list.getGroup().getId();
     }
 }
