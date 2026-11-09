@@ -5,6 +5,7 @@ import demo.ai.reminder.domain.user.User;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,6 +68,36 @@ class ReminderListTest {
         assertThatThrownBy(() -> list.changeGroup(new ListGroup(other, "남의 그룹", 0)))
                 .isInstanceOf(DomainException.class);
         assertThat(list.getGroup()).isNull();
+    }
+
+    @Test
+    @DisplayName("소유자에게는 리스트가 속한 그룹의 id를 보여준다")
+    void groupIdVisibleTo_returnsGroupId_whenOwner() {
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
+        ListGroup group = new ListGroup(owner, "생활", 0);
+        ReflectionTestUtils.setField(group, "id", 1L);
+        list.changeGroup(group);
+
+        assertThat(list.groupIdVisibleTo(ListRole.OWNER)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("편집자에게는 리스트가 그룹에 속해 있어도 그룹 id를 보여주지 않는다")
+    void groupIdVisibleTo_returnsNull_whenEditor() {
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
+        ListGroup group = new ListGroup(owner, "생활", 0);
+        ReflectionTestUtils.setField(group, "id", 1L);
+        list.changeGroup(group);
+
+        assertThat(list.groupIdVisibleTo(ListRole.EDITOR)).isNull();
+    }
+
+    @Test
+    @DisplayName("그룹에 속하지 않은 리스트는 소유자에게도 그룹 id가 없다")
+    void groupIdVisibleTo_returnsNull_whenNoGroup() {
+        ReminderList list = new ReminderList(owner, "장보기", null, null, 0);
+
+        assertThat(list.groupIdVisibleTo(ListRole.OWNER)).isNull();
     }
 
     @Test

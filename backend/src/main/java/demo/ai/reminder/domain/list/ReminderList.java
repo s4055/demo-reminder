@@ -87,6 +87,13 @@ public class ReminderList extends BaseTimeEntity {
         this.group = null;
     }
 
+    public Long groupIdVisibleTo(ListRole role) {
+        if (role != ListRole.OWNER || group == null) {
+            return null;
+        }
+        return group.getId();
+    }
+
     private boolean isOwner(User other) {
         return isSameUser(other, user);
     }
