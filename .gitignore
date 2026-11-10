@@ -38,6 +38,7 @@ out/
 
 ### Claude Code ###
 .claude/settings.local.json
+.claude/subagent.log
 
 ### H2 file DB (backend/data/reminderdb.mv.db) ###
 backend/data/
