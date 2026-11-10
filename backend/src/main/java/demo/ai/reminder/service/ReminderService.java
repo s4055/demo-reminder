@@ -1,5 +1,6 @@
 package demo.ai.reminder.service;
 
+import demo.ai.reminder.dto.request.ReminderOrderRequest;
 import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.exception.BusinessException;
@@ -92,9 +93,9 @@ public class ReminderService {
     }
 
     @Transactional
-    public void reorderReminders(Long listId, List<Long> ids) {
-        ReminderList list = listAccess.memberList(listId);
-        SortOrders.reorder(ids, reminderRepository.findByListAndParentIsNullAndCompletedFalse(list),
+    public void reorderReminders(ReminderOrderRequest request) {
+        ReminderList list = listAccess.memberList(request.listId());
+        SortOrders.reorder(request.ids(),reminderRepository.findByListAndParentIsNullAndCompletedFalse(list),
                 Reminder::getId, Reminder::changeSortOrder, "incomplete reminder of the list");
     }
 

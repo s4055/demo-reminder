@@ -77,7 +77,7 @@ public class ReminderController {
 
     @PatchMapping("/order")
     public ApiResponse<Void> reorderReminders(@Valid @RequestBody ReminderOrderRequest request) {
-        reminderService.reorderReminders(request.listId(), request.ids());
+        reminderService.reorderReminders(request);
         return ApiResponse.success();
     }
 

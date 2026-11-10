@@ -4,6 +4,7 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.request.ReminderListRequest;
 import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
+import demo.ai.reminder.dto.request.ReminderOrderRequest;
 import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
@@ -132,7 +133,7 @@ class VersionConflictTest {
         ReminderResponse second = reminderService.createReminder(
                 new ReminderRequest("빵", null, listId, null, null, null, null, null, null, null));
 
-        reminderService.reorderReminders(listId, List.of(second.id(), first.id()));
+        reminderService.reorderReminders(new ReminderOrderRequest(listId, List.of(second.id(), first.id())));
         entityManager.flush();
 
         assertThat(reminderRepository.findById(first.id()).orElseThrow().getVersion()).isEqualTo(1L);

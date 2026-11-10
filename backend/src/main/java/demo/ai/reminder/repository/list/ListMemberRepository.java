@@ -1,6 +1,7 @@
 package demo.ai.reminder.repository.list;
 
 import demo.ai.reminder.domain.list.ListMember;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -10,5 +11,6 @@ public interface ListMemberRepository extends JpaRepository<ListMember, Long> {
 
     Optional<ListMember> findByListIdAndUserId(Long listId, Long userId);
 
+    @EntityGraph(attributePaths = "user")
     List<ListMember> findByListIdOrderByIdAsc(Long listId);
 }

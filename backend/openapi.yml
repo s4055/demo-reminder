@@ -1076,11 +1076,13 @@ components:
         title:
           type: string
           minLength: 1
+          maxLength: 200
           description: 제목 (앞뒤 공백은 제거된다)
           example: 우유 사기
         memo:
           type: string
           nullable: true
+          maxLength: 255
           example: 저지방
         listId:
           type: integer
@@ -1122,11 +1124,13 @@ components:
         title:
           type: string
           minLength: 1
+          maxLength: 200
           description: 제목 (앞뒤 공백은 제거된다)
           example: 계란 사기
         memo:
           type: string
           nullable: true
+          maxLength: 255
           example: 12구
         dueAt:
           type: string
@@ -1331,6 +1335,7 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 50
           description: 리스트 이름 (앞뒤 공백은 제거된다)
           example: 장보기
         color:
@@ -1349,6 +1354,7 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 50
           description: 리스트 이름 (앞뒤 공백은 제거된다)
           example: 장보기
         color:
@@ -1380,6 +1386,7 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 50
           description: 그룹 이름 (앞뒤 공백은 제거된다)
           example: 생활
 
@@ -1517,7 +1524,7 @@ components:
             - `UNAUTHORIZED`: 로그인하지 않음, 또는 이메일/비밀번호가 틀림 (401)
             - `FORBIDDEN`: 리스트 멤버지만 소유자 권한이 필요한 작업 (403)
             - `NOT_FOUND`: 대상을 찾을 수 없음 (다른 사용자의 리소스, 멤버가 아닌 리스트 포함)
-            - `CONFLICT`: 이미 존재하는 대상 (예: 가입된 이메일, 409)
+            - `CONFLICT`: 이미 존재하는 대상 (예: 가입된 이메일, 같은 이메일·태그·멤버를 동시에 저장한 경우, 409)
             - `VERSION_CONFLICT`: 편집 중 다른 사용자가 먼저 수정해 요청한 version이 현재 버전과 다름 (409)
             - `METHOD_NOT_ALLOWED`: 지원하지 않는 HTTP 메서드
             - `INTERNAL_SERVER_ERROR`: 서버 오류

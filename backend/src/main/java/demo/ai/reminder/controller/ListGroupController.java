@@ -36,7 +36,7 @@ public class ListGroupController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ListGroupResponse> createGroup(@Valid @RequestBody ListGroupRequest request) {
-        return ApiResponse.success(listGroupService.createGroup(request.name().strip()));
+        return ApiResponse.success(listGroupService.createGroup(request.strippedName()));
     }
 
     @PatchMapping("/order")
@@ -47,7 +47,7 @@ public class ListGroupController {
 
     @PutMapping("/{id}")
     public ApiResponse<ListGroupResponse> renameGroup(@PathVariable Long id, @Valid @RequestBody ListGroupRequest request) {
-        return ApiResponse.success(listGroupService.renameGroup(id, request.name().strip()));
+        return ApiResponse.success(listGroupService.renameGroup(id, request.strippedName()));
     }
 
     @DeleteMapping("/{id}")

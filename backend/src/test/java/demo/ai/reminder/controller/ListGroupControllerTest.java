@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -133,5 +134,27 @@ class ListGroupControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"groupId\":-1}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.resultCode").value("NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("그룹 이름은 50자까지 허용하고, 넘으면 생성과 이름 변경 모두 400과 name 필드 오류를 반환한다")
+    void groupName_overMaxLength_returnsBadRequest() throws Exception {
+        String maxName = "가".repeat(ListGroup.NAME_MAX_LENGTH);
+        mockMvc.perform(post("/api/list-groups")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + maxName + "\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/list-groups")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + maxName + "가\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("name: ")));
+        ListGroup group = listGroupRepository.save(new ListGroup(owner, "생활", 1));
+        mockMvc.perform(put("/api/list-groups/{id}", group.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + maxName + "가\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("name: ")));
     }
 }

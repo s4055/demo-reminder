@@ -43,7 +43,8 @@ public class TagService {
                 .collect(Collectors.toMap(Tag::getName, Function.identity()));
         return names.stream()
                 .map(name -> existing.computeIfAbsent(name,
-                        newName -> tagRepository.save(new Tag(currentUser.reference(), newName))))
+                        newName -> UniqueSaves.saveOrConflict(tagRepository, new Tag(currentUser.reference(), newName),
+                                "Tag already exists: " + newName)))
                 .toList();
     }
 

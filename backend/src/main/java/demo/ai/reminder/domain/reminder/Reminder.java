@@ -45,6 +45,9 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Reminder extends BaseTimeEntity {
 
+    public static final int TITLE_MAX_LENGTH = 200;
+    public static final int MEMO_MAX_LENGTH = 255;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -53,8 +56,10 @@ public class Reminder extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(length = TITLE_MAX_LENGTH)
     private String title;
 
+    @Column(length = MEMO_MAX_LENGTH)
     private String memo;
 
     private boolean completed;
@@ -141,7 +146,7 @@ public class Reminder extends BaseTimeEntity {
     }
 
     public void replaceTags(Collection<Tag> tags) {
-        reminderTags.removeIf(reminderTag -> tags.stream().noneMatch(reminderTag::isFor));
+        reminderTags.removeIf(reminderTag -> tags.stream().noneMatch(reminderTag::hasSameNameAs));
         tags.forEach(this::addTag);
     }
 
@@ -152,7 +157,7 @@ public class Reminder extends BaseTimeEntity {
     }
 
     private void addTag(Tag tag) {
-        if (reminderTags.stream().noneMatch(reminderTag -> reminderTag.isFor(tag))) {
+        if (reminderTags.stream().noneMatch(reminderTag -> reminderTag.hasSameNameAs(tag))) {
             reminderTags.add(new ReminderTag(this, tag));
         }
     }

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -218,5 +219,27 @@ class ReminderListControllerTest {
         mockMvc.perform(put("/api/lists"))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.resultCode").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    @DisplayName("리스트 이름은 50자까지 허용하고, 넘으면 생성과 수정 모두 400과 name 필드 오류를 반환한다")
+    void listName_overMaxLength_returnsBadRequest() throws Exception {
+        String maxName = "가".repeat(ReminderList.NAME_MAX_LENGTH);
+        mockMvc.perform(post("/api/lists")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + maxName + "\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/lists")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + maxName + "가\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("name: ")));
+        ReminderList list = reminderListRepository.saveAndFlush(new ReminderList(owner, "장보기", null, null, 1));
+        mockMvc.perform(put("/api/lists/" + list.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + maxName + "가\",\"version\":" + list.getVersion() + "}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("name: ")));
     }
 }
