@@ -717,4 +717,43 @@ class ReminderControllerTest {
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.resultMsg").isString());
     }
+
+    @Test
+    @DisplayName("리마인더 제목은 200자, 메모는 255자까지 허용하고, 넘으면 400과 필드 오류를 반환한다")
+    void createReminder_withTitleOrMemoOverMaxLength_returnsBadRequest() throws Exception {
+        String maxTitle = "가".repeat(Reminder.TITLE_MAX_LENGTH);
+        String maxMemo = "나".repeat(Reminder.MEMO_MAX_LENGTH);
+
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + maxTitle + "\",\"memo\":\"" + maxMemo + "\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + maxTitle + "가\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("title: ")));
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유\",\"memo\":\"" + maxMemo + "나\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("memo: ")));
+    }
+
+    @Test
+    @DisplayName("리마인더를 수정할 때도 메모가 255자를 넘으면 400과 memo 필드 오류를 반환한다")
+    void updateReminder_withMemoOverMaxLength_returnsBadRequest() throws Exception {
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        String longMemo = "나".repeat(Reminder.MEMO_MAX_LENGTH + 1);
+
+        mockMvc.perform(put("/api/reminders/{id}", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"우유 사기\",\"memo\":\"" + longMemo + "\",\"flagged\":false,\"version\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("memo: ")));
+    }
 }

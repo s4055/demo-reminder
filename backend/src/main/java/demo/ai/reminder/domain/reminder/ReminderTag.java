@@ -39,7 +39,7 @@ public class ReminderTag extends BaseTimeEntity {
         this.tag = tag;
     }
 
-    boolean isFor(Tag other) {
-        return tag == other || (tag.getId() != null && tag.getId().equals(other.getId()));
+    boolean hasSameNameAs(Tag other) {
+        return tag == other || tag.getName().equals(other.getName());
     }
 }

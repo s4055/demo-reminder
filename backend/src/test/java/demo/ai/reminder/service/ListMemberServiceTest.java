@@ -7,12 +7,14 @@ import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.request.ReminderListRequest;
 import demo.ai.reminder.dto.response.ListMemberResponse;
 import demo.ai.reminder.exception.BusinessException;
+import demo.ai.reminder.repository.list.ListMemberRepository;
 import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.support.TestAuth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
+import org.hibernate.Hibernate;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,6 +39,9 @@ class ListMemberServiceTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private ListMemberRepository listMemberRepository;
 
     private User alice;
     private User bob;
@@ -178,5 +183,17 @@ class ListMemberServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode")
                 .isEqualTo(resultCode);
+    }
+
+    @Test
+    @DisplayName("멤버 목록 조회는 멤버의 사용자 정보를 함께 불러온다")
+    void findMembersOfList_fetchesUsersTogether() {
+        listMemberService.invite(listId, "bob@example.com");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(listMemberRepository.findByListIdOrderByIdAsc(listId))
+                .hasSize(2)
+                .allSatisfy(member -> assertThat(Hibernate.isInitialized(member.getUser())).isTrue());
     }
 }

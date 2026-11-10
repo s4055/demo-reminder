@@ -4,6 +4,7 @@ import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.request.ReminderListRequest;
 import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
+import demo.ai.reminder.dto.request.ReminderOrderRequest;
 import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
@@ -102,7 +103,7 @@ class DataIsolationTest {
                 () -> reminderService.toggleComplete(reminderId),
                 () -> reminderService.toggleFlag(reminderId),
                 () -> reminderService.deleteReminder(reminderId),
-                () -> reminderService.reorderReminders(aliceListId, List.of(reminderId)),
+                () -> reminderService.reorderReminders(new ReminderOrderRequest(aliceListId, List.of(reminderId))),
                 () -> reminderService.createReminder(
                         new ReminderRequest("끼워넣기", null, aliceListId, null, null, null, null, null, null, null)),
                 () -> reminderService.createReminder(

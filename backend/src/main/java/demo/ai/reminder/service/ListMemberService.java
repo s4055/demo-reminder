@@ -38,7 +38,8 @@ public class ListMemberService {
         String normalizedEmail = User.normalizeEmail(email);
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "User not found: " + normalizedEmail));
-        return ListMemberResponse.from(listMemberRepository.save(list.addMember(user)));
+        return ListMemberResponse.from(UniqueSaves.saveOrConflict(listMemberRepository, list.addMember(user),
+                "Already a member of the list: " + listId));
     }
 
     @Transactional

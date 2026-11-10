@@ -37,8 +37,9 @@ public class AuthService {
         if (userRepository.existsByEmail(email)) {
             throw new BusinessException(ResultCode.CONFLICT, "Email already registered: " + email);
         }
-        User user = userRepository.save(
-                new User(email, passwordEncoder.encode(request.password()), request.strippedName()));
+        User user = UniqueSaves.saveOrConflict(userRepository,
+                new User(email, passwordEncoder.encode(request.password()), request.strippedName()),
+                "Email already registered: " + email);
         return issueTokens(user, refreshTokenService.issue(user.getId()));
     }
 

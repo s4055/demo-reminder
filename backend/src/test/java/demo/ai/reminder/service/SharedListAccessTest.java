@@ -5,6 +5,7 @@ import demo.ai.reminder.domain.list.ListRole;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.dto.request.ReminderListRequest;
 import demo.ai.reminder.dto.request.ReminderListUpdateRequest;
+import demo.ai.reminder.dto.request.ReminderOrderRequest;
 import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.ReminderListResponse;
@@ -113,7 +114,7 @@ class SharedListAccessTest {
         reminderService.updateReminder(aliceReminder.id(),
                 new ReminderUpdateRequest("저지방 우유", null, today, false, null, null, null, null, null, 0L));
         reminderService.toggleFlag(aliceReminder.id());
-        reminderService.reorderReminders(sharedListId, List.of(bobReminder.id(), aliceReminder.id()));
+        reminderService.reorderReminders(new ReminderOrderRequest(sharedListId, List.of(bobReminder.id(), aliceReminder.id())));
         reminderService.toggleComplete(subtask.id());
         reminderService.deleteReminder(subtask.id());
 
@@ -276,7 +277,7 @@ class SharedListAccessTest {
                         new ReminderUpdateRequest("몰래", null, null, false, null, null, null, null, null, 0L)),
                 () -> reminderService.toggleComplete(aliceReminder.id()),
                 () -> reminderService.deleteReminder(aliceReminder.id()),
-                () -> reminderService.reorderReminders(sharedListId, List.of(aliceReminder.id())),
+                () -> reminderService.reorderReminders(new ReminderOrderRequest(sharedListId, List.of(aliceReminder.id()))),
                 () -> reminderService.deleteCompletedReminders(sharedListId),
                 () -> reminderListService.updateList(sharedListId, new ReminderListUpdateRequest("몰래", null, null, 0L)),
                 () -> reminderListService.deleteList(sharedListId)
@@ -328,6 +329,18 @@ class SharedListAccessTest {
 
         assertThat(bobReminder.tags()).containsExactly("빵집");
         assertThat(tagService.getTags()).extracting(TagResponse::name).containsExactly("빵집");
+    }
+
+    @Test
+    @DisplayName("편집자가 같은 이름의 태그를 그대로 두고 리마인더를 수정해도 소유자의 태그 연결은 유지된다")
+    void editorUpdate_keepsOwnerTagOfSameName() {
+        TestAuth.signIn(bob);
+        reminderService.updateReminder(aliceReminder.id(), new ReminderUpdateRequest(
+                "우유 2개", null, today, false, null, List.of("장보기"), null, null, null, aliceReminder.version()));
+
+        assertThat(tagService.getTags()).isEmpty();
+        TestAuth.signIn(alice);
+        assertThat(tagService.getTags()).extracting(TagResponse::name).containsExactly("장보기");
     }
 
     private static void assertResultCode(Executable executable, ResultCode resultCode) {

@@ -8,6 +8,7 @@ import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.domain.reminder.RepeatRule;
 import demo.ai.reminder.domain.tag.Tag;
 import demo.ai.reminder.domain.user.User;
+import demo.ai.reminder.dto.request.ReminderOrderRequest;
 import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
@@ -327,7 +328,7 @@ class ReminderServiceTest {
         ReminderResponse eggs = create("계란", shopping.getId());
         ReminderResponse bread = create("빵", shopping.getId());
 
-        reminderService.reorderReminders(shopping.getId(), List.of(bread.id(), milk.id(), eggs.id()));
+        reminderService.reorderReminders(new ReminderOrderRequest(shopping.getId(), List.of(bread.id(), milk.id(), eggs.id())));
 
         assertThat(reminderService.getReminders(shopping.getId(), null))
                 .extracting(ReminderResponse::title).containsExactly("빵", "우유", "계란");
@@ -351,7 +352,7 @@ class ReminderServiceTest {
                 List.of(milk.id(), report.id()));
 
         for (List<Long> ids : invalidIds) {
-            assertThatThrownBy(() -> reminderService.reorderReminders(shopping.getId(), ids))
+            assertThatThrownBy(() -> reminderService.reorderReminders(new ReminderOrderRequest(shopping.getId(), ids)))
                     .isInstanceOf(BusinessException.class)
                     .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
         }
@@ -360,7 +361,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하지 않는 리스트의 순서를 변경하면 404 예외가 발생한다")
     void reorderReminders_throwsNotFound_whenListDoesNotExist() {
-        assertThatThrownBy(() -> reminderService.reorderReminders(-1L, List.of()))
+        assertThatThrownBy(() -> reminderService.reorderReminders(new ReminderOrderRequest(-1L, List.of())))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
@@ -375,7 +376,7 @@ class ReminderServiceTest {
         ReminderResponse late = reminderService.createReminder(
                 new ReminderRequest("늦은 마감", null, shopping.getId(), today.atTime(18, 0), null, null, null, null, null, null));
 
-        reminderService.reorderReminders(shopping.getId(), List.of(late.id(), early.id()));
+        reminderService.reorderReminders(new ReminderOrderRequest(shopping.getId(), List.of(late.id(), early.id())));
 
         assertThat(reminderService.getSmartReminders(SmartView.SCHEDULED))
                 .extracting(ReminderResponse::title).containsExactly("이른 마감", "늦은 마감");
@@ -574,12 +575,12 @@ class ReminderServiceTest {
         ReminderResponse laundry = create("빨래", home.getId());
         ReminderResponse boxes = createSubtask("박스 구하기", parent.id());
 
-        reminderService.reorderReminders(home.getId(), List.of(laundry.id(), parent.id()));
+        reminderService.reorderReminders(new ReminderOrderRequest(home.getId(), List.of(laundry.id(), parent.id())));
 
         assertThat(reminderService.getReminders(home.getId(), null))
                 .extracting(ReminderResponse::title).containsExactly("빨래", "이사 준비");
-        assertThatThrownBy(() -> reminderService.reorderReminders(home.getId(),
-                List.of(laundry.id(), parent.id(), boxes.id())))
+        assertThatThrownBy(() -> reminderService.reorderReminders(new ReminderOrderRequest(home.getId(),
+                List.of(laundry.id(), parent.id(), boxes.id()))))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
     }
