@@ -39,7 +39,7 @@ let browserQueryClient: QueryClient | undefined // 브라우저 또는 서버를
 
 // 윈도우 객체 여부 -> 브라우저, 서버 환경 판단
 function getQueryClient() {
-  // 서버 환경이므로 사용자 간 캐시 데이터가 섞이지 않도록 신규 생성 
+  // 서버 환경이므로 사용자 간 캐시 데이터가 섞이지 않도록 신규 생성
   if (typeof window === 'undefined') return createQueryClient()
   // 브라우저 환경
   browserQueryClient ??= createQueryClient()

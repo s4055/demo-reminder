@@ -3,7 +3,6 @@ package demo.ai.reminder.domain.list;
 import demo.ai.reminder.domain.common.BaseTimeEntity;
 import demo.ai.reminder.domain.common.DomainException;
 import demo.ai.reminder.domain.user.User;
-
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

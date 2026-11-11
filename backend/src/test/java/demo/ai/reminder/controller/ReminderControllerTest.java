@@ -1,9 +1,9 @@
 package demo.ai.reminder.controller;
 
+import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.domain.reminder.Priority;
 import demo.ai.reminder.domain.reminder.Recurrence;
 import demo.ai.reminder.domain.reminder.Reminder;
-import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.domain.reminder.RepeatRule;
 import demo.ai.reminder.domain.user.User;
 import demo.ai.reminder.repository.list.ReminderListRepository;

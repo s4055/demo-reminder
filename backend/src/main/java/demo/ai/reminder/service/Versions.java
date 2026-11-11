@@ -1,7 +1,7 @@
 package demo.ai.reminder.service;
 
-import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.exception.BusinessException;
 
 final class Versions {
 
