@@ -569,7 +569,7 @@
 - [x] `CLAUDE.md`에 프론트엔드 테스트 관례 추가
 
 ### 완료 기준 검증
-- [ ] 로컬과 CI에서 `npm test` 통과 확인
+- [x] 로컬과 CI에서 `npm test` 통과 확인
 
 ## Phase 32 — 프론트엔드 컴포넌트 분리
 - [ ] `components/reminder-list/` 생성: `index.tsx`, `use-reminder-list-items.ts`, `use-reminder-dnd.ts`
