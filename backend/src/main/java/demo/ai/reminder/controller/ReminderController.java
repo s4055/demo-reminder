@@ -81,6 +81,11 @@ public class ReminderController {
         return ApiResponse.success();
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<ReminderResponse> getReminder(@PathVariable Long id) {
+        return ApiResponse.success(reminderService.getReminder(id));
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<Void> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderUpdateRequest request) {
         reminderService.updateReminder(id, request);

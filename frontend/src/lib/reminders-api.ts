@@ -1,4 +1,4 @@
-import { apiRequest, jsonBody } from "@/lib/api"
+import { ApiError, apiRequest, jsonBody } from "@/lib/api"
 import { toDueAtParam } from "@/lib/due-date"
 import type { Priority } from "@/lib/priority"
 import type { DayOfWeek, RepeatRule } from "@/lib/repeat"
@@ -55,6 +55,21 @@ export type UpdateReminderInput = {
 export function getReminders(listId?: number): Promise<Reminder[]> {
   const query = listId === undefined ? "" : `?listId=${listId}`
   return apiRequest<Reminder[]>(`/api/reminders${query}`)
+}
+
+export function getReminder(id: number): Promise<Reminder> {
+  return apiRequest<Reminder>(`/api/reminders/${id}`)
+}
+
+export async function getReminderIfExists(
+  id: number
+): Promise<Reminder | undefined> {
+  try {
+    return await getReminder(id)
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return undefined
+    throw error
+  }
 }
 
 export function getRemindersByTag(tag: string): Promise<Reminder[]> {

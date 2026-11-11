@@ -572,29 +572,29 @@
 - [x] 로컬과 CI에서 `npm test` 통과 확인
 
 ## Phase 32 — 프론트엔드 컴포넌트 분리
-- [ ] `components/reminder-list/` 생성: `index.tsx`, `use-reminder-list-items.ts`, `use-reminder-dnd.ts`
-- [ ] 항목 컴포넌트 분리: `sortable-reminder-item.tsx`, `reminder-item.tsx`, `reminder-row.tsx`
-- [ ] `components/reminder-edit-dialog/` 생성: `index.tsx`, `reminder-edit-form.tsx`, `form-values.ts`
-- [ ] `list-select.tsx`, `subtask-section.tsx` 분리
-- [ ] import 경로 갱신, 기존 파일 제거
-- [ ] 테스트: `form-values.ts` (리마인더 → 폼 값, 폼 값 → 요청)
+- [x] `components/reminder-list/` 생성: `index.tsx`, `use-reminder-list-items.ts`, `use-reminder-dnd.ts`
+- [x] 항목 컴포넌트 분리: `sortable-reminder-item.tsx`, `reminder-item.tsx`, `reminder-row.tsx`
+- [x] `components/reminder-edit-dialog/` 생성: `index.tsx`, `reminder-edit-form.tsx`, `form-values.ts`
+- [x] `list-select.tsx`, `subtask-section.tsx` 분리
+- [x] import 경로 갱신, 기존 파일 제거
+- [x] 테스트: `form-values.ts` (리마인더 → 폼 값, 폼 값 → 요청)
 
 ### 완료 기준 검증
-- [ ] `npm run lint`, `npm run build`, `npm test` 통과
-- [ ] 리스트·스마트 뷰·태그·검색 목록, 드래그 정렬, 하위 작업 접기/추가, 편집·충돌 처리가 이전과 같게 동작하는지 확인
+- [x] `npm run lint`, `npm run build`, `npm test` 통과
+- [x] 리스트·스마트 뷰·태그·검색 목록, 드래그 정렬, 하위 작업 접기/추가, 편집·충돌 처리가 이전과 같게 동작하는지 확인
 
 ## Phase 33 — 리마인더 단건 조회
 ### 백엔드
-- [ ] `GET /api/reminders/{id}` 추가
-- [ ] `openapi.yml` 갱신
-- [ ] 테스트: 본인·공유 리스트·하위 작업 조회 성공, 다른 사용자 리마인더 404
+- [x] `GET /api/reminders/{id}` 추가
+- [x] `openapi.yml` 갱신
+- [x] 테스트: 본인·공유 리스트·하위 작업 조회 성공, 다른 사용자 리마인더 404
 
 ### 프론트엔드
-- [ ] `getReminder(id)` 추가, `useFetchLatestReminder`가 사용하도록 변경
-- [ ] 테스트: `getReminder` 요청 경로
+- [x] `getReminder(id)` 추가, `useFetchLatestReminder`가 사용하도록 변경
+- [x] 테스트: `getReminder` 요청 경로
 
 ### 완료 기준 검증
-- [ ] 두 탭에서 같은 리마인더를 수정해 충돌을 만들고, 단건 조회 요청 하나로 최신 내용이 반영되는지 확인
+- [x] 두 탭에서 같은 리마인더를 수정해 충돌을 만들고, 단건 조회 요청 하나로 최신 내용이 반영되는지 확인
 
 ## Phase 34 — 시간대 처리
 ### 백엔드

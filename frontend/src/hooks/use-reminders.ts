@@ -10,6 +10,7 @@ import {
   createReminder,
   deleteCompletedReminders,
   deleteReminder,
+  getReminderIfExists,
   getReminders,
   getRemindersByTag,
   getSmartReminders,
@@ -86,8 +87,7 @@ export function useFetchLatestReminder() {
   const invalidate = useInvalidateReminderQueries()
   return async (id: number) => {
     invalidate()
-    const reminders = await getReminders()
-    return reminders.find((reminder) => reminder.id === id)
+    return getReminderIfExists(id)
   }
 }
 

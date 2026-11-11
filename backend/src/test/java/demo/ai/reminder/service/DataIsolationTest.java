@@ -98,6 +98,7 @@ class DataIsolationTest {
 
         List<Executable> attempts = List.of(
                 () -> reminderService.getReminders(aliceListId, null),
+                () -> reminderService.getReminder(reminderId),
                 () -> reminderService.updateReminder(reminderId,
                         new ReminderUpdateRequest("가로채기", null, null, false, null, null, null, null, null, 0L)),
                 () -> reminderService.toggleComplete(reminderId),

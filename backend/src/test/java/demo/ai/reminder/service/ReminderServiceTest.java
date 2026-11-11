@@ -73,6 +73,41 @@ class ReminderServiceTest {
     }
 
     @Test
+    @DisplayName("단건 조회는 최신 버전과 하위 작업을 포함한 리마인더를 반환한다")
+    void getReminder_returnsReminderWithSubtasksAndLatestVersion() {
+        ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
+        ReminderResponse parent = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null, null, null, null, null, null, null));
+        ReminderResponse subtask = reminderService.createReminder(new ReminderRequest("저지방", null, null, null, null, null, parent.id(), null, null, null));
+        reminderService.updateReminder(parent.id(), new ReminderUpdateRequest("우유 2개", null, null, true, null, null, null, null, null, parent.version()));
+        entityManager.flush();
+        entityManager.clear();
+
+        ReminderResponse result = reminderService.getReminder(parent.id());
+
+        assertThat(result.title()).isEqualTo("우유 2개");
+        assertThat(result.flagged()).isTrue();
+        assertThat(result.version()).isEqualTo(parent.version() + 1);
+        assertThat(result.subtasks()).extracting(ReminderResponse::id).containsExactly(subtask.id());
+    }
+
+    @Test
+    @DisplayName("하위 작업을 단건 조회하면 부모 id를 담아 반환한다")
+    void getReminder_returnsSubtaskWithParentId() {
+        ReminderResponse parent = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null));
+        ReminderResponse subtask = reminderService.createReminder(new ReminderRequest("저지방", null, null, null, null, null, parent.id(), null, null, null));
+
+        assertThat(reminderService.getReminder(subtask.id()).parentId()).isEqualTo(parent.id());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 리마인더를 단건 조회하면 404 예외가 발생한다")
+    void getReminder_throwsNotFound_whenReminderDoesNotExist() {
+        assertThatThrownBy(() -> reminderService.getReminder(-1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+    }
+
+    @Test
     @DisplayName("listId를 지정해 리마인더를 생성하면 해당 리스트에 소속된다")
     void createReminder_belongsToGivenList() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
