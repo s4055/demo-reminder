@@ -497,6 +497,42 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("리마인더 단건 조회 응답은 data에 하위 작업을 포함한 리마인더를 담는다")
+    void getReminder_returnsReminderWithSubtasks() throws Exception {
+        Reminder parent = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        parent.addSubtask(new Reminder(owner, "저지방", null, null, null, null, null));
+        reminderRepository.save(parent);
+
+        mockMvc.perform(get("/api/reminders/{id}", parent.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.id").value(parent.getId()))
+                .andExpect(jsonPath("$.data.title").value("우유 사기"))
+                .andExpect(jsonPath("$.data.version").isNumber())
+                .andExpect(jsonPath("$.data.subtasks[*].title").value(contains("저지방")));
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 리마인더를 단건 조회하면 404와 NOT_FOUND 응답을 반환한다")
+    void getReminder_returnsNotFound_forOtherUsersReminder() throws Exception {
+        User other = userRepository.save(new User("other@example.com", "{noop}password", "다른 사람"));
+        Reminder othersReminder = reminderRepository.save(new Reminder(other, "비밀", null, null, null, null, null));
+
+        mockMvc.perform(get("/api/reminders/{id}", othersReminder.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.resultCode").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("숫자가 아닌 id로 단건 조회하면 400과 BAD_REQUEST 응답을 반환한다")
+    void getReminder_returnsBadRequest_forNonNumericId() throws Exception {
+        mockMvc.perform(get("/api/reminders/{id}", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
     @DisplayName("존재하지 않는 리마인더를 삭제하면 404와 NOT_FOUND 응답을 반환한다")
     void deleteReminder_returnsNotFound_whenReminderDoesNotExist() throws Exception {
         mockMvc.perform(delete("/api/reminders/{id}", -1L))

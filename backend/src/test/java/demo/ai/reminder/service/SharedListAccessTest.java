@@ -141,6 +141,19 @@ class SharedListAccessTest {
     }
 
     @Test
+    @DisplayName("편집자는 공유 리스트의 리마인더를 단건 조회할 수 있고, 다른 멤버의 리스트 없는 리마인더는 404이다")
+    void editor_canGetSharedReminderButNotOwnersUnlistedReminder() {
+        ReminderResponse alicePrivate = reminderService.createReminder(
+                new ReminderRequest("개인 메모", null, null, null, null, null, null, null, null, null));
+        TestAuth.signIn(bob);
+
+        assertThat(reminderService.getReminder(aliceReminder.id()).title()).isEqualTo("우유");
+        assertThatThrownBy(() -> reminderService.getReminder(alicePrivate.id()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
+    }
+
+    @Test
     @DisplayName("검색 결과에 공유받은 리스트의 리마인더가 포함되고, 다른 사용자의 리스트 없는 리마인더는 제외된다")
     void searchReminders_includesSharedListReminders() {
         reminderService.createReminder(new ReminderRequest("우유 영수증", null, null, null, null, null, null, null, null, null));

@@ -888,6 +888,32 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /api/reminders/{id}:
+    get:
+      tags: [Reminders]
+      summary: 리마인더 단건 조회 (하위 작업 포함)
+      description: 현재 사용자가 접근할 수 있는 리마인더(자기 리마인더 또는 멤버인 리스트의 리마인더) 하나를 반환한다. 하위 작업도 id로 조회할 수 있으며, 이때 parentId에 부모 id가 담긴다. 편집 중 버전 충돌이 났을 때 최신 내용과 version을 다시 받는 용도로 쓴다.
+      operationId: getReminder
+      parameters:
+        - $ref: "#/components/parameters/ReminderId"
+      responses:
+        "200":
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderApiResponse"
+        "400":
+          description: id가 숫자가 아님
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 리마인더가 없거나 접근할 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     put:
       tags: [Reminders]
       summary: 리마인더 수정 (제목/메모/마감일시/플래그/우선순위/태그/반복 전체 교체)

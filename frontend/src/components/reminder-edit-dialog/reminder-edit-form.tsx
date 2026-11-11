@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, type KeyboardEvent } from "react"
-import { parseISO } from "date-fns"
+import { useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 import { DueDatePicker } from "@/components/due-date-picker"
@@ -9,13 +8,7 @@ import { RepeatSelect } from "@/components/repeat-select"
 import { TagInput } from "@/components/tag-input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -26,73 +19,25 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  formValuesOf,
+  toUpdateInput,
+  type ReminderFormValues,
+} from "@/components/reminder-edit-dialog/form-values"
+import { ListSelect } from "@/components/reminder-edit-dialog/list-select"
+import { SubtaskSection } from "@/components/reminder-edit-dialog/subtask-section"
 import { useLists } from "@/hooks/use-lists"
 import {
-  useCreateReminder,
   useFetchLatestReminder,
   useMoveReminder,
   useUpdateReminder,
 } from "@/hooks/use-reminders"
 import { isVersionConflict } from "@/lib/api"
-import { toDueAtParam } from "@/lib/due-date"
-import type { ReminderList } from "@/lib/lists-api"
-import { PRIORITIES, PRIORITY_LABELS, type Priority } from "@/lib/priority"
+import { PRIORITIES, PRIORITY_LABELS } from "@/lib/priority"
 import type { Reminder } from "@/lib/reminders-api"
-import {
-  NO_REPEAT,
-  recurrenceOf,
-  toRepeatFields,
-  type Recurrence,
-} from "@/lib/repeat"
-import { cn } from "@/lib/utils"
+import { NO_REPEAT } from "@/lib/repeat"
 
-type ReminderFormValues = {
-  title: string
-  memo: string
-  dueAt: Date | undefined
-  recurrence: Recurrence
-  flagged: boolean
-  priority: Priority
-  tagNames: string[]
-  listId: number | null
-}
-
-function formValuesOf(reminder: Reminder): ReminderFormValues {
-  return {
-    title: reminder.title,
-    memo: reminder.memo ?? "",
-    dueAt: reminder.dueAt ? parseISO(reminder.dueAt) : undefined,
-    recurrence: recurrenceOf(reminder),
-    flagged: reminder.flagged,
-    priority: reminder.priority,
-    tagNames: reminder.tags,
-    listId: reminder.listId,
-  }
-}
-
-export function ReminderEditDialog({
-  open,
-  onOpenChange,
-  reminder,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  reminder: Reminder
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <ReminderEditForm
-          key={reminder.id}
-          reminder={reminder}
-          onSaved={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function ReminderEditForm({
+export function ReminderEditForm({
   reminder,
   onSaved,
 }: {
@@ -149,19 +94,7 @@ function ReminderEditForm({
 
   function onSubmit(values: ReminderFormValues) {
     updateReminder.mutate(
-      {
-        id: reminder.id,
-        input: {
-          title: values.title.trim(),
-          memo: values.memo.trim() || null,
-          dueAt: values.dueAt ? toDueAtParam(values.dueAt) : null,
-          flagged: values.flagged,
-          priority: values.priority,
-          tagNames: values.tagNames,
-          ...toRepeatFields(values.dueAt ? values.recurrence : NO_REPEAT),
-          version: base.version,
-        },
-      },
+      { id: reminder.id, input: toUpdateInput(values, base.version) },
       {
         onSuccess: () => moveIfChanged(values.listId),
         onError: (error) => {
@@ -308,119 +241,5 @@ function ReminderEditForm({
         </Button>
       </DialogFooter>
     </form>
-  )
-}
-
-function ListSelect({
-  id,
-  lists,
-  value,
-  onChange,
-}: {
-  id: string
-  lists: ReminderList[]
-  value: number | null
-  onChange: (listId: number | null) => void
-}) {
-  const listById = new Map(lists.map((list) => [list.id, list]))
-  return (
-    <Select<number | null>
-      value={value}
-      onValueChange={(next) => onChange(next ?? value)}
-    >
-      <SelectTrigger id={id} className="w-full">
-        <SelectValue placeholder="리스트 없음">
-          {(selected: number | null) => {
-            const list = selected === null ? undefined : listById.get(selected)
-            return list ? <ListLabel list={list} /> : "리스트 없음"
-          }}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {lists.map((list) => (
-          <SelectItem key={list.id} value={list.id}>
-            <ListLabel list={list} />
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
-function ListLabel({ list }: { list: ReminderList }) {
-  return (
-    <span className="flex min-w-0 items-center gap-2">
-      <span
-        aria-hidden
-        className="size-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: list.color ?? "#8E8E93" }}
-      />
-      <span className="truncate">{list.name}</span>
-    </span>
-  )
-}
-
-// 이 영역은 편집 폼 안에 있으므로 Enter가 폼을 제출하지 않도록 막는다.
-function SubtaskSection({ parent }: { parent: Reminder }) {
-  const createReminder = useCreateReminder()
-  const [title, setTitle] = useState("")
-
-  function addSubtask() {
-    const trimmed = title.trim()
-    if (!trimmed || createReminder.isPending) return
-    createReminder.mutate(
-      { title: trimmed, parentId: parent.id },
-      { onSuccess: () => setTitle("") }
-    )
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    // 한글 조합 중 Enter는 조합 확정이므로 추가하지 않는다.
-    if (event.nativeEvent.isComposing || event.key !== "Enter") return
-    event.preventDefault()
-    addSubtask()
-  }
-
-  return (
-    <div className="grid gap-1.5">
-      <Label htmlFor="reminder-subtask">하위 작업</Label>
-      {parent.subtasks.length > 0 && (
-        <ul className="grid gap-1 text-sm">
-          {parent.subtasks.map((subtask) => (
-            <li
-              key={subtask.id}
-              className={cn(
-                "truncate rounded-md bg-secondary px-2 py-1",
-                subtask.completed && "text-muted-foreground line-through"
-              )}
-            >
-              {subtask.title}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex gap-2">
-        <Input
-          id="reminder-subtask"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="하위 작업 입력 후 Enter"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          onClick={addSubtask}
-          disabled={!title.trim() || createReminder.isPending}
-        >
-          추가
-        </Button>
-      </div>
-      {createReminder.isError && (
-        <p className="text-xs text-destructive">
-          하위 작업을 추가하지 못했습니다.
-        </p>
-      )}
-    </div>
   )
 }

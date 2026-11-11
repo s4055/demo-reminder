@@ -50,9 +50,19 @@ frontend/src/
 │  │  ├─ shared-list-section.tsx   공유받은 리스트
 │  │  ├─ tag-section.tsx       태그 목록
 │  │  └─ sidebar-item.tsx      공통 항목 버튼
-│  ├─ reminder-list.tsx        리마인더 목록 + 항목 + 하위 작업 + 드래그 정렬
+│  ├─ reminder-list/           리마인더 목록 (Phase 32에서 분리)
+│  │  ├─ index.tsx             조립 + 로딩/에러/빈 상태 + 편집·일괄 삭제 다이얼로그 상태
+│  │  ├─ use-reminder-list-items.ts   조회, 완료 항목 표시 여부, 하위 작업 접기 상태
+│  │  ├─ use-reminder-dnd.ts   드래그 센서와 드롭 시 순서 변경
+│  │  ├─ reminder-items.ts     미완료/완료 분리, 완료 개수, id로 찾기 (순수 함수)
+│  │  ├─ sortable-reminder-item.tsx, reminder-item.tsx, reminder-row.tsx   항목 표시
+│  │  └─ types.ts              ReminderActions, SubtaskView
 │  ├─ reminder-form.tsx        새 리마인더 입력
-│  ├─ reminder-edit-dialog.tsx 상세 편집 (메모/마감일/반복/우선순위/태그/리스트 이동/하위 작업)
+│  ├─ reminder-edit-dialog/    상세 편집 (Phase 32에서 분리)
+│  │  ├─ index.tsx             다이얼로그
+│  │  ├─ reminder-edit-form.tsx   폼, 저장, 버전 충돌 시 단건 조회로 다시 채우기
+│  │  ├─ form-values.ts        리마인더 ↔ 폼 값 ↔ 수정 요청 변환 (순수 함수)
+│  │  └─ list-select.tsx, subtask-section.tsx
 │  ├─ repeat-select.tsx, due-date-picker.tsx, tag-input.tsx   편집 폼 부품
 │  ├─ list-form-dialog.tsx / list-delete-dialog.tsx / list-share-dialog.tsx / list-group-dialogs.tsx
 │  ├─ clear-completed-dialog.tsx, notification-toggle.tsx, user-menu.tsx, list-icon-mark.tsx
@@ -170,8 +180,8 @@ Checkbox 클릭
 - **`lib/due-date.ts`, `lib/repeat.ts`**: 서버 `LocalDateTime`(타임존 없는 문자열)을 로컬 시각으로 다루는 규칙, "2주마다 월·수"/"평일마다" 같은 반복 요약 문구를 만드는 순수 함수입니다.
 - **`reminders-app.tsx`**: `key={selectionKey(selection)}`로 `ReminderForm`을 뷰 전환 때 **강제 재생성(입력값 초기화)** 합니다. React의 `key`는 반복문 외에도 "이 키가 바뀌면 컴포넌트를 새로 만든다"는 용도로 씁니다. 렌더 중에 `setBaseSelection`을 부르는 부분(보던 리스트가 사라지면 기본 화면으로)도 React가 허용하는 "렌더 중 상태 조정" 패턴입니다.
 - **`sidebar/use-sidebar-dnd.ts`**: 그룹 순서와 그룹 안 리스트 순서를 한 `DndContext`에서 다루므로 드래그 id에 `group-`/`list-` 접두사를 붙이고, 충돌 판정과 키보드 이동을 같은 범위로 제한합니다. 리스트 순서는 서버에서 그룹과 관계없는 전체 순서라, 그룹 안에서 바꾼 순서를 전체 순서에 다시 끼워 넣어 보냅니다.
-- **`reminder-edit-dialog.tsx`, `list-form-dialog.tsx`**: `react-hook-form`으로 폼 처리(`register`로 입력 연결, `validate`로 검증). 커스텀 컴포넌트(날짜 선택, 반복 선택, 태그 입력)는 `Controller`로 연결합니다. 수정/생성 겸용 폼(`list` prop 유무로 분기)도 볼만합니다.
-- **`reminder-list.tsx`**: 로딩(Skeleton) → 에러(재시도 버튼) → 빈 상태 → 목록의 순서로 **early return** 하는 패턴입니다. 미완료 → 완료(완료일시 최신순) 정렬, 하위 작업 펼치기, 리스트 화면 전용 드래그 정렬이 들어 있습니다.
+- **`reminder-edit-dialog/reminder-edit-form.tsx`, `list-form-dialog.tsx`**: `react-hook-form`으로 폼 처리(`register`로 입력 연결, `validate`로 검증). 커스텀 컴포넌트(날짜 선택, 반복 선택, 태그 입력)는 `Controller`로 연결합니다. 수정/생성 겸용 폼(`list` prop 유무로 분기)도 볼만합니다. 폼 값 변환은 `form-values.ts`로 분리해 테스트합니다.
+- **`reminder-list/index.tsx`**: 로딩(Skeleton) → 에러(재시도 버튼) → 빈 상태 → 목록의 순서로 **early return** 하는 패턴입니다. 훅은 early return보다 먼저 호출해야 하므로 조회·정렬 상태는 `use-reminder-list-items.ts`, 드래그는 `use-reminder-dnd.ts` 훅으로 나눠 맨 위에서 부릅니다.
 - **`use-reminder-notifications.ts`**: 다가오는 리마인더를 백그라운드에서도 주기적으로 조회해 마감 시각에 브라우저 알림을 띄우고, 알린 항목(id + dueAt)을 `localStorage`에 남겨 중복 알림을 막습니다.
 
 ## 7. 스타일과 UI 컴포넌트
@@ -185,10 +195,10 @@ Checkbox 클릭
 ## 8. 주의할 점
 
 1. **AGENTS.md 경고**: 이 Next.js는 학습 데이터와 다른 **최신 버전(16.x)** 이라, 코드 작성 전에 `node_modules/next/dist/docs/`의 문서를 확인하라고 되어 있습니다. `LayoutProps<"/">` 같은 타입은 Next가 자동 생성하는 전역 타입입니다.
-2. **테스트 코드가 없습니다.** `package.json`에 test 스크립트나 테스트 라이브러리가 없고, CI(`.github/workflows/ci.yml`)는 `npm run lint`와 `npm run build`만 확인합니다. 백엔드는 테스트를 필수로 하는 관례인데 프론트는 비어 있습니다.
+2. **테스트**: Phase 31부터 Vitest로 `lib/`와 컴포넌트 폴더의 순수 함수를 테스트합니다(`*.test.ts`, `npm test`). CI는 lint → test → build 순서로 확인합니다. 컴포넌트 렌더링 테스트와 E2E 테스트는 아직 없습니다.
 3. **`@base-ui/react`**: 흔한 shadcn(Radix 기반)과 달리 Base UI를 씁니다. 예를 들어 `PopoverTrigger render={<Button />}`처럼 `asChild` 대신 `render` prop을 쓰는 게 차이입니다(`sidebar/move-to-group-menu.tsx`).
 4. **정리 대상**: `frontend/README.md`는 create-next-app 기본 템플릿이고(실행 방법은 루트 `README.md`에 있음), `public/`의 Next 기본 SVG들(`next.svg`, `vercel.svg` 등)은 코드에서 참조되지 않습니다.
-5. **큰 컴포넌트**: 사이드바는 Phase 21에서 나눴지만 `reminder-list.tsx`(약 560줄), `reminder-edit-dialog.tsx`(약 410줄)는 아직 한 파일입니다.
+5. **컴포넌트 분리**: 사이드바(Phase 21)와 리마인더 목록·편집 다이얼로그(Phase 32)를 역할별 폴더로 나눴습니다. 폴더 안 파일끼리도 `@/components/...` 절대 경로로 import합니다.
 
 ## 9. 추천 읽기 순서
 
@@ -198,5 +208,5 @@ Checkbox 클릭
 4. `components/auth-gate.tsx` + `app/providers.tsx` → 인증과 전역 설정
 5. `components/reminders-app.tsx` → 전체 조립
 6. `components/sidebar/index.tsx` → `list-section.tsx` → `use-sidebar-dnd.ts` → 컴포넌트 분리와 드래그 정렬
-7. `components/reminder-list.tsx` → 가장 전형적인 React 컴포넌트
-8. `components/reminder-edit-dialog.tsx` → 폼 처리
+7. `components/reminder-list/index.tsx` → `use-reminder-list-items.ts` → `reminder-item.tsx` → 가장 전형적인 React 컴포넌트
+8. `components/reminder-edit-dialog/reminder-edit-form.tsx` → `form-values.ts` → 폼 처리

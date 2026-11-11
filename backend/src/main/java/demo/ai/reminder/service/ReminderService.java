@@ -42,6 +42,10 @@ public class ReminderService {
         return toResponses(reminderRepository.findAccessible(currentUser.id()));
     }
 
+    public ReminderResponse getReminder(Long id) {
+        return ReminderResponse.from(findReminderOrThrow(id));
+    }
+
     public List<ReminderResponse> getSmartReminders(SmartView view) {
         return toResponses(switch (view) {
             case TODAY -> {
