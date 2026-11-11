@@ -546,3 +546,125 @@
 ### 완료 기준 검증
 - [x] 교체 전 토큰 재사용 시 최신 토큰도 무효가 되고 다시 로그인해야 하는지 확인
 - [x] 여러 탭 동시 새로고침 시 로그아웃되지 않는지 확인
+
+# v7 — 품질·확장성 개선 (spec.md 15번)
+
+`plan.md`의 Phase 30~36을 기준으로 한다. 모든 작업은 CI가 통과한 PR로 머지한다.
+
+## Phase 30 — 코드 정리
+- [ ] 백엔드 import 순서를 IntelliJ 기본 배치로 통일 (main, test)
+- [ ] 루트 `.editorconfig` 추가 (들여쓰기, 줄 끝, `ij_java_imports_layout`)
+- [ ] `ReminderService.reorderReminders` 등 형식 오류 수정
+- [ ] `CLAUDE.md`에 import 배치·`.editorconfig` 관례 추가
+
+### 완료 기준 검증
+- [ ] 백엔드 전체 테스트 통과, 형식 외 변경이 없는지 diff 확인
+
+## Phase 31 — 프론트엔드 테스트 기반
+- [ ] Vitest 추가, `npm test` 스크립트, `@/` 경로 별칭과 테스트 환경(node/jsdom) 설정
+- [ ] 테스트: `lib/api.ts` (성공, `ApiError`, 401 재발급 후 재시도, 재발급 실패, 동시 401 공유, 인증 경로 재시도 제외)
+- [ ] 테스트: `lib/repeat.ts`, `lib/due-date.ts`
+- [ ] 테스트: `lib/selection.ts`, `lib/notified-reminders.ts`
+- [ ] CI frontend job에 `npm test` 단계 추가
+- [ ] `CLAUDE.md`에 프론트엔드 테스트 관례 추가
+
+### 완료 기준 검증
+- [ ] 로컬과 CI에서 `npm test` 통과 확인
+
+## Phase 32 — 프론트엔드 컴포넌트 분리
+- [ ] `components/reminder-list/` 생성: `index.tsx`, `use-reminder-list-items.ts`, `use-reminder-dnd.ts`
+- [ ] 항목 컴포넌트 분리: `sortable-reminder-item.tsx`, `reminder-item.tsx`, `reminder-row.tsx`
+- [ ] `components/reminder-edit-dialog/` 생성: `index.tsx`, `reminder-edit-form.tsx`, `form-values.ts`
+- [ ] `list-select.tsx`, `subtask-section.tsx` 분리
+- [ ] import 경로 갱신, 기존 파일 제거
+- [ ] 테스트: `form-values.ts` (리마인더 → 폼 값, 폼 값 → 요청)
+
+### 완료 기준 검증
+- [ ] `npm run lint`, `npm run build`, `npm test` 통과
+- [ ] 리스트·스마트 뷰·태그·검색 목록, 드래그 정렬, 하위 작업 접기/추가, 편집·충돌 처리가 이전과 같게 동작하는지 확인
+
+## Phase 33 — 리마인더 단건 조회
+### 백엔드
+- [ ] `GET /api/reminders/{id}` 추가
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 본인·공유 리스트·하위 작업 조회 성공, 다른 사용자 리마인더 404
+
+### 프론트엔드
+- [ ] `getReminder(id)` 추가, `useFetchLatestReminder`가 사용하도록 변경
+- [ ] 테스트: `getReminder` 요청 경로
+
+### 완료 기준 검증
+- [ ] 두 탭에서 같은 리마인더를 수정해 충돌을 만들고, 단건 조회 요청 하나로 최신 내용이 반영되는지 확인
+
+## Phase 34 — 시간대 처리
+### 백엔드
+- [ ] 시각 필드를 `Instant`로 변경 (`Reminder`, `BaseTimeEntity`, `RefreshToken`)
+- [ ] `Reminder.timeZone` 추가, 마감 시각이 있는데 시간대가 없으면 `DomainException`
+- [ ] 시각 계산을 `Instant.now(clock)`으로 변경
+- [ ] `Recurrence.nextDueAt`을 `Instant` + `ZoneId` 기준으로 변경
+- [ ] 요청 DTO의 `dueAt`(오프셋 포함)과 `timeZone`(→ `ZoneId`, 잘못된 값 400) 처리
+- [ ] `smart/TODAY`의 `zone` 파라미터 필수화, 오늘 구간을 해당 시간대로 계산
+- [ ] `upcoming`의 `from`/`to`를 `Instant`로 변경
+- [ ] 응답 시각이 `Z`가 붙은 ISO-8601인지 확인
+- [ ] `CLAUDE.md`에 시각 처리 관례 추가
+- [ ] `openapi.yml` 시각 형식, `timeZone`, `zone` 갱신
+- [ ] `README.md`에 로컬 DB 초기화 안내 추가
+- [ ] 테스트(도메인): 매일·매주 요일·매월 다음 마감 시각, 서머타임 전환일, 시간대 없는 마감 시각 거부
+- [ ] 테스트(서비스): UTC `Clock` + `Asia/Seoul`의 오늘 뷰 경계
+- [ ] 테스트(컨트롤러): 잘못된 `timeZone`·`zone` 400, `TODAY`의 `zone` 누락 400, 응답 시각 형식
+- [ ] 기존 `LocalDateTime` 기반 테스트를 `Instant` 기준으로 갱신
+
+### 프론트엔드
+- [ ] `lib/timezone.ts` 추가 (브라우저 시간대)
+- [ ] 생성·수정 요청에 `timeZone` 추가, `dueAt`을 `toISOString()`으로 전송
+- [ ] 오늘 뷰 `zone`, upcoming `from`/`to` 전송 방식 변경
+- [ ] `lib/due-date.ts` 파싱·표시 변경과 주석 갱신
+- [ ] 테스트: 요청 시각 변환, 다른 시간대 문자열 표시, 지남 판단
+
+### 완료 기준 검증
+- [ ] 로컬 DB를 초기화하고 백엔드를 `-Duser.timezone=UTC`로 실행해 한국 시간 오전 마감 리마인더가 "오늘"에 나오는지 확인
+- [ ] 브라우저 시간대를 바꿔 같은 리마인더가 각 시간대로 표시되는지 확인
+- [ ] 매일 반복 리마인더 완료 시 다음 날 같은 현지 시각으로 생성되는지 확인
+- [ ] 마감 알림이 정해진 시각에 뜨는지 확인
+
+## Phase 35 — 목록 페이지네이션
+### 백엔드
+- [ ] `SliceResponse<T>(items, nextCursor)` 추가
+- [ ] `GET /api/reminders/completed` 추가 (키셋: `completedAt desc, id desc`), `SmartView.COMPLETED` 제거
+- [ ] `GET /api/reminders/search` 응답을 `SliceResponse`로 변경 (오프셋 커서)
+- [ ] `size`(기본 50, 1~100)·커서 검증과 디코딩을 웹 경계에서 처리
+- [ ] `openapi.yml` 갱신
+- [ ] 테스트: 같은 완료 시각이 페이지 경계에 걸쳐도 빠짐·중복 없음, 마지막 페이지 `nextCursor` null, 검색 이어 받기
+- [ ] 테스트: `size` 범위 밖 400, 잘못된 커서 400, `smart/COMPLETED` 400
+
+### 프론트엔드
+- [ ] 완료됨·검색 API 함수를 페이지 응답 타입으로 변경
+- [ ] 완료됨·검색 화면을 `useInfiniteQuery`와 목록 끝 감지(`IntersectionObserver`)로 변경
+- [ ] 리마인더 변경 후 무한 조회 캐시 무효화 확인
+- [ ] 테스트: 페이지 응답 파싱, 커서 전달
+
+### 완료 기준 검증
+- [ ] 완료 항목 120개에서 첫 요청 50개, 스크롤 시 120개 모두 순서대로 중복 없이 보이는지 확인
+- [ ] 검색 결과 이어 불러오기 확인
+- [ ] 완료 해제·삭제 후 목록 갱신 확인
+
+## Phase 36 — 로그인 시도 제한
+### 백엔드
+- [ ] `app.auth.login-attempt` 설정 추가 (`@ConfigurationProperties`)
+- [ ] `LoginAttemptLimiter` 구현 (이메일·IP별 실패 기록, `Clock` 기준, 만료 기록 정리)
+- [ ] `AuthService.login`에 차단 확인·실패 기록·성공 시 초기화 적용, 컨트롤러가 IP 전달
+- [ ] `ResultCode.TOO_MANY_LOGIN_ATTEMPTS`(429) 추가, `Retry-After` 헤더 응답
+- [ ] 차단 시작 WARN 로그
+- [ ] `openapi.yml`에 429·`Retry-After` 추가
+- [ ] 테스트: 이메일 5회 실패 차단, 기간 경과 후 해제, 성공 시 초기화, IP 기준 차단, 만료 기록 정리
+- [ ] 테스트: 차단 중 올바른 비밀번호도 429, `Retry-After` 헤더, 다른 이메일 실패와 분리
+
+### 프론트엔드
+- [ ] `ApiError`에 재시도 시간 전달
+- [ ] 로그인 폼에 429 안내 문구 표시
+- [ ] 테스트: 429 응답의 `ApiError` 재시도 시간
+
+### 완료 기준 검증
+- [ ] 같은 이메일로 5번 틀린 뒤 올바른 비밀번호로도 로그인되지 않고 안내 문구가 보이는지 확인
+- [ ] `lock-duration`을 짧게 두고 시간이 지난 뒤 다시 로그인되는지 확인
+- [ ] 다른 계정 로그인은 영향받지 않는지 확인

@@ -737,6 +737,194 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 
 ---
 
+# v7 — 품질·확장성 개선 (spec.md 15번)
+
+### 공통 원칙 (Phase 30~36)
+- 위험이 적은 정리와 테스트 기반을 먼저 마련한 뒤, API가 바뀌는 작업을 진행한다.
+- 서버와 프론트엔드가 함께 바뀌어야 동작하는 API 변경은 한 Phase에서 끝낸다.
+- API를 바꾸는 Phase는 `backend/openapi.yml`, 백엔드 테스트, 프론트엔드 테스트를 같은 Phase에서 갱신한다.
+- 동작을 유지하는 Phase(30~32)는 기존 테스트가 그대로 통과하는 것으로 검증한다.
+
+---
+
+## Phase 30 — 코드 정리
+**목표**: 파일마다 다른 형식을 하나의 규칙으로 맞추고, 이후 변경에서 다시 어긋나지 않게 한다.
+
+### 작업
+- 백엔드 import 순서를 IntelliJ 기본 배치로 통일한다 (그 밖의 import 알파벳순 → 빈 줄 → `javax`/`java` → 빈 줄 → static import)
+  - 예: `ReminderService`에서 `exception`이 `common`보다 앞에 있는 것처럼 알파벳순이 깨진 파일을 고친다
+- 루트에 `.editorconfig`를 추가해 들여쓰기, 줄 끝, import 배치(`ij_java_imports_layout`)를 IDE가 자동 적용하게 한다
+- `ReminderService.reorderReminders`의 쉼표 뒤 공백 누락 등 형식 오류를 고친다
+- `CLAUDE.md`에 import 배치 규칙과 `.editorconfig`를 따른다는 관례를 추가한다
+
+### 완료 기준
+- 백엔드 전체 테스트가 통과하고, 동작 코드 변경이 없다 (형식 변경만 포함).
+
+---
+
+## Phase 31 — 프론트엔드 테스트 기반
+**목표**: 이후 Phase의 리팩터링과 API 변경을 검증할 수 있도록 프론트엔드 로직 테스트를 마련한다.
+
+### 구성
+- Vitest를 devDependency로 추가하고 `npm test`(`vitest run`) 스크립트를 만든다
+  - 기본 환경은 `node`로 두고, `localStorage`/`window`가 필요한 테스트만 `jsdom` 환경에서 실행한다
+  - `@/` 경로 별칭을 `tsconfig.json`과 같게 설정한다
+- 테스트 파일은 대상 옆에 `*.test.ts`로 둔다
+
+### 테스트 대상
+- `lib/api.ts`: 성공 응답의 `data` 반환, 실패 응답의 `ApiError`(상태·`resultCode`), 401 시 재발급 후 재시도, 재발급 실패 시 `unauthorizedHandler` 호출, 동시 401의 재발급 1회 공유, 인증 API 경로는 재시도 제외 (`fetch`를 모킹)
+- `lib/repeat.ts`: 반복 규칙 ↔ 요청 필드 변환, 표시 문구
+- `lib/due-date.ts`: 서버 시각 문자열 파싱·표시, 지남 판단
+- `lib/selection.ts`, `lib/notified-reminders.ts`
+
+### CI·문서
+- `.github/workflows/ci.yml`의 frontend job에 `npm test` 단계를 추가한다 (lint와 build 사이)
+- `CLAUDE.md`에 프론트엔드 관례를 추가한다: `lib/`와 훅의 로직을 바꾸면 테스트를 함께 작성한다
+
+### 완료 기준
+- `npm test`가 로컬과 CI에서 통과한다.
+- 재발급·재시도 로직의 주요 분기(성공, 재발급 성공 후 재시도, 재발급 실패, 동시 401)가 테스트로 검증된다.
+
+---
+
+## Phase 32 — 프론트엔드 컴포넌트 분리
+**목표**: 큰 두 컴포넌트를 역할별로 나눠 Phase 34·35의 변경을 쉽게 한다. 동작은 바꾸지 않는다.
+
+### `reminder-list.tsx` (545줄) → `components/reminder-list/`
+- `index.tsx` — `ReminderList` 조립과 화면 상태(편집 대상, 일괄 삭제 다이얼로그)
+- `use-reminder-list-items.ts` — 선택 상태별 조회, 완료 항목 표시 여부, 정렬(`byRecentCompletion`), 하위 작업 접기 상태
+- `use-reminder-dnd.ts` — 드래그 정렬과 optimistic update/복구
+- `sortable-reminder-item.tsx`, `reminder-item.tsx`, `reminder-row.tsx` — 항목 렌더링
+- 여러 하위 컴포넌트가 쓰는 동작은 지금의 `ReminderActions` 타입으로 묶어 props로 전달한다
+
+### `reminder-edit-dialog.tsx` (426줄) → `components/reminder-edit-dialog/`
+- `index.tsx` — `ReminderEditDialog`
+- `reminder-edit-form.tsx` — 폼, 저장, 버전 충돌 처리
+- `form-values.ts` — `ReminderFormValues`, `formValuesOf`, 폼 값 → 요청 변환 (Phase 31 방식으로 테스트 추가)
+- `list-select.tsx`, `subtask-section.tsx`
+
+### 완료 기준
+- `npm run lint`, `npm run build`, `npm test`가 통과한다.
+- 리스트·스마트 뷰·태그·검색 화면의 목록, 드래그 정렬, 하위 작업 접기/추가, 편집·충돌 처리가 이전과 같게 동작한다.
+
+---
+
+## Phase 33 — 리마인더 단건 조회
+**목표**: 리마인더 하나가 필요할 때 전체 목록을 받지 않게 한다.
+
+### 백엔드
+- `GET /api/reminders/{id}` 추가: `findAccessibleById`로 조회해 `ReminderResponse`(하위 작업 포함)를 반환, 없거나 접근할 수 없으면 404
+- `openapi.yml` 갱신
+- 테스트: 본인 리마인더, 공유 리스트 리마인더, 하위 작업 조회 성공 / 다른 사용자 리마인더 404 (서비스·컨트롤러)
+
+### 프론트엔드
+- `reminders-api.ts`에 `getReminder(id)`를 추가하고, `useFetchLatestReminder`가 이를 사용하게 바꾼다
+- 테스트: `getReminder` 요청 경로
+
+### 완료 기준
+- 편집 중 버전 충돌이 나면 단건 조회 요청 하나로 최신 내용이 폼에 반영된다.
+
+---
+
+## Phase 34 — 시간대 처리
+**목표**: 서버와 사용자의 시간대가 달라도 마감 시각, "오늘", 반복 일정이 정확하게 동작하게 한다.
+
+### 데이터 모델
+- 시각 필드를 `Instant`로 변경한다: `Reminder.dueAt`·`completedAt`, `BaseTimeEntity.createdAt`·`updatedAt`, `RefreshToken.expiresAt`·`revokedAt`
+- `Reminder.timeZone`(`ZoneId`, 문자열 컬럼)을 추가한다. 마감 시각이 있는데 시간대가 없으면 `DomainException`으로 거부한다
+- 컬럼 타입이 바뀌므로 로컬 H2 파일 DB(`backend/data`)를 삭제하고 다시 만든다 (`README.md`에 안내)
+
+### 백엔드
+- 시각 계산은 `Instant.now(clock)`을 사용한다
+- `Recurrence.nextDueAt`이 `Instant`와 `ZoneId`를 받아, 해당 시간대의 날짜·요일 기준으로 다음 마감 시각을 계산한다 (일 단위 반복은 같은 현지 시각 유지)
+- 요청 DTO: `dueAt`을 오프셋이 있는 시각으로 받고, `timeZone` 문자열을 `ZoneId`로 변환한다 (잘못된 ID는 400, 웹 경계에서 검증)
+- `GET /api/reminders/smart/TODAY`는 `zone` 파라미터(`ZoneId`)를 필수로 받고, 서비스가 그 시간대의 오늘 구간을 `Instant`로 계산한다
+- `GET /api/reminders/upcoming`의 `from`/`to`를 `Instant`로 받는다
+- Jackson이 `Instant`를 `Z`가 붙은 ISO-8601 문자열로 직렬화하는지 확인한다
+- `CLAUDE.md`에 관례를 추가한다: 시각은 `Instant`로 저장·응답하고, 날짜 경계나 반복 계산처럼 현지 시간이 필요한 경우에만 명시적인 `ZoneId`로 변환한다
+- `openapi.yml`의 시각 형식, `timeZone`, `zone` 파라미터 설명을 갱신한다
+- 테스트
+  - 도메인: 시간대가 있는 다음 마감 시각 계산(매일·매주 요일·매월, 서머타임 전환일), 마감 시각만 있고 시간대가 없으면 거부
+  - 서비스: `Clock`을 UTC로 고정하고 `zone=Asia/Seoul`로 오늘 뷰 경계 검증 (한국 0시~9시 마감 포함)
+  - 컨트롤러: 잘못된 `timeZone`·`zone` 400, `TODAY`에 `zone` 누락 400, 응답 시각 형식
+  - 기존 `LocalDateTime` 기반 테스트를 `Instant` 기준으로 갱신
+
+### 프론트엔드
+- `lib/timezone.ts`에 브라우저 시간대(`Intl.DateTimeFormat().resolvedOptions().timeZone`)를 구하는 함수를 둔다
+- 리마인더 생성·수정 요청에 `timeZone`을 넣고, `dueAt`은 `toISOString()`으로 보낸다
+- 오늘 뷰 조회에 `zone`을 붙이고, upcoming 조회의 `from`/`to`를 `toISOString()`으로 보낸다
+- `lib/due-date.ts`가 오프셋이 있는 문자열을 파싱해 브라우저 시간대로 표시하도록 바꾸고, "타임존 없는 문자열" 전제를 설명하던 주석을 새 기준으로 고친다
+- 테스트: 요청 시각 변환, 다른 시간대 문자열의 표시, 지남 판단
+
+### 완료 기준
+- 백엔드를 `-Duser.timezone=UTC`로 실행해도 한국 시간 오전에 마감인 리마인더가 "오늘"에 나타난다.
+- 브라우저 시간대를 바꿔(개발자 도구 Sensors) 같은 리마인더를 보면 같은 순간이 각 시간대로 표시된다.
+- 매일 반복 리마인더를 완료하면 다음 항목이 다음 날 같은 현지 시각으로 생긴다.
+- 마감 알림이 정해진 시각에 뜬다.
+
+---
+
+## Phase 35 — 목록 페이지네이션
+**목표**: 계속 늘어나는 "완료됨" 목록과 검색 결과를 나눠 조회한다.
+
+### 백엔드
+- 공통 응답 DTO `SliceResponse<T>(List<T> items, String nextCursor)`를 추가한다
+- 조회는 `size + 1`개를 가져와 다음 페이지가 있는지 판단한다
+- **완료됨**: `GET /api/reminders/completed`를 추가하고 `SmartView.COMPLETED`를 제거한다
+  - 정렬 `completedAt desc, id desc`의 키셋 페이지네이션. 커서는 마지막 항목의 `(completedAt, id)`를 Base64URL로 인코딩한 값
+- **검색**: `GET /api/reminders/search`의 응답을 `SliceResponse`로 바꾼다
+  - 정렬이 여러 조건(완료 여부, 조건부 마감·완료 시각)으로 구성되어 키셋 조건이 복잡하므로 오프셋 방식으로 하고, 오프셋을 커서로 인코딩해 응답 형식을 맞춘다
+- `size`(기본 50, 1~100)와 커서 형식 검증·디코딩은 웹 경계에서 한다 (잘못된 커서 400)
+- `openapi.yml`에 새 API와 응답 형식, `COMPLETED` 스마트 뷰 제거를 반영한다
+- 테스트
+  - 리포지토리/서비스: 완료 시각이 같은 항목이 페이지 경계에 걸쳐도 빠짐·중복 없음, 마지막 페이지 `nextCursor` null, 검색 페이지 이어 받기
+  - 컨트롤러: `size` 범위 밖 400, 잘못된 커서 400, `smart/COMPLETED` 400
+
+### 프론트엔드
+- `reminders-api.ts`에 `getCompletedReminders(cursor)`, `searchReminders(query, cursor)`를 페이지 응답 타입으로 바꾼다
+- 완료됨·검색 화면은 `useInfiniteQuery`로 조회하고, 목록 끝의 감지 요소(`IntersectionObserver`)가 보이면 다음 페이지를 불러온다
+  - 주기적 동기화(`SYNC_INTERVAL_MS`)는 불러온 페이지 전체를 다시 조회하는 기본 동작을 그대로 쓴다
+- 선택 상태 `smart/COMPLETED`는 화면 이름으로 유지하고, 조회만 새 API로 바꾼다
+- 리마인더 변경 후 캐시 무효화가 무한 조회 캐시에도 적용되는지 확인한다
+- 테스트: 페이지 응답 파싱, 커서 전달
+
+### 완료 기준
+- 완료 항목 120개를 만든 뒤 "완료됨" 첫 요청은 50개만 받고, 스크롤하면 120개 모두 순서대로 중복 없이 보인다.
+- 검색 결과도 같은 방식으로 이어서 불러온다.
+- 완료 해제·삭제 후 목록이 올바르게 갱신된다.
+
+---
+
+## Phase 36 — 로그인 시도 제한
+**목표**: 비밀번호 무차별 대입을 막는다.
+
+### 백엔드
+- `app.auth.login-attempt` 설정(`max-failures-per-email`=5, `max-failures-per-ip`=20, `window`=15m, `lock-duration`=15m)을 `@ConfigurationProperties`로 받는다
+- 로그인 시도 기록을 관리하는 `LoginAttemptLimiter`를 만든다
+  - 이메일(정규화한 값)과 IP별로 실패 횟수와 차단 해제 시각을 메모리(`ConcurrentHashMap`)에 둔다
+  - 시각은 주입한 `Clock` 기준으로 계산하고, 만료된 기록은 기록·조회 시 정리해 메모리가 계속 늘지 않게 한다
+- `AuthService.login`의 흐름: 차단 여부 확인 → 인증 → 실패 시 실패 기록 / 성공 시 이메일 기록 초기화
+  - 차단 중이면 인증을 시도하지 않고 예외를 던진다 (비밀번호가 맞아도 429)
+- 컨트롤러가 `request.getRemoteAddr()`로 얻은 IP를 서비스에 함께 넘긴다
+- `ResultCode.TOO_MANY_LOGIN_ATTEMPTS`(429)를 추가하고, 남은 차단 시간을 담은 예외를 `GlobalExceptionHandler`가 `Retry-After` 헤더와 함께 응답한다
+- 차단이 시작될 때 이메일·IP를 WARN 로그로 남긴다 (비밀번호는 남기지 않는다)
+- `openapi.yml`에 429 응답과 `Retry-After`를 추가한다
+- 테스트
+  - `LoginAttemptLimiter`: 이메일 5회 실패 시 차단, 기간 경과 후 해제, 성공 시 초기화, IP 기준 차단, 만료 기록 정리 (`MutableClock` 사용)
+  - 서비스·컨트롤러: 차단 중 올바른 비밀번호도 429, `Retry-After` 헤더, 서로 다른 이메일의 실패가 이메일 기준 차단에 섞이지 않음
+
+### 프론트엔드
+- 로그인 폼에서 429 응답이면 `Retry-After`로 계산한 다시 시도 가능 시각을 안내한다
+  - `ApiError`가 응답 헤더 값을 전달할 수 있게 확장한다
+- 테스트: 429 응답의 `ApiError`에 재시도 시간이 담기는지
+
+### 완료 기준
+- 같은 이메일로 5번 틀리면 6번째는 올바른 비밀번호여도 로그인되지 않고 안내 문구가 보인다.
+- 설정의 `lock-duration`을 짧게 두고 실행하면 시간이 지난 뒤 다시 로그인할 수 있다.
+- 다른 이메일 계정의 로그인은 영향을 받지 않는다 (IP 기준 한도 이하일 때).
+
+---
+
 ## 참고
 - 각 Phase는 이전 Phase 위에서 빌드/실행 가능한 상태를 유지하며 순차 진행한다.
 - spec.md 3번의 Out-of-Scope 중 10번에 포함되지 않은 항목(자연어 날짜 입력, 첨부파일, 위치 기반 리마인더)과 Web Push, 실시간(WebSocket) 동기화는 이 계획 범위 밖이며 필요 시 별도 논의한다.
