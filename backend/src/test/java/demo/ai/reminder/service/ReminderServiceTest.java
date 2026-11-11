@@ -2,9 +2,9 @@ package demo.ai.reminder.service;
 
 import demo.ai.reminder.common.ResultCode;
 import demo.ai.reminder.domain.common.DomainException;
+import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.domain.reminder.Priority;
 import demo.ai.reminder.domain.reminder.Reminder;
-import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.domain.reminder.RepeatRule;
 import demo.ai.reminder.domain.tag.Tag;
 import demo.ai.reminder.domain.user.User;

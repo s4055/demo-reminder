@@ -12,7 +12,17 @@
 - 기능 검증은 백엔드(`:8080`)와 프론트엔드(`:3000`) 서버를 직접 실행한 뒤 직접 테스트하고, 확인한 항목만 `tasks.md`의 완료 항목으로 갱신한다.
 - 기능 검증이 완료되면 백엔드(`:8080`)와 프론트엔드(`:3000`) 서버를 종료한다.
 - 코드를 설명하는 주석을 작성하지 말고 클린코드로 작성한다.
+- 들여쓰기, 줄 끝 공백, 파일 끝 줄바꿈은 루트 `.editorconfig`를 따른다.
+- Java import는 IntelliJ 기본 배치로 둔다: 그 밖의 import(알파벳순) → 빈 줄 → `javax.*`, `java.*` → 빈 줄 → static import. 와일드카드 import는 쓰지 않는다.
 - PR 제목과 설명은 한글로 작성한다.
+
+## frontend 하위 - 프론트엔드(Next.js) 관례
+
+### 테스트
+
+- `lib/`와 `hooks/`의 로직을 추가하거나 바꿀 때는 이를 검증하는 Vitest 테스트를 같은 작업 안에서 함께 작성한다.
+- 테스트 파일은 대상 파일 옆에 `*.test.ts`로 두고, `npm test`로 실행한다. 기본 환경은 `node`이며, `window`/`localStorage`가 필요한 파일만 `// @vitest-environment jsdom`으로 지정한다.
+- 테스트 이름은 영어(camelCase)로 작성한다.
 
 ## backend 하위 - 백엔드(Spring Boot) 관례
 

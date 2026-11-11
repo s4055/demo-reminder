@@ -2,7 +2,6 @@ package demo.ai.reminder.domain.tag;
 
 import demo.ai.reminder.domain.common.BaseTimeEntity;
 import demo.ai.reminder.domain.user.User;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

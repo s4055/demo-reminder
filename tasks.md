@@ -552,21 +552,21 @@
 `plan.md`의 Phase 30~36을 기준으로 한다. 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 30 — 코드 정리
-- [ ] 백엔드 import 순서를 IntelliJ 기본 배치로 통일 (main, test)
-- [ ] 루트 `.editorconfig` 추가 (들여쓰기, 줄 끝, `ij_java_imports_layout`)
-- [ ] `ReminderService.reorderReminders` 등 형식 오류 수정
-- [ ] `CLAUDE.md`에 import 배치·`.editorconfig` 관례 추가
+- [x] 백엔드 import 순서를 IntelliJ 기본 배치로 통일 (main, test)
+- [x] 루트 `.editorconfig` 추가 (들여쓰기, 줄 끝, `ij_java_imports_layout`)
+- [x] `ReminderService.reorderReminders` 등 형식 오류 수정
+- [x] `CLAUDE.md`에 import 배치·`.editorconfig` 관례 추가
 
 ### 완료 기준 검증
-- [ ] 백엔드 전체 테스트 통과, 형식 외 변경이 없는지 diff 확인
+- [x] 백엔드 전체 테스트 통과, 형식 외 변경이 없는지 diff 확인
 
 ## Phase 31 — 프론트엔드 테스트 기반
-- [ ] Vitest 추가, `npm test` 스크립트, `@/` 경로 별칭과 테스트 환경(node/jsdom) 설정
-- [ ] 테스트: `lib/api.ts` (성공, `ApiError`, 401 재발급 후 재시도, 재발급 실패, 동시 401 공유, 인증 경로 재시도 제외)
-- [ ] 테스트: `lib/repeat.ts`, `lib/due-date.ts`
-- [ ] 테스트: `lib/selection.ts`, `lib/notified-reminders.ts`
-- [ ] CI frontend job에 `npm test` 단계 추가
-- [ ] `CLAUDE.md`에 프론트엔드 테스트 관례 추가
+- [x] Vitest 추가, `npm test` 스크립트, `@/` 경로 별칭과 테스트 환경(node/jsdom) 설정
+- [x] 테스트: `lib/api.ts` (성공, `ApiError`, 401 재발급 후 재시도, 재발급 실패, 동시 401 공유, 인증 경로 재시도 제외)
+- [x] 테스트: `lib/repeat.ts`, `lib/due-date.ts`
+- [x] 테스트: `lib/selection.ts`, `lib/notified-reminders.ts`
+- [x] CI frontend job에 `npm test` 단계 추가
+- [x] `CLAUDE.md`에 프론트엔드 테스트 관례 추가
 
 ### 완료 기준 검증
 - [ ] 로컬과 CI에서 `npm test` 통과 확인

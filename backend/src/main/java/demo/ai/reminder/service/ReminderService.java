@@ -1,14 +1,14 @@
 package demo.ai.reminder.service;
 
+import demo.ai.reminder.common.ResultCode;
+import demo.ai.reminder.domain.list.ReminderList;
+import demo.ai.reminder.domain.reminder.Reminder;
 import demo.ai.reminder.dto.request.ReminderOrderRequest;
 import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
-import demo.ai.reminder.exception.BusinessException;
-import demo.ai.reminder.common.ResultCode;
-import demo.ai.reminder.domain.reminder.Reminder;
-import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
+import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.reminder.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -95,7 +95,7 @@ public class ReminderService {
     @Transactional
     public void reorderReminders(ReminderOrderRequest request) {
         ReminderList list = listAccess.memberList(request.listId());
-        SortOrders.reorder(request.ids(),reminderRepository.findByListAndParentIsNullAndCompletedFalse(list),
+        SortOrders.reorder(request.ids(), reminderRepository.findByListAndParentIsNullAndCompletedFalse(list),
                 Reminder::getId, Reminder::changeSortOrder, "incomplete reminder of the list");
     }
 
