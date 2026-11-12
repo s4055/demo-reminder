@@ -52,6 +52,7 @@
 - 시각은 `Instant`로 저장·계산·응답한다(응답은 `Z`가 붙은 ISO-8601). 요청 시각도 오프셋이 있는 값으로 받는다.
 - 날짜 경계("오늘")나 반복 일정처럼 현지 시간이 필요한 경우에만 요청이나 엔티티에 담긴 명시적인 `ZoneId`로 변환한다. 서버 기본 시간대(`ZoneId.systemDefault()`, `LocalDateTime.now()`)에 의존하지 않는다.
 - 현재 시각은 주입한 `Clock`으로 `Instant.now(clock)`처럼 구한다.
+- 예외: Redis TTL로 관리하는 만료(로그인 시도 기록 등)는 주입한 `Clock`이 아니라 Redis 서버 시각을 따른다. 이런 만료는 실제 Redis에서 짧은 TTL로 테스트한다.
 
 ### API 명세
 

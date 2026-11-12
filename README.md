@@ -55,8 +55,29 @@ cd backend
 - 서명 키는 `app.jwt.secret`(32바이트 이상)이며 로컬 전용 기본값이 있습니다. 운영에서는 `JWT_SECRET` 환경 변수로 주입하고,
   HTTPS 환경이면 `JWT_COOKIE_SECURE=true`로 리프레시 쿠키에 `Secure`를 붙입니다.
 - 로그인 시도 제한: 15분 안에 같은 이메일로 5번, 같은 IP에서 20번 실패하면 15분 동안 로그인을 막고 429와 `Retry-After` 헤더로 응답합니다.
-  기록은 서버 메모리에 두므로 재시작하면 초기화되며, 기준값은 `app.auth.login-attempt`(`max-failures-per-email`, `max-failures-per-ip`, `window`, `lock-duration`)로 바꿀 수 있습니다.
+  기준값은 `app.auth.login-attempt`(`max-failures-per-email`, `max-failures-per-ip`, `window`, `lock-duration`)로 바꿀 수 있습니다.
+- 로그인 시도 기록 저장소는 `app.auth.login-attempt.store`(환경 변수 `LOGIN_ATTEMPT_STORE`)로 고릅니다.
+  - `memory`(기본값): 서버 메모리에 두므로 Redis 없이 실행되지만, 재시작하면 초기화되고 서버를 여러 대 띄우면 서버끼리 공유하지 않습니다.
+  - `redis`: 모든 서버가 같은 Redis(`REDIS_HOST`, `REDIS_PORT`, 기본 `localhost:6379`)에 기록해 실패 횟수와 차단을 공유합니다. 만료는 Redis TTL로 처리합니다.
+  - Redis에 연결할 수 없으면 로그인 가용성을 우선해 차단하지 않고(fail-open) ERROR 로그를 남깁니다.
 - CORS는 `http://localhost:3000`만 허용하며, 리프레시 토큰 쿠키를 보낼 수 있도록 `allowCredentials`를 켭니다.
+
+### 서버 이중화 실행 (로그인 시도 기록 공유)
+
+로컬 Redis는 저장소 루트의 `docker-compose.yml`로 띄웁니다(Docker 필요). 이미 `localhost:6379`에서 Redis가 실행 중이면 그대로 사용해도 됩니다.
+H2 파일 DB는 기본적으로 한 프로세스만 열 수 있으므로, 두 서버가 같은 DB를 쓰도록 `AUTO_SERVER=TRUE`를 붙여 실행합니다.
+
+```bash
+docker compose up -d redis
+cd backend && ./gradlew bootJar
+LOGIN_ATTEMPT_STORE=redis java -jar build/libs/reminder-0.0.1-SNAPSHOT.jar --server.port=8080 \
+  "--spring.datasource.url=jdbc:h2:file:./data/reminderdb;AUTO_SERVER=TRUE"
+LOGIN_ATTEMPT_STORE=redis java -jar build/libs/reminder-0.0.1-SNAPSHOT.jar --server.port=8081 \
+  "--spring.datasource.url=jdbc:h2:file:./data/reminderdb;AUTO_SERVER=TRUE"
+```
+
+두 서버는 같은 Redis에 실패 횟수와 차단을 기록하므로, 어느 서버로 요청해도 같은 한도가 적용됩니다.
+Redis 저장소 테스트(`RedisLoginAttemptStoreTest`)는 Testcontainers로 Redis를 띄우므로 Docker가 없는 환경에서는 건너뜁니다(CI에서는 실행됩니다).
 
 ### 프론트엔드 (`:3000`)
 

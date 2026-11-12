@@ -3,6 +3,7 @@ package demo.ai.reminder.security;
 import demo.ai.reminder.domain.user.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -15,14 +16,16 @@ import java.util.stream.Stream;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "app.auth.login-attempt", name = "store", havingValue = "memory", matchIfMissing = true)
 @RequiredArgsConstructor
-public class LoginAttemptLimiter {
+public class InMemoryLoginAttemptStore implements LoginAttemptStore {
 
     private final Map<String, Attempts> emailAttempts = new ConcurrentHashMap<>();
     private final Map<String, Attempts> ipAttempts = new ConcurrentHashMap<>();
     private final LoginAttemptProperties properties;
     private final Clock clock;
 
+    @Override
     public Optional<Duration> remainingLock(String email, String ip) {
         Instant now = Instant.now(clock);
         removeExpired(now);
@@ -31,6 +34,7 @@ public class LoginAttemptLimiter {
                 .max(Duration::compareTo);
     }
 
+    @Override
     public void recordFailure(String email, String ip) {
         Instant now = Instant.now(clock);
         removeExpired(now);
@@ -43,6 +47,7 @@ public class LoginAttemptLimiter {
         }
     }
 
+    @Override
     public void reset(String email) {
         emailAttempts.remove(User.normalizeEmail(email));
     }

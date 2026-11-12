@@ -671,22 +671,22 @@
 
 ## Phase 37 — 로그인 시도 기록 공유 (서버 이중화 대응)
 ### 백엔드
-- [ ] `LoginAttemptStore` 인터페이스 분리, 메모리 구현을 `InMemoryLoginAttemptStore`로 이동
-- [ ] `RedisLoginAttemptStore` 구현 (실패·차단 키, Lua 스크립트로 원자적 처리, `PTTL`로 남은 차단 시간)
-- [ ] `app.auth.login-attempt.store`(`memory`/`redis`) 설정으로 구현 선택
-- [ ] Redis 장애 시 fail-open과 ERROR 로그
-- [ ] 차단 시작 WARN 로그를 서버 여러 대에서도 한 번만 남김
-- [ ] 로컬 Redis 실행 방법(`docker-compose.yml` 또는 README)과 이중화 실행 방법을 `README.md`에 추가
-- [ ] `CLAUDE.md`에 Redis TTL 만료는 Redis 서버 시각을 따른다는 예외 추가
-- [ ] `openapi.yml` 로그인 시도 제한 설명 갱신
+- [x] `LoginAttemptStore` 인터페이스 분리, 메모리 구현을 `InMemoryLoginAttemptStore`로 이동
+- [x] `RedisLoginAttemptStore` 구현 (실패·차단 키, Lua 스크립트로 원자적 처리, `PTTL`로 남은 차단 시간)
+- [x] `app.auth.login-attempt.store`(`memory`/`redis`) 설정으로 구현 선택
+- [x] Redis 장애 시 fail-open과 ERROR 로그
+- [x] 차단 시작 WARN 로그를 서버 여러 대에서도 한 번만 남김
+- [x] 로컬 Redis 실행 방법(`docker-compose.yml` 또는 README)과 이중화 실행 방법을 `README.md`에 추가
+- [x] `CLAUDE.md`에 Redis TTL 만료는 Redis 서버 시각을 따른다는 예외 추가
+- [x] `openapi.yml` 로그인 시도 제한 설명 갱신
 - [ ] 테스트: 두 구현 공통 시나리오 (이메일 5회 차단, 기간 경과 해제, 성공 시 초기화, IP 차단, 이메일 분리)
 - [ ] 테스트(Testcontainers): 저장소 객체 2개가 같은 Redis에 나눠 기록해도 합산 차단, 동시 실패에서 횟수 유실 없음
-- [ ] 테스트: Redis 연결 실패 시 로그인 허용 (fail-open)
-- [ ] 기존 로그인 시도 제한 테스트가 `memory` 구현으로 통과
+- [x] 테스트: Redis 연결 실패 시 로그인 허용 (fail-open)
+- [x] 기존 로그인 시도 제한 테스트가 `memory` 구현으로 통과
 
 ### 완료 기준 검증
-- [ ] 같은 Redis를 쓰는 백엔드 2대(`:8080`, `:8081`)에 실패를 번갈아 보내 합산 5회째 차단, 두 서버 모두 429 확인
-- [ ] 한 서버에서 로그인 성공 후 다른 서버에서도 실패 횟수가 초기화되었는지 확인
-- [ ] `lock-duration`을 짧게 두고 두 서버 모두에서 다시 로그인되는지 확인
-- [ ] Redis를 끈 상태에서 로그인이 동작하고 ERROR 로그가 남는지 확인
-- [ ] `store=memory`(기본값)로 Redis 없이 실행되는지 확인
+- [x] 같은 Redis를 쓰는 백엔드 2대(`:8080`, `:8081`)에 실패를 번갈아 보내 합산 5회째 차단, 두 서버 모두 429 확인
+- [x] 한 서버에서 로그인 성공 후 다른 서버에서도 실패 횟수가 초기화되었는지 확인
+- [x] `lock-duration`을 짧게 두고 두 서버 모두에서 다시 로그인되는지 확인
+- [x] Redis를 끈 상태에서 로그인이 동작하고 ERROR 로그가 남는지 확인
+- [x] `store=memory`(기본값)로 Redis 없이 실행되는지 확인
