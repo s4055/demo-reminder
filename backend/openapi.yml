@@ -28,6 +28,11 @@ info:
     (수정뿐 아니라 완료/플래그 토글, 순서 변경, 리스트 이동, 그룹 지정도 버전을 올린다).
     리마인더 수정(`PUT /api/reminders/{id}`)과 리스트 수정(`PUT /api/lists/{id}`)은 편집을 시작할 때 받은 `version`을 함께 보내야 하며,
     그 사이 다른 사용자가 먼저 저장해 버전이 달라졌으면 409(`VERSION_CONFLICT`)로 거부한다. 이때는 최신 내용을 다시 조회해 편집한다.
+
+    **시각 형식**: 응답의 모든 시각(`dueAt`, `completedAt`, `createdAt`, `updatedAt` 등)은 UTC 기준 ISO-8601 문자열로 `Z`가 붙는다
+    (예: `2026-10-04T22:00:00Z`). 요청으로 보내는 시각은 오프셋이 있는 ISO-8601 문자열이어야 하며(`Z` 또는 `+09:00`),
+    오프셋이 없는 로컬 일시는 400으로 거부한다. 날짜 경계("오늘")와 반복 일정처럼 현지 시간이 필요한 계산은 요청한
+    IANA 시간대 ID(`Asia/Seoul` 등)를 기준으로 한다.
   version: "1.0.0"
 servers:
   - url: http://localhost:8080
@@ -591,7 +596,8 @@ paths:
         tagNames의 태그 중 없는 태그는 새로 만든다.
         parentId를 지정하면 그 리마인더의 하위 작업으로 만든다. 하위 작업은 listId와 관계없이 부모의 리스트에 속하고, 부모의 하위 작업 중 마지막 순서로 추가된다.
         하위 작업의 하위 작업은 만들 수 없다 (깊이 1단계).
-        repeatRule로 반복을 설정할 수 있으며, 반복은 dueAt이 있을 때만 설정할 수 있다.
+        dueAt은 오프셋이 있는 시각으로 보내고, dueAt을 지정하면 timeZone(IANA 시간대 ID)도 함께 보내야 한다.
+        repeatRule로 반복을 설정할 수 있으며, 반복은 dueAt이 있을 때만 설정할 수 있다. 다음 회차는 timeZone 기준의 날짜·요일로 계산하며 같은 현지 시각을 유지한다.
         repeatInterval(1~99)로 간격을, WEEKLY이면 repeatDaysOfWeek로 반복할 요일을 함께 지정할 수 있다 (예: 2주마다 월·수, 평일마다).
       operationId: createReminder
       requestBody:
@@ -608,7 +614,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderApiResponse"
         "400":
-          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule/요일 값, 빈 태그 이름이나 50자를 넘는 태그 이름, 1~99를 벗어난 repeatInterval 등), dueAt 없이 반복을 지정한 경우, WEEKLY가 아닌데 repeatDaysOfWeek를 지정한 경우, 또는 parentId가 이미 하위 작업인 리마인더
+          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule/요일 값, 빈 태그 이름이나 50자를 넘는 태그 이름, 1~99를 벗어난 repeatInterval, 오프셋 없는 dueAt, 잘못된 timeZone 등), dueAt만 있고 timeZone이 없는 경우, dueAt 없이 반복을 지정한 경우, WEEKLY가 아닌데 repeatDaysOfWeek를 지정한 경우, 또는 parentId가 이미 하위 작업인 리마인더
           content:
             application/json:
               schema:
@@ -656,6 +662,43 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /api/reminders/completed:
+    get:
+      tags: [Reminders]
+      summary: 완료된 리마인더 페이지 조회
+      description: |
+        현재 사용자가 볼 수 있는 완료된 리마인더(하위 작업 포함)를 완료일시 최신순(같으면 id 큰 순)으로 size개씩 조회한다.
+        키셋 페이지네이션이므로 페이지 사이에 항목이 추가·삭제되어도 이미 받은 항목이 다시 나오거나 빠지지 않는다.
+        다음 페이지가 없으면 nextCursor는 null이다.
+      operationId: getCompletedReminders
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 nextCursor. 생략하면 첫 페이지를 조회한다. 형식이 잘못되면 400
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          description: 페이지 크기 (1~100, 기본 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: 완료된 리마인더 한 페이지
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderSliceApiResponse"
+        "400":
+          description: size가 1~100을 벗어남, 또는 잘못된 cursor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       tags: [Reminders]
       summary: 리스트의 완료 항목 일괄 삭제
@@ -700,11 +743,11 @@ paths:
       description: |
         조건에 맞는 리마인더를 자동으로 모아 보여주는 뷰. 리스트 안 순서 변경(sortOrder)과 무관하게 아래 정렬을 따른다.
         하위 작업도 조건에 맞으면 개별 항목으로 포함된다.
-        - `today`: 마감일이 오늘인 미완료
+        - `today`: 마감일시가 zone 시간대의 오늘 0시 이상 내일 0시 미만인 미완료 (zone 필수)
         - `scheduled`: 마감일이 설정된 모든 미완료 (마감일 순)
         - `all`: 모든 미완료
         - `flagged`: flagged=true 인 미완료
-        - `completed`: completed=true 인 리마인더 (완료일시 최신순)
+        완료된 항목은 스마트 뷰가 아니라 `GET /api/reminders/completed`로 나눠 조회한다 (`completed` 뷰는 400).
       operationId: getSmartReminders
       parameters:
         - name: view
@@ -712,7 +755,14 @@ paths:
           required: true
           schema:
             type: string
-            enum: [today, scheduled, all, flagged, completed]
+            enum: [today, scheduled, all, flagged]
+        - name: zone
+          in: query
+          required: false
+          description: 오늘 날짜를 정할 IANA 시간대 ID. `today` 뷰에서는 필수이고 다른 뷰에서는 무시한다.
+          schema:
+            type: string
+            example: Asia/Seoul
       responses:
         "200":
           description: 뷰 조건에 맞는 리마인더 목록
@@ -721,7 +771,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReminderArrayApiResponse"
         "400":
-          description: 지원하지 않는 뷰 이름
+          description: 지원하지 않는 뷰 이름, `today` 뷰에서 zone 누락, 또는 잘못된 zone
           content:
             application/json:
               schema:
@@ -735,6 +785,7 @@ paths:
         현재 사용자가 볼 수 있는 리마인더(내 리마인더 + 멤버인 리스트의 리마인더) 중 제목·메모·태그 이름에 검색어가 들어 있는 항목을 찾는다 (대소문자 무시).
         하위 작업도 개별 항목으로 포함하며(subtasks는 리스트별 조회와 같이 채워진다), 태그가 여러 개 일치해도 한 번만 나온다.
         정렬: 미완료 항목을 마감일시 순(마감일 없는 항목은 뒤, 같으면 생성순)으로 먼저, 그다음 완료 항목을 완료일시 최신순으로 둔다.
+        결과는 size개씩 나눠 반환하며, nextCursor로 다음 페이지를 이어 받는다 (다음 페이지가 없으면 null).
       operationId: searchReminders
       parameters:
         - name: q
@@ -746,15 +797,30 @@ paths:
             minLength: 1
             maxLength: 100
           example: 우유
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 nextCursor. 생략하면 첫 페이지를 조회한다. 형식이 잘못되면 400
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          description: 페이지 크기 (1~100, 기본 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
       responses:
         "200":
-          description: 검색 결과 (없으면 빈 배열)
+          description: 검색 결과 한 페이지 (없으면 items가 빈 배열)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderArrayApiResponse"
+                $ref: "#/components/schemas/ReminderSliceApiResponse"
         "400":
-          description: q 누락, 공백만 있음, 또는 100자 초과 (resultMsg는 "q: 메시지" 형식)
+          description: 'q 누락, 공백만 있음, 또는 100자 초과 (resultMsg는 "q: 메시지" 형식), size가 1~100을 벗어남, 또는 잘못된 cursor'
           content:
             application/json:
               schema:
@@ -772,19 +838,19 @@ paths:
         - name: from
           in: query
           required: true
-          description: 기간 시작 (포함, 타임존 없는 로컬 일시)
+          description: 기간 시작 (포함, 오프셋이 있는 ISO-8601 시각)
           schema:
             type: string
             format: date-time
-            example: "2026-10-04T21:00:00"
+            example: "2026-10-04T12:00:00Z"
         - name: to
           in: query
           required: true
-          description: 기간 끝 (미포함, 타임존 없는 로컬 일시). from보다 늦어야 한다.
+          description: 기간 끝 (미포함, 오프셋이 있는 ISO-8601 시각). from보다 늦어야 한다.
           schema:
             type: string
             format: date-time
-            example: "2026-10-04T21:02:00"
+            example: "2026-10-04T12:02:00Z"
       responses:
         "200":
           description: 기간 안에 마감되는 미완료 리마인더 목록
@@ -917,7 +983,7 @@ paths:
     put:
       tags: [Reminders]
       summary: 리마인더 수정 (제목/메모/마감일시/플래그/우선순위/태그/반복 전체 교체)
-      description: 요청 본문의 값으로 제목, 메모, 마감일시, 플래그, 우선순위, 태그, 반복 규칙(주기·간격·요일)을 교체한다. memo/dueAt을 생략하거나 null로 보내면 비워지고, priority/repeatRule을 생략하거나 null로 보내면 NONE이 되며, repeatInterval을 생략하면 1, repeatDaysOfWeek를 생략하면 요일 지정이 없어지고, tagNames를 생략하거나 null로 보내면 태그가 모두 떨어진다. flagged는 필수다. 완료 상태와 소속 리스트는 변경되지 않는다(리스트 이동은 PATCH /api/reminders/{id}/list). dueAt 없이 반복을 지정하면 400. version은 필수이며 현재 버전과 다르면(편집 중 다른 사용자가 먼저 저장) 409(VERSION_CONFLICT)다.
+      description: 요청 본문의 값으로 제목, 메모, 마감일시, 플래그, 우선순위, 태그, 반복 규칙(주기·간격·요일)을 교체한다. memo/dueAt/timeZone을 생략하거나 null로 보내면 비워지고(dueAt이 있으면 timeZone은 필수), priority/repeatRule을 생략하거나 null로 보내면 NONE이 되며, repeatInterval을 생략하면 1, repeatDaysOfWeek를 생략하면 요일 지정이 없어지고, tagNames를 생략하거나 null로 보내면 태그가 모두 떨어진다. flagged는 필수다. 완료 상태와 소속 리스트는 변경되지 않는다(리스트 이동은 PATCH /api/reminders/{id}/list). dueAt 없이 반복을 지정하면 400. version은 필수이며 현재 버전과 다르면(편집 중 다른 사용자가 먼저 저장) 409(VERSION_CONFLICT)다.
       operationId: updateReminder
       parameters:
         - $ref: "#/components/parameters/ReminderId"
@@ -935,7 +1001,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/EmptyApiResponse"
         "400":
-          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule/요일 값, 빈 태그 이름이나 50자를 넘는 태그 이름, 1~99를 벗어난 repeatInterval, version 누락 등), dueAt 없이 반복을 지정한 경우, 또는 WEEKLY가 아닌데 repeatDaysOfWeek를 지정한 경우
+          description: 유효성 검증 실패 (title 누락, 지원하지 않는 priority/repeatRule/요일 값, 빈 태그 이름이나 50자를 넘는 태그 이름, 1~99를 벗어난 repeatInterval, 오프셋 없는 dueAt, 잘못된 timeZone, version 누락 등), dueAt만 있고 timeZone이 없는 경우, dueAt 없이 반복을 지정한 경우, 또는 WEEKLY가 아닌데 repeatDaysOfWeek를 지정한 경우
           content:
             application/json:
               schema:
@@ -1124,8 +1190,10 @@ components:
           type: string
           format: date-time
           nullable: true
-          description: 마감 일시 (타임존 없는 로컬 일시, 예 2026-09-20T18:30:00)
-          example: "2026-09-20T18:30:00"
+          description: 마감 시각 (오프셋이 있는 ISO-8601 시각. 오프셋이 없으면 400)
+          example: "2026-09-20T09:30:00Z"
+        timeZone:
+          $ref: "#/components/schemas/TimeZone"
         priority:
           allOf:
             - $ref: "#/components/schemas/Priority"
@@ -1162,7 +1230,10 @@ components:
           type: string
           format: date-time
           nullable: true
-          example: "2026-09-21T09:00:00"
+          description: 마감 시각 (오프셋이 있는 ISO-8601 시각. 오프셋이 없으면 400)
+          example: "2026-09-21T00:00:00Z"
+        timeZone:
+          $ref: "#/components/schemas/TimeZone"
         flagged:
           type: boolean
         priority:
@@ -1186,6 +1257,12 @@ components:
           format: int64
           description: 편집을 시작할 때 받은 리마인더의 version. 현재 버전과 다르면 409(VERSION_CONFLICT)
           example: 0
+
+    TimeZone:
+      type: string
+      nullable: true
+      description: 마감 시각을 해석할 IANA 시간대 ID. dueAt이 있으면 필수이며, 반복 일정의 날짜·요일 계산 기준이 된다. 잘못된 ID는 400
+      example: Asia/Seoul
 
     TagNames:
       type: array
@@ -1292,6 +1369,13 @@ components:
           type: string
           format: date-time
           nullable: true
+          description: 마감 시각 (UTC, Z가 붙은 ISO-8601)
+          example: "2026-09-20T09:30:00Z"
+        timeZone:
+          type: string
+          nullable: true
+          description: 마감 시각의 IANA 시간대 ID
+          example: Asia/Seoul
         repeatRule:
           $ref: "#/components/schemas/RepeatRule"
         repeatInterval:
@@ -1654,6 +1738,24 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/ReminderResponse"
+
+    ReminderSliceApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReminderResponse"
+                nextCursor:
+                  type: string
+                  nullable: true
+                  description: 다음 페이지를 받을 때 cursor로 보낼 값. 마지막 페이지이면 null
 
     ReminderListApiResponse:
       allOf:

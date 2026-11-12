@@ -10,7 +10,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import demo.ai.reminder.domain.reminder.Reminder;
 import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,7 +50,7 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
     }
 
     @Override
-    public List<Reminder> findAccessibleIncompleteDueBetween(Long userId, LocalDateTime from, LocalDateTime to) {
+    public List<Reminder> findAccessibleIncompleteDueBetween(Long userId, Instant from, Instant to) {
         return accessible(userId)
                 .where(reminder.completed.isFalse(), reminder.dueAt.goe(from), reminder.dueAt.lt(to))
                 .orderBy(reminder.dueAt.asc(), reminder.id.asc())
@@ -74,15 +74,21 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
     }
 
     @Override
-    public List<Reminder> findAccessibleCompleted(Long userId) {
-        return accessible(userId)
-                .where(reminder.completed.isTrue())
-                .orderBy(reminder.completedAt.desc(), reminder.id.desc())
+    public List<Reminder> findAccessibleCompleted(Long userId, int limit) {
+        return completedNewestFirst(userId).limit(limit).fetch();
+    }
+
+    @Override
+    public List<Reminder> findAccessibleCompletedBefore(Long userId, Instant completedAt, Long id, int limit) {
+        return completedNewestFirst(userId)
+                .where(reminder.completedAt.lt(completedAt)
+                        .or(reminder.completedAt.eq(completedAt).and(reminder.id.lt(id))))
+                .limit(limit)
                 .fetch();
     }
 
     @Override
-    public List<Reminder> searchAccessible(Long userId, String pattern) {
+    public List<Reminder> searchAccessible(Long userId, String pattern, long offset, int limit) {
         return accessible(userId)
                 .where(reminder.title.lower().like(pattern, LIKE_ESCAPE)
                         .or(reminder.memo.lower().like(pattern, LIKE_ESCAPE))
@@ -92,19 +98,27 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
                         dueAtIfIncomplete().asc().nullsLast(),
                         completedAtIfCompleted().desc().nullsLast(),
                         reminder.id.asc())
+                .offset(offset)
+                .limit(limit)
                 .fetch();
     }
 
-    private DateTimeExpression<LocalDateTime> dueAtIfIncomplete() {
-        return new CaseBuilder()
-                .when(reminder.completed.isFalse()).then(reminder.dueAt)
-                .otherwise(Expressions.nullExpression(LocalDateTime.class));
+    private JPAQuery<Reminder> completedNewestFirst(Long userId) {
+        return accessible(userId)
+                .where(reminder.completed.isTrue())
+                .orderBy(reminder.completedAt.desc(), reminder.id.desc());
     }
 
-    private DateTimeExpression<LocalDateTime> completedAtIfCompleted() {
+    private DateTimeExpression<Instant> dueAtIfIncomplete() {
+        return new CaseBuilder()
+                .when(reminder.completed.isFalse()).then(reminder.dueAt)
+                .otherwise(Expressions.nullExpression(Instant.class));
+    }
+
+    private DateTimeExpression<Instant> completedAtIfCompleted() {
         return new CaseBuilder()
                 .when(reminder.completed.isTrue()).then(reminder.completedAt)
-                .otherwise(Expressions.nullExpression(LocalDateTime.class));
+                .otherwise(Expressions.nullExpression(Instant.class));
     }
 
     private JPAQuery<Reminder> accessible(Long userId) {

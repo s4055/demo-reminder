@@ -24,10 +24,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import static demo.ai.reminder.support.TestTimes.seoul;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -65,10 +66,10 @@ class ReminderListServiceTest {
     void getLists_includesIncompleteReminderCountPerList() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
         ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null, null, 0));
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
-        reminderRepository.save(new Reminder(owner, "계란 사기", null, shopping, null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "빵 사기", null, shopping, null, null, null));
-        done.toggleComplete(LocalDateTime.now());
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "계란 사기", null, shopping, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "빵 사기", null, shopping, null, null, null, null));
+        done.toggleComplete(Instant.now());
 
         List<ReminderListResponse> result = reminderListService.getLists();
 
@@ -97,7 +98,7 @@ class ReminderListServiceTest {
     @Test
     @DisplayName("리스트를 생성하면 JPA Auditing이 생성일과 수정일을 채운다")
     void createList_fillsCreatedAtAndUpdatedAt() {
-        LocalDateTime before = LocalDateTime.now();
+        Instant before = Instant.now();
 
         ReminderListResponse result = reminderListService.createList(new ReminderListRequest("장보기", null, null));
 
@@ -109,8 +110,8 @@ class ReminderListServiceTest {
     @DisplayName("리스트를 수정하면 수정일은 갱신되고 생성일은 유지된다")
     void updateList_refreshesUpdatedAt_andKeepsCreatedAt() {
         ReminderList saved = reminderListRepository.saveAndFlush(new ReminderList(owner, "장보기", null, null, 0));
-        LocalDateTime updatedAt = backdateUpdatedAt(saved.getId());
-        LocalDateTime createdAt = reminderListRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
+        Instant updatedAt = backdateUpdatedAt(saved.getId());
+        Instant createdAt = reminderListRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
 
         reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", null, null, 0L));
         entityManager.flush();
@@ -126,8 +127,8 @@ class ReminderListServiceTest {
                 .findFirst().orElseThrow();
     }
 
-    private LocalDateTime backdateUpdatedAt(Long listId) {
-        LocalDateTime past = LocalDateTime.of(2026, 1, 1, 0, 0);
+    private Instant backdateUpdatedAt(Long listId) {
+        Instant past = seoul(2026, 1, 1, 0, 0);
         entityManager.createQuery("update ReminderList l set l.updatedAt = :past where l.id = :id")
                 .setParameter("past", past)
                 .setParameter("id", listId)
@@ -140,7 +141,7 @@ class ReminderListServiceTest {
     @DisplayName("리스트의 이름과 색상을 수정한다")
     void updateList_changesNameAndColor() {
         ReminderList saved = reminderListRepository.save(new ReminderList(owner, "장보기", "#FF9500", null, 0));
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, saved, null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, saved, null, null, null, null));
 
         reminderListService.updateList(saved.getId(), new ReminderListUpdateRequest("업무", "#007AFF", null, 0L));
 
@@ -191,8 +192,8 @@ class ReminderListServiceTest {
     void deleteList_deletesRemindersOfListOnly() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
         ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null, null, 0));
-        Reminder milk = reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
-        Reminder report = reminderRepository.save(new Reminder(owner, "보고서 작성", null, work, null, null, null));
+        Reminder milk = reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null, null));
+        Reminder report = reminderRepository.save(new Reminder(owner, "보고서 작성", null, work, null, null, null, null));
 
         reminderListService.deleteList(shopping.getId());
 
@@ -206,7 +207,7 @@ class ReminderListServiceTest {
     void deleteList_deletesTaggedReminders() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
         Tag home = tagRepository.save(new Tag(owner, "집"));
-        Reminder milk = new Reminder(owner, "우유 사기", null, shopping, null, null, null);
+        Reminder milk = new Reminder(owner, "우유 사기", null, shopping, null, null, null, null);
         milk.replaceTags(List.of(home));
         reminderRepository.save(milk);
         reminderRepository.flush();
@@ -222,11 +223,11 @@ class ReminderListServiceTest {
     @DisplayName("리스트의 리마인더 개수는 최상위 미완료 리마인더만 세고 하위 작업은 제외한다")
     void getLists_countsTopLevelRemindersOnly() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
-        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
-        parent.addSubtask(new Reminder(owner, "박스 구하기", null, null, null, null, null));
-        parent.addSubtask(new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null));
+        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null, null);
+        parent.addSubtask(new Reminder(owner, "박스 구하기", null, null, null, null, null, null));
+        parent.addSubtask(new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null, null));
         reminderRepository.save(parent);
-        reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null));
+        reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null, null));
 
         List<ReminderListResponse> result = reminderListService.getLists();
 
@@ -243,9 +244,9 @@ class ReminderListServiceTest {
     void updateList_keepsCountsAndRoleInGetLists() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         home.addMember(userRepository.save(new User("editor@example.com", "password", "편집자")));
-        reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "청소", null, home, null, null, null));
-        done.toggleComplete(LocalDateTime.now());
+        reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "청소", null, home, null, null, null, null));
+        done.toggleComplete(Instant.now());
         entityManager.flush();
         entityManager.clear();
 
@@ -272,8 +273,8 @@ class ReminderListServiceTest {
     @DisplayName("하위 작업이 있는 리스트를 삭제하면 부모와 하위 작업이 모두 삭제된다")
     void deleteList_deletesParentsAndSubtasks() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
-        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
         parent.addSubtask(boxes);
         reminderRepository.save(parent);
         reminderRepository.flush();

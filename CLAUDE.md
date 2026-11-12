@@ -47,6 +47,12 @@
 - 리프레시 토큰의 발급·회전·폐기는 `RefreshTokenService`가, 쿠키 설정·삭제는 `security.RefreshTokenCookie`가 맡는다. 토큰 원문은 DB와 로그에 남기지 않는다(DB에는 SHA-256 해시, 로그는 `HttpLoggingFilter`가 마스킹).
 - 토큰과 관련된 시각은 주입한 `Clock` 기준으로 계산한다.
 
+### 시각 처리
+
+- 시각은 `Instant`로 저장·계산·응답한다(응답은 `Z`가 붙은 ISO-8601). 요청 시각도 오프셋이 있는 값으로 받는다.
+- 날짜 경계("오늘")나 반복 일정처럼 현지 시간이 필요한 경우에만 요청이나 엔티티에 담긴 명시적인 `ZoneId`로 변환한다. 서버 기본 시간대(`ZoneId.systemDefault()`, `LocalDateTime.now()`)에 의존하지 않는다.
+- 현재 시각은 주입한 `Clock`으로 `Instant.now(clock)`처럼 구한다.
+
 ### API 명세
 
 - API를 추가하거나 변경할 때는 `backend/openapi.yml`도 같은 작업 안에서 함께 갱신한다.

@@ -37,8 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class RefreshTokenServiceTest {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 6, 12, 0);
-    private static final Instant NOW_INSTANT = NOW.atZone(ZONE).toInstant();
+    private static final Instant NOW = LocalDateTime.of(2026, 11, 6, 12, 0).atZone(ZONE).toInstant();
 
     @TestConfiguration
     static class MutableClockConfig {
@@ -46,7 +45,7 @@ class RefreshTokenServiceTest {
         @Bean
         @Primary
         MutableClock mutableClock() {
-            return new MutableClock(NOW_INSTANT, ZONE);
+            return new MutableClock(NOW, ZONE);
         }
     }
 
@@ -69,7 +68,7 @@ class RefreshTokenServiceTest {
 
     @BeforeEach
     void setUp() {
-        clock.setInstant(NOW_INSTANT);
+        clock.setInstant(NOW);
         alice = userRepository.save(new User("alice@example.com", "{noop}password", "앨리스"));
     }
 
@@ -133,10 +132,10 @@ class RefreshTokenServiceTest {
 
         assertThat(rotated.userId()).isEqualTo(alice.getId());
         assertThat(rotated.token()).isNotEqualTo(original);
-        assertThat(stored(original).getRevokedAt()).isEqualTo(NOW.plusHours(1));
+        assertThat(stored(original).getRevokedAt()).isEqualTo(NOW.plus(Duration.ofHours(1)));
         RefreshToken newToken = stored(rotated.token());
         assertThat(newToken.isRevoked()).isFalse();
-        assertThat(newToken.getExpiresAt()).isEqualTo(NOW.plusHours(1).plus(jwtProperties.refreshTokenTtl()));
+        assertThat(newToken.getExpiresAt()).isEqualTo(NOW.plus(Duration.ofHours(1)).plus(jwtProperties.refreshTokenTtl()));
     }
 
     @Test
@@ -173,8 +172,8 @@ class RefreshTokenServiceTest {
                 .isInstanceOf(RefreshTokenReuseException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.UNAUTHORIZED);
 
-        assertThat(stored(latest).getRevokedAt()).isEqualTo(NOW.plusMinutes(5));
-        assertThat(stored(otherDevice).getRevokedAt()).isEqualTo(NOW.plusMinutes(5));
+        assertThat(stored(latest).getRevokedAt()).isEqualTo(NOW.plus(Duration.ofMinutes(5)));
+        assertThat(stored(otherDevice).getRevokedAt()).isEqualTo(NOW.plus(Duration.ofMinutes(5)));
         assertThat(stored(original).getRevokedAt()).isEqualTo(NOW);
         assertThat(stored(bobToken).isRevoked()).isFalse();
         assertUnauthorized(() -> refreshTokenService.rotate(latest));
@@ -271,9 +270,9 @@ class RefreshTokenServiceTest {
     @Test
     @DisplayName("토큰 해시는 중복 저장할 수 없다")
     void tokenHash_isUnique() {
-        refreshTokenRepository.saveAndFlush(new RefreshToken(alice, "same-hash", NOW.plusDays(1)));
+        refreshTokenRepository.saveAndFlush(new RefreshToken(alice, "same-hash", NOW.plus(Duration.ofDays(1))));
 
-        assertThatThrownBy(() -> refreshTokenRepository.saveAndFlush(new RefreshToken(alice, "same-hash", NOW.plusDays(1))))
+        assertThatThrownBy(() -> refreshTokenRepository.saveAndFlush(new RefreshToken(alice, "same-hash", NOW.plus(Duration.ofDays(1)))))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

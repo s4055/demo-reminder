@@ -3,7 +3,9 @@ package demo.ai.reminder.domain.reminder;
 import demo.ai.reminder.domain.common.DomainException;
 
 import java.time.DayOfWeek;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
@@ -39,7 +41,11 @@ public record Recurrence(RepeatRule rule, int interval, Set<DayOfWeek> daysOfWee
         return rule.isRepeating();
     }
 
-    public LocalDateTime nextDueAt(LocalDateTime dueAt) {
+    public Instant nextDueAt(Instant dueAt, ZoneId zone) {
+        return nextDueAt(dueAt.atZone(zone)).toInstant();
+    }
+
+    private ZonedDateTime nextDueAt(ZonedDateTime dueAt) {
         if (rule != RepeatRule.WEEKLY || daysOfWeek.isEmpty()) {
             return rule.nextDueAt(dueAt, interval);
         }
@@ -49,7 +55,7 @@ public record Recurrence(RepeatRule rule, int interval, Set<DayOfWeek> daysOfWee
                 .findFirst()
                 .map(day -> dueAt.plusDays(day.getValue() - dueDay))
                 .orElseGet(() -> {
-                    LocalDateTime weekStart = dueAt.minusDays(dueDay - 1L);
+                    ZonedDateTime weekStart = dueAt.minusDays(dueDay - 1L);
                     int firstDay = daysOfWeek.iterator().next().getValue();
                     return weekStart.plusWeeks(interval).plusDays(firstDay - 1L);
                 });

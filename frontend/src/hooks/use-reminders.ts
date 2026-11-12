@@ -5,11 +5,17 @@
  * - useQueryClient: 현재 앱 전역의 QueryClient 인스턴스(모든 쿼리 캐시를 관리하는 중앙 저장소)에 접근하기 위한 훅
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query"
 import {
   createReminder,
   deleteCompletedReminders,
   deleteReminder,
+  getCompletedReminders,
   getReminderIfExists,
   getReminders,
   getRemindersByTag,
@@ -22,6 +28,7 @@ import {
   updateReminder,
   type CreateReminderInput,
   type Reminder,
+  type Slice,
   type UpdateReminderInput,
 } from "@/lib/reminders-api"
 import {
@@ -36,23 +43,37 @@ function remindersQueryKeyOf(selection: Selection) {
   return [...remindersQueryKey, selection] as const
 }
 
-function fetchReminders(selection: Selection): Promise<Reminder[]> {
+type ReminderPages = InfiniteData<Slice<Reminder>, string | null>
+
+function fetchReminderPage(
+  selection: Selection,
+  cursor: string | null
+): Promise<Slice<Reminder>> {
   switch (selection.type) {
     case "list":
-      return getReminders(selection.listId)
+      return singlePage(getReminders(selection.listId))
     case "tag":
-      return getRemindersByTag(selection.name)
+      return singlePage(getRemindersByTag(selection.name))
     case "search":
-      return searchReminders(selection.query)
+      return searchReminders(selection.query, cursor)
     default:
-      return getSmartReminders(selection.view)
+      return selection.view === "completed"
+        ? getCompletedReminders(cursor)
+        : singlePage(getSmartReminders(selection.view))
   }
 }
 
+async function singlePage(request: Promise<Reminder[]>): Promise<Slice<Reminder>> {
+  return { items: await request, nextCursor: null }
+}
+
 export function useReminders(selection: Selection) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: remindersQueryKeyOf(selection),
-    queryFn: () => fetchReminders(selection),
+    queryFn: ({ pageParam }) => fetchReminderPage(selection, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    select: (data) => data.pages.flatMap((page) => page.items),
     refetchInterval: SYNC_INTERVAL_MS, // 공유 리스트에서 다른 멤버가 바꾼 내용을 반영한다
   })
 }
@@ -101,6 +122,13 @@ export function useMoveReminder() {
   })
 }
 
+function reorderByIds(reminders: Reminder[], ids: number[]): Reminder[] {
+  const byId = new Map(reminders.map((reminder) => [reminder.id, reminder]))
+  const reordered = ids.flatMap((id) => byId.get(id) ?? [])
+  const rest = reminders.filter((reminder) => !ids.includes(reminder.id))
+  return [...reordered, ...rest]
+}
+
 export function useReorderReminders() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -110,12 +138,15 @@ export function useReorderReminders() {
     onMutate: async ({ listId, ids }) => {
       const queryKey = remindersQueryKeyOf({ type: "list", listId })
       await queryClient.cancelQueries({ queryKey })
-      const previous = queryClient.getQueryData<Reminder[]>(queryKey)
+      const previous = queryClient.getQueryData<ReminderPages>(queryKey)
       if (previous) {
-        const byId = new Map(previous.map((reminder) => [reminder.id, reminder]))
-        const reordered = ids.flatMap((id) => byId.get(id) ?? [])
-        const rest = previous.filter((reminder) => !ids.includes(reminder.id))
-        queryClient.setQueryData(queryKey, [...reordered, ...rest])
+        queryClient.setQueryData<ReminderPages>(queryKey, {
+          ...previous,
+          pages: previous.pages.map((page) => ({
+            ...page,
+            items: reorderByIds(page.items, ids),
+          })),
+        })
       }
       return { queryKey, previous }
     },

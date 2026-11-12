@@ -1,6 +1,6 @@
 package demo.ai.reminder.domain.reminder;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 public enum RepeatRule {
     NONE,
@@ -9,7 +9,7 @@ public enum RepeatRule {
     MONTHLY,
     YEARLY;
 
-    public LocalDateTime nextDueAt(LocalDateTime dueAt, int interval) {
+    public ZonedDateTime nextDueAt(ZonedDateTime dueAt, int interval) {
         return switch (this) {
             case NONE -> throw new IllegalStateException("A non-repeating reminder has no next due date");
             case DAILY -> dueAt.plusDays(interval);

@@ -13,6 +13,7 @@ import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
+import demo.ai.reminder.dto.response.SliceResponse;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.list.ReminderListRepository;
 import demo.ai.reminder.repository.reminder.ReminderRepository;
@@ -28,12 +29,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static demo.ai.reminder.support.TestTimes.SEOUL;
+import static demo.ai.reminder.support.TestTimes.seoul;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -76,9 +81,9 @@ class ReminderServiceTest {
     @DisplayName("단건 조회는 최신 버전과 하위 작업을 포함한 리마인더를 반환한다")
     void getReminder_returnsReminderWithSubtasksAndLatestVersion() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        ReminderResponse parent = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null, null, null, null, null, null, null));
-        ReminderResponse subtask = reminderService.createReminder(new ReminderRequest("저지방", null, null, null, null, null, parent.id(), null, null, null));
-        reminderService.updateReminder(parent.id(), new ReminderUpdateRequest("우유 2개", null, null, true, null, null, null, null, null, parent.version()));
+        ReminderResponse parent = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null, null, null, null, null, null, null, null));
+        ReminderResponse subtask = reminderService.createReminder(new ReminderRequest("저지방", null, null, null, null, null, null, parent.id(), null, null, null));
+        reminderService.updateReminder(parent.id(), new ReminderUpdateRequest("우유 2개", null, null, null, true, null, null, null, null, null, parent.version()));
         entityManager.flush();
         entityManager.clear();
 
@@ -93,8 +98,8 @@ class ReminderServiceTest {
     @Test
     @DisplayName("하위 작업을 단건 조회하면 부모 id를 담아 반환한다")
     void getReminder_returnsSubtaskWithParentId() {
-        ReminderResponse parent = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null));
-        ReminderResponse subtask = reminderService.createReminder(new ReminderRequest("저지방", null, null, null, null, null, parent.id(), null, null, null));
+        ReminderResponse parent = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null, null));
+        ReminderResponse subtask = reminderService.createReminder(new ReminderRequest("저지방", null, null, null, null, null, null, parent.id(), null, null, null));
 
         assertThat(reminderService.getReminder(subtask.id()).parentId()).isEqualTo(parent.id());
     }
@@ -112,7 +117,7 @@ class ReminderServiceTest {
     void createReminder_belongsToGivenList() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
 
-        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null, null, null, null, null, null, null));
+        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, shopping.getId(), null, null, null, null, null, null, null, null));
 
         assertThat(result.listId()).isEqualTo(shopping.getId());
     }
@@ -120,7 +125,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하지 않는 리스트로 리마인더를 생성하면 404 예외가 발생한다")
     void createReminder_throwsNotFound_whenListDoesNotExist() {
-        assertThatThrownBy(() -> reminderService.createReminder(new ReminderRequest("우유 사기", null, -1L, null, null, null, null, null, null, null)))
+        assertThatThrownBy(() -> reminderService.createReminder(new ReminderRequest("우유 사기", null, -1L, null, null, null, null, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
@@ -128,7 +133,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("요청으로 받은 제목과 메모로 리마인더를 생성한다")
     void createReminder_savesReminderWithGivenTitleAndMemo() {
-        ReminderRequest request = new ReminderRequest("우유 사기", "저지방", null, null, null, null, null, null, null, null);
+        ReminderRequest request = new ReminderRequest("우유 사기", "저지방", null, null, null, null, null, null, null, null, null);
 
         ReminderResponse result = reminderService.createReminder(request);
 
@@ -142,7 +147,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하는 리마인더의 완료 상태를 토글한다")
     void toggleComplete_flipsCompletedState_whenReminderExists() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         reminderService.toggleComplete(saved.getId());
 
@@ -152,8 +157,8 @@ class ReminderServiceTest {
     @Test
     @DisplayName("완료 토글 시 완료일시가 기록되고, 다시 토글하면 비워진다")
     void toggleComplete_recordsAndClearsCompletedAt() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
-        LocalDateTime before = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
+        Instant before = Instant.now().truncatedTo(ChronoUnit.MICROS);
 
         reminderService.toggleComplete(saved.getId());
 
@@ -175,9 +180,9 @@ class ReminderServiceTest {
     @Test
     @DisplayName("마감일시를 지정해 리마인더를 생성하면 마감일시가 저장되고 플래그는 꺼져 있다")
     void createReminder_savesDueAt_andIsNotFlagged() {
-        LocalDateTime dueAt = LocalDate.now().atTime(18, 30);
+        Instant dueAt = seoul(LocalDate.now(SEOUL), 18, 30);
 
-        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, dueAt, null, null, null, null, null, null));
+        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, dueAt, SEOUL, null, null, null, null, null, null));
 
         assertThat(result.dueAt()).isEqualTo(dueAt);
         assertThat(result.flagged()).isFalse();
@@ -186,9 +191,9 @@ class ReminderServiceTest {
     @Test
     @DisplayName("리마인더를 생성하면 JPA Auditing이 생성일과 수정일을 채운다")
     void createReminder_fillsCreatedAtAndUpdatedAt() {
-        LocalDateTime before = LocalDateTime.now();
+        Instant before = Instant.now();
 
-        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null));
+        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null, null));
 
         assertThat(result.createdAt()).isNotNull().isAfterOrEqualTo(before);
         assertThat(result.updatedAt()).isNotNull().isAfterOrEqualTo(before);
@@ -197,11 +202,11 @@ class ReminderServiceTest {
     @Test
     @DisplayName("리마인더를 수정하면 수정일은 갱신되고 생성일은 유지된다")
     void updateReminder_refreshesUpdatedAt_andKeepsCreatedAt() {
-        Reminder saved = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null));
-        LocalDateTime updatedAt = backdateUpdatedAt(saved.getId());
-        LocalDateTime createdAt = reminderRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
+        Reminder saved = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
+        Instant updatedAt = backdateUpdatedAt(saved.getId());
+        Instant createdAt = reminderRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
 
-        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("계란 사기", null, null, false, null, null, null, null, null, 0L));
+        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("계란 사기", null, null, null, false, null, null, null, null, null, 0L));
 
         ReminderResponse result = stored(saved.getId());
         assertThat(result.createdAt()).isEqualTo(createdAt);
@@ -211,15 +216,15 @@ class ReminderServiceTest {
     @Test
     @DisplayName("수정/완료/플래그 토글을 저장하면 수정일이 갱신된다")
     void mutatingMethods_refreshStoredUpdatedAt() {
-        Long toUpdate = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null)).getId();
-        Long toComplete = reminderRepository.saveAndFlush(new Reminder(owner, "계란 사기", null, null, null, null, null)).getId();
-        Long toFlag = reminderRepository.saveAndFlush(new Reminder(owner, "빵 사기", null, null, null, null, null)).getId();
-        LocalDateTime past = backdateUpdatedAt(toUpdate);
+        Long toUpdate = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null, null)).getId();
+        Long toComplete = reminderRepository.saveAndFlush(new Reminder(owner, "계란 사기", null, null, null, null, null, null)).getId();
+        Long toFlag = reminderRepository.saveAndFlush(new Reminder(owner, "빵 사기", null, null, null, null, null, null)).getId();
+        Instant past = backdateUpdatedAt(toUpdate);
         backdateUpdatedAt(toComplete);
         backdateUpdatedAt(toFlag);
 
         reminderService.updateReminder(
-                toUpdate, new ReminderUpdateRequest("우유 사기(수정)", null, null, false, null, null, null, null, null, 0L));
+                toUpdate, new ReminderUpdateRequest("우유 사기(수정)", null, null, null, false, null, null, null, null, null, 0L));
         reminderService.toggleComplete(toComplete);
         reminderService.toggleFlag(toFlag);
 
@@ -232,11 +237,11 @@ class ReminderServiceTest {
     @DisplayName("존재하는 리마인더의 제목, 메모, 마감일시, 플래그를 수정한다")
     void updateReminder_changesEditableFields_whenReminderExists() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
-        LocalDateTime dueAt = LocalDate.now().atTime(18, 30);
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null, null));
+        Instant dueAt = seoul(LocalDate.now(SEOUL), 18, 30);
 
         reminderService.updateReminder(
-                saved.getId(), new ReminderUpdateRequest("계란 사기", "12구", dueAt, true, null, null, null, null, null, 0L));
+                saved.getId(), new ReminderUpdateRequest("계란 사기", "12구", dueAt, SEOUL, true, null, null, null, null, null, 0L));
 
         ReminderResponse result = stored(saved.getId());
         assertThat(result.title()).isEqualTo("계란 사기");
@@ -249,19 +254,19 @@ class ReminderServiceTest {
     @Test
     @DisplayName("수정한 마감일시와 플래그는 스마트 뷰 조회에 반영된다")
     void updateReminder_isReflectedInSmartViews() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         reminderService.updateReminder(
-                saved.getId(), new ReminderUpdateRequest("우유 사기", null, LocalDate.now().atTime(9, 0), true, null, null, null, null, null, 0L));
+                saved.getId(), new ReminderUpdateRequest("우유 사기", null, seoul(LocalDate.now(SEOUL), 9, 0), SEOUL, true, null, null, null, null, null, 0L));
 
-        assertThat(reminderService.getSmartReminders(SmartView.TODAY)).extracting(ReminderResponse::title).containsExactly("우유 사기");
-        assertThat(reminderService.getSmartReminders(SmartView.FLAGGED)).extracting(ReminderResponse::title).containsExactly("우유 사기");
+        assertThat(reminderService.getSmartReminders(SmartView.TODAY, SEOUL)).extracting(ReminderResponse::title).containsExactly("우유 사기");
+        assertThat(reminderService.getSmartReminders(SmartView.FLAGGED, SEOUL)).extracting(ReminderResponse::title).containsExactly("우유 사기");
     }
 
     @Test
     @DisplayName("우선순위를 지정해 리마인더를 생성하면 우선순위가 저장된다")
     void createReminder_savesGivenPriority() {
-        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, Priority.HIGH, null, null, null, null, null));
+        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, Priority.HIGH, null, null, null, null, null));
         reminderRepository.flush();
 
         assertThat(reminderRepository.findById(result.id()).orElseThrow().getPriority()).isEqualTo(Priority.HIGH);
@@ -270,7 +275,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("우선순위를 생략하고 리마인더를 생성하면 없음(NONE)으로 저장된다")
     void createReminder_savesNonePriority_whenPriorityIsOmitted() {
-        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null));
+        ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null, null));
 
         assertThat(result.priority()).isEqualTo(Priority.NONE);
     }
@@ -278,9 +283,9 @@ class ReminderServiceTest {
     @Test
     @DisplayName("리마인더를 수정하면 우선순위가 변경되어 저장된다")
     void updateReminder_savesChangedPriority() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, Priority.LOW, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, Priority.LOW, null));
 
-        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, false, Priority.MEDIUM, null, null, null, null, 0L));
+        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, null, false, Priority.MEDIUM, null, null, null, null, 0L));
         reminderRepository.flush();
 
         assertThat(reminderRepository.findById(saved.getId()).orElseThrow().getPriority()).isEqualTo(Priority.MEDIUM);
@@ -289,9 +294,9 @@ class ReminderServiceTest {
     @Test
     @DisplayName("수정 요청에서 우선순위를 생략하면 없음(NONE)으로 바뀐다")
     void updateReminder_resetsPriorityToNone_whenPriorityIsOmitted() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, Priority.HIGH, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, Priority.HIGH, null));
 
-        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, false, null, null, null, null, null, 0L));
+        reminderService.updateReminder(saved.getId(), new ReminderUpdateRequest("우유 사기", null, null, null, false, null, null, null, null, null, 0L));
 
         assertThat(stored(saved.getId()).priority()).isEqualTo(Priority.NONE);
     }
@@ -299,7 +304,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하지 않는 리마인더를 수정하면 404 예외가 발생한다")
     void updateReminder_throwsNotFound_whenReminderDoesNotExist() {
-        assertThatThrownBy(() -> reminderService.updateReminder(-1L, new ReminderUpdateRequest("우유 사기", null, null, false, null, null, null, null, null, 0L)))
+        assertThatThrownBy(() -> reminderService.updateReminder(-1L, new ReminderUpdateRequest("우유 사기", null, null, null, false, null, null, null, null, null, 0L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.NOT_FOUND);
     }
@@ -307,7 +312,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하는 리마인더의 플래그 상태를 토글한다")
     void toggleFlag_flipsFlaggedState_whenReminderExists() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         reminderService.toggleFlag(saved.getId());
 
@@ -325,7 +330,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("존재하는 리마인더를 삭제한다")
     void deleteReminder_deletesReminder_whenReminderExists() {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         reminderService.deleteReminder(saved.getId());
 
@@ -405,15 +410,15 @@ class ReminderServiceTest {
     @DisplayName("순서를 변경해도 스마트 뷰는 기존 정렬(마감일 순)을 유지한다")
     void reorderReminders_doesNotAffectSmartViewOrder() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(SEOUL);
         ReminderResponse early = reminderService.createReminder(
-                new ReminderRequest("이른 마감", null, shopping.getId(), today.atTime(9, 0), null, null, null, null, null, null));
+                new ReminderRequest("이른 마감", null, shopping.getId(), seoul(today, 9, 0), SEOUL, null, null, null, null, null, null));
         ReminderResponse late = reminderService.createReminder(
-                new ReminderRequest("늦은 마감", null, shopping.getId(), today.atTime(18, 0), null, null, null, null, null, null));
+                new ReminderRequest("늦은 마감", null, shopping.getId(), seoul(today, 18, 0), SEOUL, null, null, null, null, null, null));
 
         reminderService.reorderReminders(new ReminderOrderRequest(shopping.getId(), List.of(late.id(), early.id())));
 
-        assertThat(reminderService.getSmartReminders(SmartView.SCHEDULED))
+        assertThat(reminderService.getSmartReminders(SmartView.SCHEDULED, SEOUL))
                 .extracting(ReminderResponse::title).containsExactly("이른 마감", "늦은 마감");
     }
 
@@ -423,7 +428,7 @@ class ReminderServiceTest {
         Tag home = tagRepository.save(new Tag(owner, "집"));
 
         ReminderResponse result = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, null, null, null, List.of("집", "심부름", "집"), null, null, null, null));
+                new ReminderRequest("우유 사기", null, null, null, null, null, List.of("집", "심부름", "집"), null, null, null, null));
 
         assertThat(result.tags()).containsExactlyInAnyOrder("집", "심부름");
         assertThat(reminderRepository.findById(result.id()).orElseThrow().getTags())
@@ -435,15 +440,15 @@ class ReminderServiceTest {
     @DisplayName("리마인더를 수정하면 태그가 요청 목록으로 교체되고, 태그를 생략하면 모두 떨어진다")
     void updateReminder_replacesTags() {
         ReminderResponse saved = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, null, null, null, List.of("집", "심부름"), null, null, null, null));
+                new ReminderRequest("우유 사기", null, null, null, null, null, List.of("집", "심부름"), null, null, null, null));
 
         reminderService.updateReminder(saved.id(),
-                new ReminderUpdateRequest("우유 사기", null, null, false, null, List.of("급함"), null, null, null, 0L));
+                new ReminderUpdateRequest("우유 사기", null, null, null, false, null, List.of("급함"), null, null, null, 0L));
         ReminderResponse replaced = stored(saved.id());
         assertThat(replaced.tags()).containsExactly("급함");
 
         reminderService.updateReminder(saved.id(),
-                new ReminderUpdateRequest("우유 사기", null, null, false, null, null, null, null, null, replaced.version()));
+                new ReminderUpdateRequest("우유 사기", null, null, null, false, null, null, null, null, null, replaced.version()));
         assertThat(stored(saved.id()).tags()).isEmpty();
     }
 
@@ -451,13 +456,13 @@ class ReminderServiceTest {
     @DisplayName("이미 붙은 태그를 유지한 채 태그를 바꿔 저장해도 유니크 제약에 걸리지 않고, 유지한 태그의 연결 행은 그대로 남는다")
     void updateReminder_keepingSomeTags_keepsExistingReminderTagRows() {
         ReminderResponse saved = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, null, null, null, List.of("집", "심부름"), null, null, null, null));
+                new ReminderRequest("우유 사기", null, null, null, null, null, List.of("집", "심부름"), null, null, null, null));
         entityManager.flush();
         entityManager.clear();
         Long homeRowId = reminderTagRowId(saved.id(), "집");
 
         reminderService.updateReminder(saved.id(),
-                new ReminderUpdateRequest("우유 사기", null, null, false, null, List.of("급함", "집"), null, null, null, saved.version()));
+                new ReminderUpdateRequest("우유 사기", null, null, null, false, null, List.of("급함", "집"), null, null, null, saved.version()));
         entityManager.flush();
         entityManager.clear();
 
@@ -471,7 +476,7 @@ class ReminderServiceTest {
     @DisplayName("태그가 붙은 리마인더도 삭제할 수 있고, 태그는 남는다")
     void deleteReminder_withTags_keepsTags() {
         ReminderResponse saved = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, null, null, null, List.of("집"), null, null, null, null));
+                new ReminderRequest("우유 사기", null, null, null, null, null, List.of("집"), null, null, null, null));
         entityManager.flush();
         entityManager.clear();
 
@@ -486,7 +491,7 @@ class ReminderServiceTest {
     @DisplayName("리마인더를 삭제하면 태그 연결 행과 반복 요일 행도 함께 삭제된다")
     void deleteReminder_deletesReminderTagAndRepeatDayRows() {
         ReminderResponse saved = reminderService.createReminder(new ReminderRequest("운동", null, null,
-                LocalDateTime.of(2026, 10, 5, 7, 0), null, List.of("건강"), null,
+                seoul(2026, 10, 5, 7, 0), SEOUL, null, List.of("건강"), null,
                 RepeatRule.WEEKLY, 1, Set.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY)));
         entityManager.flush();
         entityManager.clear();
@@ -509,7 +514,7 @@ class ReminderServiceTest {
 
         ReminderResponse boxes = createSubtask("박스 구하기", parent.id());
         ReminderResponse movers = reminderService.createReminder(
-                new ReminderRequest("이삿짐센터 예약", null, work.getId(), null, null, null, parent.id(), null, null, null));
+                new ReminderRequest("이삿짐센터 예약", null, work.getId(), null, null, null, null, parent.id(), null, null, null));
 
         assertThat(boxes.parentId()).isEqualTo(parent.id());
         assertThat(boxes.listId()).isEqualTo(home.getId());
@@ -550,7 +555,7 @@ class ReminderServiceTest {
     }
 
     @Test
-    @DisplayName("부모를 완료하면 하위 작업도 모두 완료되어 completed 뷰에 나타난다")
+    @DisplayName("부모를 완료하면 하위 작업도 모두 완료되어 완료됨 조회에 나타난다")
     void toggleComplete_parent_completesSubtasks() {
         ReminderResponse parent = create("이사 준비", null);
         ReminderResponse boxes = createSubtask("박스 구하기", parent.id());
@@ -564,7 +569,7 @@ class ReminderServiceTest {
 
         assertThat(reminderRepository.findById(boxes.id())).get().extracting(Reminder::isCompleted).isEqualTo(true);
         assertThat(reminderRepository.findById(movers.id())).get().extracting(Reminder::isCompleted).isEqualTo(true);
-        assertThat(reminderService.getSmartReminders(SmartView.COMPLETED))
+        assertThat(reminderService.getCompletedReminders(null, 50).items())
                 .extracting(ReminderResponse::title).contains("이사 준비", "박스 구하기", "이삿짐센터 예약");
     }
 
@@ -623,10 +628,10 @@ class ReminderServiceTest {
     @Test
     @DisplayName("반복을 지정해 생성하면 반복 주기가 저장되고, 생략하면 '반복 안 함'이다")
     void createReminder_savesRepeatRule() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 4, 20, 0);
+        Instant dueAt = seoul(2026, 10, 4, 20, 0);
 
         ReminderResponse weekly = reminderService.createReminder(
-                new ReminderRequest("분리수거", null, null, dueAt, null, null, null, RepeatRule.WEEKLY, 1, null));
+                new ReminderRequest("분리수거", null, null, dueAt, SEOUL, null, null, null, RepeatRule.WEEKLY, 1, null));
         ReminderResponse once = create("우유 사기", null);
 
         assertThat(weekly.repeatRule()).isEqualTo(RepeatRule.WEEKLY);
@@ -637,40 +642,40 @@ class ReminderServiceTest {
     @DisplayName("마감일시 없이 반복을 지정해 생성하면 400 예외가 발생한다")
     void createReminder_throwsBadRequest_whenRepeatingWithoutDueAt() {
         assertThatThrownBy(() -> reminderService.createReminder(
-                new ReminderRequest("분리수거", null, null, null, null, null, null, RepeatRule.DAILY, 1, null)))
+                new ReminderRequest("분리수거", null, null, null, null, null, null, null, RepeatRule.DAILY, 1, null)))
                 .isInstanceOf(DomainException.class);
     }
 
     @Test
     @DisplayName("반복 리마인더의 마감일시를 지우면서 반복을 유지하도록 수정하면 400 예외가 발생한다")
     void updateReminder_throwsBadRequest_whenRepeatingWithoutDueAt() {
-        ReminderResponse saved = createRepeating("분리수거", null, LocalDateTime.of(2026, 10, 4, 20, 0), RepeatRule.WEEKLY);
+        ReminderResponse saved = createRepeating("분리수거", null, seoul(2026, 10, 4, 20, 0), RepeatRule.WEEKLY);
 
         assertThatThrownBy(() -> reminderService.updateReminder(saved.id(),
-                new ReminderUpdateRequest("분리수거", null, null, false, null, null, RepeatRule.WEEKLY, 1, null, 0L)))
+                new ReminderUpdateRequest("분리수거", null, null, null, false, null, null, RepeatRule.WEEKLY, 1, null, 0L)))
                 .isInstanceOf(DomainException.class);
     }
 
     @Test
     @DisplayName("수정으로 반복 주기를 바꾸거나 해제할 수 있다")
     void updateReminder_changesRepeatRule() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 4, 20, 0);
+        Instant dueAt = seoul(2026, 10, 4, 20, 0);
         ReminderResponse saved = createRepeating("분리수거", null, dueAt, RepeatRule.WEEKLY);
 
         reminderService.updateReminder(saved.id(),
-                new ReminderUpdateRequest("분리수거", null, dueAt, false, null, null, RepeatRule.MONTHLY, 1, null, 0L));
+                new ReminderUpdateRequest("분리수거", null, dueAt, SEOUL, false, null, null, RepeatRule.MONTHLY, 1, null, 0L));
         ReminderResponse monthly = stored(saved.id());
         assertThat(monthly.repeatRule()).isEqualTo(RepeatRule.MONTHLY);
 
         reminderService.updateReminder(saved.id(),
-                new ReminderUpdateRequest("분리수거", null, null, false, null, null, null, null, null, monthly.version()));
+                new ReminderUpdateRequest("분리수거", null, null, null, false, null, null, null, null, null, monthly.version()));
         assertThat(stored(saved.id()).repeatRule()).isEqualTo(RepeatRule.NONE);
     }
 
     @Test
     @DisplayName("간격과 요일을 지정해 생성하면 저장되고, 생략하면 간격 1·요일 없음이다")
     void createReminder_savesRepeatIntervalAndDaysOfWeek() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 7, 0);
+        Instant dueAt = seoul(2026, 10, 5, 7, 0);
 
         ReminderResponse custom = createCustomRepeating("운동", dueAt, RepeatRule.WEEKLY, 2,
                 Set.of(DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY));
@@ -689,16 +694,16 @@ class ReminderServiceTest {
     @Test
     @DisplayName("수정으로 간격과 요일을 바꿀 수 있고, 반복을 해제하면 간격 1·요일 없음이 된다")
     void updateReminder_changesRepeatIntervalAndDaysOfWeek() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 7, 0);
+        Instant dueAt = seoul(2026, 10, 5, 7, 0);
         ReminderResponse saved = createRepeating("운동", null, dueAt, RepeatRule.WEEKLY);
 
-        reminderService.updateReminder(saved.id(), new ReminderUpdateRequest("운동", null, dueAt, false, null, null, RepeatRule.WEEKLY, 3, Set.of(DayOfWeek.FRIDAY), 0L));
+        reminderService.updateReminder(saved.id(), new ReminderUpdateRequest("운동", null, dueAt, SEOUL, false, null, null, RepeatRule.WEEKLY, 3, Set.of(DayOfWeek.FRIDAY), 0L));
         ReminderResponse custom = stored(saved.id());
         assertThat(custom.repeatInterval()).isEqualTo(3);
         assertThat(custom.repeatDaysOfWeek()).containsExactly(DayOfWeek.FRIDAY);
 
         reminderService.updateReminder(saved.id(),
-                new ReminderUpdateRequest("운동", null, dueAt, false, null, null, null, null, null, custom.version()));
+                new ReminderUpdateRequest("운동", null, dueAt, SEOUL, false, null, null, null, null, null, custom.version()));
         ReminderResponse once = stored(saved.id());
         assertThat(once.repeatRule()).isEqualTo(RepeatRule.NONE);
         assertThat(once.repeatInterval()).isEqualTo(1);
@@ -708,14 +713,14 @@ class ReminderServiceTest {
     @Test
     @DisplayName("요일 일부를 유지한 채 반복 요일을 바꿔 저장해도 유니크 제약에 걸리지 않고, 바뀐 요일만 행이 지워지고 추가된다")
     void updateReminder_keepingSomeDaysOfWeek_replacesOnlyChangedRows() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 7, 0);
+        Instant dueAt = seoul(2026, 10, 5, 7, 0);
         ReminderResponse saved = createCustomRepeating("운동", dueAt, RepeatRule.WEEKLY, 1,
                 Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
         entityManager.flush();
         entityManager.clear();
         Long wednesdayRowId = repeatDayRowId(saved.id(), DayOfWeek.WEDNESDAY);
 
-        reminderService.updateReminder(saved.id(), new ReminderUpdateRequest("운동", null, dueAt,
+        reminderService.updateReminder(saved.id(), new ReminderUpdateRequest("운동", null, dueAt, SEOUL,
                 false, null, null, RepeatRule.WEEKLY, 1, Set.of(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), saved.version()));
 
         assertThat(stored(saved.id()).repeatDaysOfWeek()).containsExactly(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY);
@@ -726,14 +731,14 @@ class ReminderServiceTest {
     @Test
     @DisplayName("2주마다 월·수 리마인더는 월요일 회차를 완료하면 같은 주 수요일, 그 수요일을 완료하면 2주 뒤 월요일 회차가 '예정됨'에 생기고 규칙이 복사된다")
     void toggleComplete_whenEveryTwoWeeksOnMondayAndWednesday_createsNextOccurrencesByRule() {
-        ReminderResponse monday = createCustomRepeating("운동", LocalDateTime.of(2026, 10, 5, 7, 0),
+        ReminderResponse monday = createCustomRepeating("운동", seoul(2026, 10, 5, 7, 0),
                 RepeatRule.WEEKLY, 2, Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
 
         reminderService.toggleComplete(monday.id());
         entityManager.flush();
         entityManager.clear();
         ReminderResponse wednesday = scheduledByTitle("운동").getFirst();
-        assertThat(wednesday.dueAt()).isEqualTo(LocalDateTime.of(2026, 10, 7, 7, 0));
+        assertThat(wednesday.dueAt()).isEqualTo(seoul(2026, 10, 7, 7, 0));
         assertThat(wednesday.repeatInterval()).isEqualTo(2);
         assertThat(wednesday.repeatDaysOfWeek()).containsExactly(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
 
@@ -741,7 +746,7 @@ class ReminderServiceTest {
         entityManager.flush();
         entityManager.clear();
         assertThat(scheduledByTitle("운동")).extracting(ReminderResponse::dueAt)
-                .containsExactly(LocalDateTime.of(2026, 10, 19, 7, 0));
+                .containsExactly(seoul(2026, 10, 19, 7, 0));
     }
 
     @Test
@@ -749,7 +754,7 @@ class ReminderServiceTest {
     void toggleComplete_whenWeekly_savesNextOccurrenceSevenDaysLater() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         create("빨래", home.getId());
-        ReminderResponse trash = reminderService.createReminder(new ReminderRequest("분리수거", "캔/페트", home.getId(), LocalDateTime.of(2026, 10, 4, 20, 0), Priority.HIGH, List.of("집안일"), null, RepeatRule.WEEKLY, 1, null));
+        ReminderResponse trash = reminderService.createReminder(new ReminderRequest("분리수거", "캔/페트", home.getId(), seoul(2026, 10, 4, 20, 0), SEOUL, Priority.HIGH, List.of("집안일"), null, RepeatRule.WEEKLY, 1, null));
 
         reminderService.toggleComplete(trash.id());
         entityManager.flush();
@@ -762,7 +767,7 @@ class ReminderServiceTest {
         assertThat(completed.completed()).isTrue();
         assertThat(next.completed()).isFalse();
         assertThat(next.id()).isNotEqualTo(trash.id());
-        assertThat(next.dueAt()).isEqualTo(LocalDateTime.of(2026, 10, 11, 20, 0));
+        assertThat(next.dueAt()).isEqualTo(seoul(2026, 10, 11, 20, 0));
         assertThat(next.memo()).isEqualTo("캔/페트");
         assertThat(next.priority()).isEqualTo(Priority.HIGH);
         assertThat(next.repeatRule()).isEqualTo(RepeatRule.WEEKLY);
@@ -773,23 +778,23 @@ class ReminderServiceTest {
     @Test
     @DisplayName("반복 리마인더 완료 후 다음 회차는 '예정됨'에, 현재 항목은 '완료됨'에 나타난다")
     void toggleComplete_whenRepeating_nextOccurrenceAppearsInScheduled() {
-        ReminderResponse trash = createRepeating("분리수거", null, LocalDateTime.of(2026, 10, 4, 20, 0), RepeatRule.WEEKLY);
+        ReminderResponse trash = createRepeating("분리수거", null, seoul(2026, 10, 4, 20, 0), RepeatRule.WEEKLY);
 
         reminderService.toggleComplete(trash.id());
         entityManager.flush();
 
-        assertThat(reminderService.getSmartReminders(SmartView.COMPLETED)).extracting(ReminderResponse::id).contains(trash.id());
-        assertThat(reminderService.getSmartReminders(SmartView.SCHEDULED))
+        assertThat(reminderService.getCompletedReminders(null, 50).items()).extracting(ReminderResponse::id).contains(trash.id());
+        assertThat(reminderService.getSmartReminders(SmartView.SCHEDULED, SEOUL))
                 .filteredOn(reminder -> reminder.title().equals("분리수거"))
                 .extracting(ReminderResponse::dueAt)
-                .containsExactly(LocalDateTime.of(2026, 10, 11, 20, 0));
+                .containsExactly(seoul(2026, 10, 11, 20, 0));
     }
 
     @Test
     @DisplayName("반복 리마인더의 완료를 취소해도 이미 만든 다음 회차는 유지되고, 다시 완료해도 중복으로 만들지 않는다")
     void toggleComplete_whenUndone_keepsNextOccurrence_andDoesNotDuplicate() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
-        ReminderResponse trash = createRepeating("분리수거", home.getId(), LocalDateTime.of(2026, 10, 4, 20, 0), RepeatRule.DAILY);
+        ReminderResponse trash = createRepeating("분리수거", home.getId(), seoul(2026, 10, 4, 20, 0), RepeatRule.DAILY);
 
         reminderService.toggleComplete(trash.id());
         reminderService.toggleComplete(trash.id());
@@ -805,7 +810,7 @@ class ReminderServiceTest {
     void toggleComplete_whenRepeatingSubtask_savesNextOccurrenceUnderSameParent() {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         ReminderResponse parent = create("운동", home.getId());
-        ReminderResponse stretching = reminderService.createReminder(new ReminderRequest("스트레칭", null, null, LocalDateTime.of(2026, 10, 4, 7, 0), null, null, parent.id(), RepeatRule.DAILY, 1, null));
+        ReminderResponse stretching = reminderService.createReminder(new ReminderRequest("스트레칭", null, null, seoul(2026, 10, 4, 7, 0), SEOUL, null, null, parent.id(), RepeatRule.DAILY, 1, null));
 
         reminderService.toggleComplete(stretching.id());
         entityManager.flush();
@@ -815,7 +820,7 @@ class ReminderServiceTest {
         assertThat(reminders).extracting(ReminderResponse::title).containsExactly("운동");
         assertThat(reminders.getFirst().subtasks())
                 .extracting(ReminderResponse::dueAt)
-                .containsExactly(LocalDateTime.of(2026, 10, 4, 7, 0), LocalDateTime.of(2026, 10, 5, 7, 0));
+                .containsExactly(seoul(2026, 10, 4, 7, 0), seoul(2026, 10, 5, 7, 0));
     }
 
     @Test
@@ -1008,7 +1013,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("전체 리마인더 목록을 조회한다")
     void getReminders_returnsAllReminders() {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getReminders(null, null);
 
@@ -1020,8 +1025,8 @@ class ReminderServiceTest {
     void getReminders_returnsOnlyRemindersOfGivenList() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", "#FF9500", null, 0));
         ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", "#007AFF", null, 0));
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
-        reminderRepository.save(new Reminder(owner, "보고서 작성", null, work, null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "보고서 작성", null, work, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getReminders(shopping.getId(), null);
 
@@ -1032,8 +1037,8 @@ class ReminderServiceTest {
     @DisplayName("listId를 지정하지 않으면 리스트와 상관없이 전체를 조회한다")
     void getReminders_returnsRemindersOfAllListsAndWithoutList_whenListIdIsNull() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null));
-        reminderRepository.save(new Reminder(owner, "보고서 작성", null, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, shopping, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "보고서 작성", null, null, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getReminders(null, null);
 
@@ -1043,16 +1048,16 @@ class ReminderServiceTest {
     @Test
     @DisplayName("today 뷰는 마감일이 오늘인 미완료 리마인더만 조회한다")
     void getSmartReminders_today_returnsIncompleteRemindersDueToday() {
-        LocalDate today = LocalDate.now();
-        reminderRepository.save(new Reminder(owner, "오늘 아침", null, null, today.atTime(0, 0), null, null));
-        reminderRepository.save(new Reminder(owner, "오늘 저녁", null, null, today.atTime(23, 59), null, null));
-        reminderRepository.save(new Reminder(owner, "어제", null, null, today.minusDays(1).atTime(23, 59), null, null));
-        reminderRepository.save(new Reminder(owner, "내일", null, null, today.plusDays(1).atStartOfDay(), null, null));
-        reminderRepository.save(new Reminder(owner, "마감 없음", null, null, null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "오늘 완료", null, null, today.atTime(12, 0), null, null));
-        done.toggleComplete(LocalDateTime.now());
+        LocalDate today = LocalDate.now(SEOUL);
+        reminderRepository.save(new Reminder(owner, "오늘 아침", null, null, seoul(today, 0, 0), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "오늘 저녁", null, null, seoul(today, 23, 59), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "어제", null, null, seoul(today.minusDays(1), 23, 59), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "내일", null, null, seoul(today.plusDays(1), 0, 0), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "마감 없음", null, null, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "오늘 완료", null, null, seoul(today, 12, 0), SEOUL, null, null));
+        done.toggleComplete(Instant.now());
 
-        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.TODAY);
+        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.TODAY, SEOUL);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("오늘 아침", "오늘 저녁");
     }
@@ -1060,14 +1065,14 @@ class ReminderServiceTest {
     @Test
     @DisplayName("scheduled 뷰는 마감일이 설정된 모든 미완료 리마인더를 마감일 순으로 조회한다")
     void getSmartReminders_scheduled_returnsIncompleteRemindersWithDueAt() {
-        LocalDate today = LocalDate.now();
-        reminderRepository.save(new Reminder(owner, "다음주", null, null, today.plusDays(7).atTime(9, 0), null, null));
-        reminderRepository.save(new Reminder(owner, "오늘", null, null, today.atTime(9, 0), null, null));
-        reminderRepository.save(new Reminder(owner, "마감 없음", null, null, null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, today.atTime(10, 0), null, null));
-        done.toggleComplete(LocalDateTime.now());
+        LocalDate today = LocalDate.now(SEOUL);
+        reminderRepository.save(new Reminder(owner, "다음주", null, null, seoul(today.plusDays(7), 9, 0), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "오늘", null, null, seoul(today, 9, 0), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "마감 없음", null, null, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, seoul(today, 10, 0), SEOUL, null, null));
+        done.toggleComplete(Instant.now());
 
-        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.SCHEDULED);
+        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.SCHEDULED, SEOUL);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("오늘", "다음주");
     }
@@ -1075,11 +1080,11 @@ class ReminderServiceTest {
     @Test
     @DisplayName("all 뷰는 모든 미완료 리마인더를 조회한다")
     void getSmartReminders_all_returnsAllIncompleteReminders() {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null, null, null));
-        done.toggleComplete(LocalDateTime.now());
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null, null, null, null));
+        done.toggleComplete(Instant.now());
 
-        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.ALL);
+        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.ALL, SEOUL);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("우유 사기");
     }
@@ -1087,66 +1092,134 @@ class ReminderServiceTest {
     @Test
     @DisplayName("flagged 뷰는 플래그가 지정된 미완료 리마인더만 조회한다")
     void getSmartReminders_flagged_returnsFlaggedIncompleteReminders() {
-        Reminder flagged = reminderRepository.save(new Reminder(owner, "중요", null, null, null, null, null));
+        Reminder flagged = reminderRepository.save(new Reminder(owner, "중요", null, null, null, null, null, null));
         flagged.toggleFlag();
-        Reminder flaggedDone = reminderRepository.save(new Reminder(owner, "중요하지만 완료", null, null, null, null, null));
+        Reminder flaggedDone = reminderRepository.save(new Reminder(owner, "중요하지만 완료", null, null, null, null, null, null));
         flaggedDone.toggleFlag();
-        flaggedDone.toggleComplete(LocalDateTime.now());
-        reminderRepository.save(new Reminder(owner, "일반", null, null, null, null, null));
+        flaggedDone.toggleComplete(Instant.now());
+        reminderRepository.save(new Reminder(owner, "일반", null, null, null, null, null, null));
 
-        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.FLAGGED);
+        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.FLAGGED, SEOUL);
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("중요");
     }
 
     @Test
-    @DisplayName("completed 뷰는 완료된 리마인더만 조회한다")
-    void getSmartReminders_completed_returnsCompletedReminders() {
-        reminderRepository.save(new Reminder(owner, "미완료", null, null, null, null, null));
-        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null, null, null));
-        done.toggleComplete(LocalDateTime.now());
+    @DisplayName("완료됨 조회는 완료된 리마인더만 조회한다")
+    void getCompletedReminders_returnsCompletedReminders() {
+        reminderRepository.save(new Reminder(owner, "미완료", null, null, null, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "완료", null, null, null, null, null, null));
+        done.toggleComplete(Instant.now());
 
-        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.COMPLETED);
+        List<ReminderResponse> result = reminderService.getCompletedReminders(null, 50).items();
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("완료");
     }
 
     @Test
-    @DisplayName("completed 뷰는 생성 순서와 관계없이 완료일시 최신순으로 조회한다")
-    void getSmartReminders_completed_ordersByCompletedAtDesc() {
-        Reminder first = reminderRepository.save(new Reminder(owner, "먼저 생성", null, null, null, null, null));
-        Reminder second = reminderRepository.save(new Reminder(owner, "나중 생성", null, null, null, null, null));
-        second.toggleComplete(LocalDateTime.of(2026, 9, 30, 9, 0));
-        first.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
+    @DisplayName("완료됨 조회는 생성 순서와 관계없이 완료일시 최신순으로 조회한다")
+    void getCompletedReminders_ordersByCompletedAtDesc() {
+        Reminder first = reminderRepository.save(new Reminder(owner, "먼저 생성", null, null, null, null, null, null));
+        Reminder second = reminderRepository.save(new Reminder(owner, "나중 생성", null, null, null, null, null, null));
+        second.toggleComplete(seoul(2026, 9, 30, 9, 0));
+        first.toggleComplete(seoul(2026, 9, 30, 10, 0));
 
-        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.COMPLETED);
+        List<ReminderResponse> result = reminderService.getCompletedReminders(null, 50).items();
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("먼저 생성", "나중 생성");
     }
 
     @Test
-    @DisplayName("완료된 리마인더를 수정해도 completed 뷰의 순서는 바뀌지 않는다")
-    void getSmartReminders_completed_orderIsNotAffectedByUpdate() {
-        Reminder older = reminderRepository.save(new Reminder(owner, "먼저 완료", null, null, null, null, null));
-        Reminder newer = reminderRepository.save(new Reminder(owner, "나중 완료", null, null, null, null, null));
-        older.toggleComplete(LocalDateTime.of(2026, 9, 30, 9, 0));
-        newer.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
+    @DisplayName("완료된 리마인더를 수정해도 완료됨 조회 순서는 바뀌지 않는다")
+    void getCompletedReminders_orderIsNotAffectedByUpdate() {
+        Reminder older = reminderRepository.save(new Reminder(owner, "먼저 완료", null, null, null, null, null, null));
+        Reminder newer = reminderRepository.save(new Reminder(owner, "나중 완료", null, null, null, null, null, null));
+        older.toggleComplete(seoul(2026, 9, 30, 9, 0));
+        newer.toggleComplete(seoul(2026, 9, 30, 10, 0));
         reminderRepository.flush();
 
-        reminderService.updateReminder(older.getId(), new ReminderUpdateRequest("먼저 완료(수정)", null, null, false, null, null, null, null, null, older.getVersion()));
+        reminderService.updateReminder(older.getId(), new ReminderUpdateRequest("먼저 완료(수정)", null, null, null, false, null, null, null, null, null, older.getVersion()));
         reminderRepository.flush();
-        List<ReminderResponse> result = reminderService.getSmartReminders(SmartView.COMPLETED);
+        List<ReminderResponse> result = reminderService.getCompletedReminders(null, 50).items();
 
         assertThat(result).extracting(ReminderResponse::title).containsExactly("나중 완료", "먼저 완료(수정)");
+    }
+
+    @Test
+    @DisplayName("완료 시각이 같은 항목이 페이지 경계에 걸쳐도 빠지거나 중복되지 않고, 마지막 페이지의 nextCursor는 null이다")
+    void getCompletedReminders_pagesThroughSameCompletedAtWithoutGapsOrDuplicates() {
+        Instant sameTime = seoul(2026, 10, 1, 9, 0);
+        List<Long> expected = new ArrayList<>();
+        expected.add(saveCompleted("가장 최근", sameTime.plusSeconds(60)).getId());
+        List<Long> sameTimeIds = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            sameTimeIds.add(saveCompleted("같은 시각 " + i, sameTime).getId());
+        }
+        expected.addAll(sameTimeIds.reversed());
+        expected.add(saveCompleted("가장 오래됨", sameTime.minusSeconds(60)).getId());
+        reminderRepository.save(new Reminder(owner, "미완료", null, null, null, null, null, null));
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Long> collected = new ArrayList<>();
+        List<String> cursors = new ArrayList<>();
+        CompletedCursor cursor = null;
+        do {
+            SliceResponse<ReminderResponse> page = reminderService.getCompletedReminders(cursor, 2);
+            page.items().forEach(item -> collected.add(item.id()));
+            cursors.add(page.nextCursor());
+            cursor = page.nextCursor() == null ? null : CompletedCursor.decode(page.nextCursor());
+        } while (cursor != null);
+
+        assertThat(collected).containsExactlyElementsOf(expected);
+        assertThat(cursors).hasSize(4).last().isNull();
+    }
+
+    @Test
+    @DisplayName("완료 항목 수가 size의 배수이면 마지막으로 가득 찬 페이지의 nextCursor는 null이다")
+    void getCompletedReminders_whenExactlyFillsPage_hasNoNextCursor() {
+        saveCompleted("첫째", seoul(2026, 10, 1, 9, 0));
+        saveCompleted("둘째", seoul(2026, 10, 1, 10, 0));
+
+        SliceResponse<ReminderResponse> page = reminderService.getCompletedReminders(null, 2);
+
+        assertThat(page.items()).extracting(ReminderResponse::title).containsExactly("둘째", "첫째");
+        assertThat(page.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("검색 결과는 nextCursor로 이어 받으면 첫 조회와 같은 순서로 빠짐·중복 없이 모두 받는다")
+    void searchReminders_continuesWithNextCursor() {
+        for (int i = 1; i <= 5; i++) {
+            createWithDueAt("우유 " + i, seoul(2026, 10, i, 9, 0));
+        }
+        saveCompleted("우유 완료", seoul(2026, 10, 1, 9, 0));
+        create("빵", null);
+
+        List<String> all = reminderService.searchReminders("우유", null, 50).items().stream()
+                .map(ReminderResponse::title).toList();
+        List<String> collected = new ArrayList<>();
+        OffsetCursor cursor = null;
+        int pages = 0;
+        do {
+            SliceResponse<ReminderResponse> page = reminderService.searchReminders("우유", cursor, 4);
+            page.items().forEach(item -> collected.add(item.title()));
+            cursor = page.nextCursor() == null ? null : OffsetCursor.decode(page.nextCursor());
+            pages++;
+        } while (cursor != null);
+
+        assertThat(all).containsExactly("우유 1", "우유 2", "우유 3", "우유 4", "우유 5", "우유 완료");
+        assertThat(collected).isEqualTo(all);
+        assertThat(pages).isEqualTo(2);
     }
 
     @Test
     @DisplayName("태그로 조회하면 해당 태그가 붙은 리마인더만 생성순으로 반환한다")
     void getReminders_byTag_returnsOnlyTaggedReminders() {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        reminderService.createReminder(new ReminderRequest("우유", null, shopping.getId(), null, null, List.of("집"), null, null, null, null));
-        reminderService.createReminder(new ReminderRequest("보고서", null, null, null, null, List.of("회사"), null, null, null, null));
-        reminderService.createReminder(new ReminderRequest("빨래", null, null, null, null, List.of("집", "주말"), null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("우유", null, shopping.getId(), null, null, null, List.of("집"), null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("보고서", null, null, null, null, null, List.of("회사"), null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("빨래", null, null, null, null, null, List.of("집", "주말"), null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getReminders(null, "집");
 
@@ -1177,20 +1250,20 @@ class ReminderServiceTest {
         ReminderResponse parent = create("이사 준비", null);
         createSubtask("박스 구하기", parent.id());
 
-        assertThat(reminderService.getSmartReminders(SmartView.ALL))
+        assertThat(reminderService.getSmartReminders(SmartView.ALL, SEOUL))
                 .extracting(ReminderResponse::title).contains("이사 준비", "박스 구하기");
     }
 
     @Test
     @DisplayName("다가오는 리마인더 조회는 from 이상 to 미만에 마감되는 항목을 마감일시 순으로 반환한다")
     void getUpcomingReminders_includesFromAndExcludesTo_sortedByDueAt() {
-        LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
-        LocalDateTime to = from.plusMinutes(2);
-        reminderRepository.save(new Reminder(owner, "직전", null, null, from.minusSeconds(1), null, null));
-        reminderRepository.save(new Reminder(owner, "마지막", null, null, to.minusSeconds(1), null, null));
-        reminderRepository.save(new Reminder(owner, "시작", null, null, from, null, null));
-        reminderRepository.save(new Reminder(owner, "끝", null, null, to, null, null));
-        reminderRepository.save(new Reminder(owner, "마감일 없음", null, null, null, null, null));
+        Instant from = seoul(2026, 10, 4, 21, 0);
+        Instant to = from.plus(Duration.ofMinutes(2));
+        reminderRepository.save(new Reminder(owner, "직전", null, null, from.minusSeconds(1), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "마지막", null, null, to.minusSeconds(1), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "시작", null, null, from, SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "끝", null, null, to, SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "마감일 없음", null, null, null, null, null, null));
 
         List<ReminderResponse> result = reminderService.getUpcomingReminders(from, to);
 
@@ -1200,35 +1273,35 @@ class ReminderServiceTest {
     @Test
     @DisplayName("다가오는 리마인더 조회는 완료된 항목을 제외한다")
     void getUpcomingReminders_excludesCompleted() {
-        LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
-        Reminder done = reminderRepository.save(new Reminder(owner, "완료함", null, null, from.plusMinutes(1), null, null));
-        done.toggleComplete(LocalDateTime.of(2026, 10, 4, 20, 0));
-        reminderRepository.save(new Reminder(owner, "남음", null, null, from.plusMinutes(1), null, null));
+        Instant from = seoul(2026, 10, 4, 21, 0);
+        Reminder done = reminderRepository.save(new Reminder(owner, "완료함", null, null, from.plus(Duration.ofMinutes(1)), SEOUL, null, null));
+        done.toggleComplete(seoul(2026, 10, 4, 20, 0));
+        reminderRepository.save(new Reminder(owner, "남음", null, null, from.plus(Duration.ofMinutes(1)), SEOUL, null, null));
 
-        assertThat(reminderService.getUpcomingReminders(from, from.plusMinutes(2)))
+        assertThat(reminderService.getUpcomingReminders(from, from.plus(Duration.ofMinutes(2))))
                 .extracting(ReminderResponse::title).containsExactly("남음");
     }
 
     @Test
     @DisplayName("다가오는 리마인더 조회는 하위 작업도 개별 항목으로 포함한다")
     void getUpcomingReminders_includesSubtasks() {
-        LocalDateTime from = LocalDateTime.of(2026, 10, 4, 21, 0);
+        Instant from = seoul(2026, 10, 4, 21, 0);
         ReminderResponse parent = create("이사 준비", null);
-        reminderService.createReminder(new ReminderRequest("박스 구하기", null, null, from.plusMinutes(1), null, null, parent.id(), null, null, null));
+        reminderService.createReminder(new ReminderRequest("박스 구하기", null, null, from.plus(Duration.ofMinutes(1)), SEOUL, null, null, parent.id(), null, null, null));
 
-        assertThat(reminderService.getUpcomingReminders(from, from.plusMinutes(2)))
+        assertThat(reminderService.getUpcomingReminders(from, from.plus(Duration.ofMinutes(2))))
                 .extracting(ReminderResponse::title).containsExactly("박스 구하기");
     }
 
     @Test
     @DisplayName("from이 to보다 늦거나 같으면 400 예외가 발생한다")
     void getUpcomingReminders_throwsBadRequest_whenFromIsNotBeforeTo() {
-        LocalDateTime time = LocalDateTime.of(2026, 10, 4, 21, 0);
+        Instant time = seoul(2026, 10, 4, 21, 0);
 
         assertThatThrownBy(() -> reminderService.getUpcomingReminders(time, time))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
-        assertThatThrownBy(() -> reminderService.getUpcomingReminders(time.plusMinutes(1), time))
+        assertThatThrownBy(() -> reminderService.getUpcomingReminders(time.plus(Duration.ofMinutes(1)), time))
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.BAD_REQUEST);
     }
@@ -1237,12 +1310,12 @@ class ReminderServiceTest {
     @DisplayName("검색어가 제목, 메모, 태그 이름 중 하나에 들어 있으면 검색된다")
     void searchReminders_matchesTitleMemoAndTag() {
         create("우유 사기", null);
-        reminderService.createReminder(new ReminderRequest("장보기", "우유랑 빵", null, null, null, null, null, null, null, null));
+        reminderService.createReminder(new ReminderRequest("장보기", "우유랑 빵", null, null, null, null, null, null, null, null, null));
         reminderService.createReminder(
-                new ReminderRequest("마트", null, null, null, null, List.of("우유팩"), null, null, null, null));
+                new ReminderRequest("마트", null, null, null, null, null, List.of("우유팩"), null, null, null, null));
         create("보고서 작성", null);
 
-        List<ReminderResponse> result = reminderService.searchReminders("우유");
+        List<ReminderResponse> result = reminderService.searchReminders("우유", null, 50).items();
 
         assertThat(result).extracting(ReminderResponse::title)
                 .containsExactlyInAnyOrder("우유 사기", "장보기", "마트");
@@ -1253,11 +1326,11 @@ class ReminderServiceTest {
     void searchReminders_isCaseInsensitive() {
         create("Buy MILK", null);
         reminderService.createReminder(
-                new ReminderRequest("마트", null, null, null, null, List.of("Grocery"), null, null, null, null));
+                new ReminderRequest("마트", null, null, null, null, null, List.of("Grocery"), null, null, null, null));
 
-        assertThat(reminderService.searchReminders("milk")).extracting(ReminderResponse::title)
+        assertThat(reminderService.searchReminders("milk", null, 50).items()).extracting(ReminderResponse::title)
                 .containsExactly("Buy MILK");
-        assertThat(reminderService.searchReminders("GROCERY")).extracting(ReminderResponse::title)
+        assertThat(reminderService.searchReminders("GROCERY", null, 50).items()).extracting(ReminderResponse::title)
                 .containsExactly("마트");
     }
 
@@ -1269,9 +1342,9 @@ class ReminderServiceTest {
         create("file_name 정리", null);
         create("filename 정리", null);
 
-        assertThat(reminderService.searchReminders("50%")).extracting(ReminderResponse::title)
+        assertThat(reminderService.searchReminders("50%", null, 50).items()).extracting(ReminderResponse::title)
                 .containsExactly("할인 50% 쿠폰");
-        assertThat(reminderService.searchReminders("file_")).extracting(ReminderResponse::title)
+        assertThat(reminderService.searchReminders("file_", null, 50).items()).extracting(ReminderResponse::title)
                 .containsExactly("file_name 정리");
     }
 
@@ -1279,19 +1352,19 @@ class ReminderServiceTest {
     @DisplayName("태그가 여러 개 일치해도 리마인더는 한 번만 나오고, 하위 작업도 개별 항목으로 검색된다")
     void searchReminders_returnsEachReminderOnce_includingSubtasks() {
         ReminderResponse parent = reminderService.createReminder(
-                new ReminderRequest("이사", null, null, null, null, List.of("짐싸기", "짐정리"), null, null, null, null));
+                new ReminderRequest("이사", null, null, null, null, null, List.of("짐싸기", "짐정리"), null, null, null, null));
         createSubtask("짐 박스 구하기", parent.id());
 
-        assertThat(reminderService.searchReminders("짐")).extracting(ReminderResponse::title)
+        assertThat(reminderService.searchReminders("짐", null, 50).items()).extracting(ReminderResponse::title)
                 .containsExactly("이사", "짐 박스 구하기");
     }
 
     @Test
     @DisplayName("미완료 항목이 마감일시 순(마감일 없는 항목은 뒤, 같으면 생성순)으로 먼저, 완료 항목이 완료일시 최신순으로 나중에 나온다")
     void searchReminders_ordersIncompleteByDueAtThenCompletedByRecency() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 10, 9, 0);
+        Instant dueAt = seoul(2026, 10, 10, 9, 0);
         ReminderResponse noDue = create("업무 A", null);
-        ReminderResponse later = createWithDueAt("업무 B", dueAt.plusDays(1));
+        ReminderResponse later = createWithDueAt("업무 B", dueAt.plus(Duration.ofDays(1)));
         ReminderResponse sooner = createWithDueAt("업무 C", dueAt);
         ReminderResponse noDue2 = create("업무 D", null);
         ReminderResponse completedFirst = create("업무 E", null);
@@ -1299,13 +1372,13 @@ class ReminderServiceTest {
         reminderService.toggleComplete(completedFirst.id());
         entityManager.flush();
         entityManager.createQuery("update Reminder r set r.completedAt = :at where r.id = :id")
-                .setParameter("at", dueAt.minusDays(1))
+                .setParameter("at", dueAt.minus(Duration.ofDays(1)))
                 .setParameter("id", completedFirst.id())
                 .executeUpdate();
         entityManager.clear();
         reminderService.toggleComplete(completedSecond.id());
 
-        List<ReminderResponse> result = reminderService.searchReminders("업무");
+        List<ReminderResponse> result = reminderService.searchReminders("업무", null, 50).items();
 
         assertThat(result).extracting(ReminderResponse::id).containsExactly(
                 sooner.id(), later.id(), noDue.id(), noDue2.id(), completedSecond.id(), completedFirst.id());
@@ -1314,26 +1387,26 @@ class ReminderServiceTest {
     @Test
     @DisplayName("완료 항목은 마감일시와 관계없이 완료일시 최신순으로 나온다")
     void searchReminders_ignoresDueAtForCompletedReminders() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 10, 9, 0);
+        Instant dueAt = seoul(2026, 10, 10, 9, 0);
         ReminderResponse dueSoonerCompletedEarlier = createWithDueAt("업무 A", dueAt);
-        ReminderResponse dueLaterCompletedRecently = createWithDueAt("업무 B", dueAt.plusDays(1));
+        ReminderResponse dueLaterCompletedRecently = createWithDueAt("업무 B", dueAt.plus(Duration.ofDays(1)));
         reminderService.toggleComplete(dueSoonerCompletedEarlier.id());
         entityManager.flush();
         entityManager.createQuery("update Reminder r set r.completedAt = :at where r.id = :id")
-                .setParameter("at", dueAt.minusDays(1))
+                .setParameter("at", dueAt.minus(Duration.ofDays(1)))
                 .setParameter("id", dueSoonerCompletedEarlier.id())
                 .executeUpdate();
         entityManager.clear();
         reminderService.toggleComplete(dueLaterCompletedRecently.id());
 
-        List<ReminderResponse> result = reminderService.searchReminders("업무");
+        List<ReminderResponse> result = reminderService.searchReminders("업무", null, 50).items();
 
         assertThat(result).extracting(ReminderResponse::id).containsExactly(
                 dueLaterCompletedRecently.id(), dueSoonerCompletedEarlier.id());
     }
 
-    private LocalDateTime backdateUpdatedAt(Long reminderId) {
-        LocalDateTime past = LocalDateTime.of(2026, 1, 1, 0, 0);
+    private Instant backdateUpdatedAt(Long reminderId) {
+        Instant past = seoul(2026, 1, 1, 0, 0);
         entityManager.createQuery("update Reminder r set r.updatedAt = :past where r.id = :id")
                 .setParameter("past", past)
                 .setParameter("id", reminderId)
@@ -1366,31 +1439,37 @@ class ReminderServiceTest {
                 .getSingleResult();
     }
 
-    private ReminderResponse createRepeating(String title, Long listId, LocalDateTime dueAt, RepeatRule repeatRule) {
+    private ReminderResponse createRepeating(String title, Long listId, Instant dueAt, RepeatRule repeatRule) {
         return reminderService.createReminder(
-                new ReminderRequest(title, null, listId, dueAt, null, null, null, repeatRule, 1, null));
+                new ReminderRequest(title, null, listId, dueAt, SEOUL, null, null, null, repeatRule, 1, null));
     }
 
-    private ReminderResponse createCustomRepeating(String title, LocalDateTime dueAt, RepeatRule repeatRule,
+    private ReminderResponse createCustomRepeating(String title, Instant dueAt, RepeatRule repeatRule,
                                                    Integer repeatInterval, Set<DayOfWeek> repeatDaysOfWeek) {
-        return reminderService.createReminder(new ReminderRequest(title, null, null, dueAt, null, null, null, repeatRule, repeatInterval, repeatDaysOfWeek));
+        return reminderService.createReminder(new ReminderRequest(title, null, null, dueAt, SEOUL, null, null, null, repeatRule, repeatInterval, repeatDaysOfWeek));
     }
 
     private List<ReminderResponse> scheduledByTitle(String title) {
-        return reminderService.getSmartReminders(SmartView.SCHEDULED).stream()
+        return reminderService.getSmartReminders(SmartView.SCHEDULED, SEOUL).stream()
                 .filter(reminder -> reminder.title().equals(title))
                 .toList();
     }
 
-    private ReminderResponse createWithDueAt(String title, LocalDateTime dueAt) {
-        return reminderService.createReminder(new ReminderRequest(title, null, null, dueAt, null, null, null, null, null, null));
+    private Reminder saveCompleted(String title, Instant completedAt) {
+        Reminder reminder = new Reminder(owner, title, null, null, null, null, null, null);
+        reminder.toggleComplete(completedAt);
+        return reminderRepository.save(reminder);
+    }
+
+    private ReminderResponse createWithDueAt(String title, Instant dueAt) {
+        return reminderService.createReminder(new ReminderRequest(title, null, null, dueAt, SEOUL, null, null, null, null, null, null));
     }
 
     private ReminderResponse create(String title, Long listId) {
-        return reminderService.createReminder(new ReminderRequest(title, null, listId, null, null, null, null, null, null, null));
+        return reminderService.createReminder(new ReminderRequest(title, null, listId, null, null, null, null, null, null, null, null));
     }
 
     private ReminderResponse createSubtask(String title, Long parentId) {
-        return reminderService.createReminder(new ReminderRequest(title, null, null, null, null, null, parentId, null, null, null));
+        return reminderService.createReminder(new ReminderRequest(title, null, null, null, null, null, null, parentId, null, null, null));
     }
 }

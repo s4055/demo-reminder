@@ -2,13 +2,13 @@ package demo.ai.reminder.dto.response;
 
 import demo.ai.reminder.domain.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record UserResponse(
         Long id,
         String email,
         String name,
-        LocalDateTime createdAt
+        Instant createdAt
 ) {
 
     public static UserResponse from(User user) {

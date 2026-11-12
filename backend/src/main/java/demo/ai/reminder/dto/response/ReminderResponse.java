@@ -7,7 +7,8 @@ import demo.ai.reminder.domain.reminder.RepeatRule;
 import demo.ai.reminder.domain.tag.Tag;
 
 import java.time.DayOfWeek;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 
 public record ReminderResponse(
@@ -17,19 +18,20 @@ public record ReminderResponse(
         boolean completed,
         boolean flagged,
         Priority priority,
-        LocalDateTime dueAt,
+        Instant dueAt,
+        ZoneId timeZone,
         RepeatRule repeatRule,
         int repeatInterval,
         List<DayOfWeek> repeatDaysOfWeek,
-        LocalDateTime completedAt,
+        Instant completedAt,
         Long listId,
         int sortOrder,
         List<String> tags,
         Long parentId,
         List<ReminderResponse> subtasks,
         Long version,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        Instant createdAt,
+        Instant updatedAt
 ) {
 
     public static ReminderResponse from(Reminder reminder) {
@@ -42,6 +44,7 @@ public record ReminderResponse(
                 reminder.isFlagged(),
                 reminder.getPriority(),
                 reminder.getDueAt(),
+                reminder.getTimeZone(),
                 recurrence.rule(),
                 recurrence.interval(),
                 recurrence.daysOfWeek().stream().sorted().toList(),

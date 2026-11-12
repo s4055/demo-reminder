@@ -18,7 +18,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 
@@ -44,7 +44,7 @@ public class RefreshTokenService {
 
     @Transactional(noRollbackFor = RefreshTokenReuseException.class)
     public IssuedRefreshToken rotate(String token) {
-        LocalDateTime now = now();
+        Instant now = now();
         RefreshToken current = find(token);
         if (current.isRevoked()) {
             Long userId = current.getUser().getId();
@@ -80,7 +80,7 @@ public class RefreshTokenService {
                 .orElseThrow(() -> invalidToken("Refresh token is unknown"));
     }
 
-    private void revokeAll(Long userId, LocalDateTime now) {
+    private void revokeAll(Long userId, Instant now) {
         refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(userId)
                 .forEach(refreshToken -> refreshToken.revoke(now));
     }
@@ -97,11 +97,11 @@ public class RefreshTokenService {
         return new BusinessException(ResultCode.UNAUTHORIZED, message);
     }
 
-    private LocalDateTime now() {
-        return LocalDateTime.now(clock);
+    private Instant now() {
+        return Instant.now(clock);
     }
 
-    private LocalDateTime expiresAt(LocalDateTime now) {
+    private Instant expiresAt(Instant now) {
         return now.plus(jwtProperties.refreshTokenTtl());
     }
 

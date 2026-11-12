@@ -2,6 +2,7 @@ import { parseISO } from "date-fns"
 import { toDueAtParam } from "@/lib/due-date"
 import type { Priority } from "@/lib/priority"
 import type { Reminder, UpdateReminderInput } from "@/lib/reminders-api"
+import { browserTimeZone } from "@/lib/timezone"
 import {
   NO_REPEAT,
   recurrenceOf,
@@ -41,6 +42,7 @@ export function toUpdateInput(
     title: values.title.trim(),
     memo: values.memo.trim() || null,
     dueAt: values.dueAt ? toDueAtParam(values.dueAt) : null,
+    timeZone: browserTimeZone(),
     flagged: values.flagged,
     priority: values.priority,
     tagNames: values.tagNames,

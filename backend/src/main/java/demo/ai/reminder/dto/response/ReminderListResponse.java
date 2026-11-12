@@ -4,7 +4,7 @@ import demo.ai.reminder.domain.list.ListRole;
 import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.repository.list.ReminderListSummary;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record ReminderListResponse(
         Long id,
@@ -17,8 +17,8 @@ public record ReminderListResponse(
         ListRole role,
         long memberCount,
         Long version,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        Instant createdAt,
+        Instant updatedAt
 ) {
 
     public static ReminderListResponse from(ReminderListSummary summary) {
