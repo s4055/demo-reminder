@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useLogin, useMe, useSignup } from "@/hooks/use-auth"
 import { ApiError } from "@/lib/api"
+import { loginErrorMessage } from "@/lib/login-error"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_MIN_LENGTH = 8
@@ -39,11 +40,7 @@ export function LoginForm() {
     login.mutate({ email: values.email.trim(), password: values.password })
   }
 
-  const serverError = login.error
-    ? login.error instanceof ApiError && login.error.status === 401
-      ? "이메일 또는 비밀번호가 올바르지 않습니다."
-      : "로그인하지 못했습니다. 잠시 후 다시 시도해 주세요."
-    : undefined
+  const serverError = login.error ? loginErrorMessage(login.error) : undefined
 
   return (
     <AuthCard

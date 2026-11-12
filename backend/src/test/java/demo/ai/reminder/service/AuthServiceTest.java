@@ -7,6 +7,7 @@ import demo.ai.reminder.dto.request.LoginRequest;
 import demo.ai.reminder.dto.request.SignupRequest;
 import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.exception.BusinessException;
+import demo.ai.reminder.exception.TooManyLoginAttemptsException;
 import demo.ai.reminder.repository.user.RefreshTokenRepository;
 import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.security.JwtProvider;
@@ -30,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @Transactional
 class AuthServiceTest {
+
+    private static final String CLIENT_IP = "127.0.0.1";
 
     @Autowired
     private AuthService authService;
@@ -119,7 +122,7 @@ class AuthServiceTest {
     void login_withValidCredentials_issuesTokens() {
         Long aliceId = signupAlice().user().id();
 
-        AuthResult tokens = authService.login(new LoginRequest("Alice@example.com", "password1"));
+        AuthResult tokens = authService.login(new LoginRequest("Alice@example.com", "password1"), CLIENT_IP);
 
         assertThat(tokens.user().id()).isEqualTo(aliceId);
         assertThat(tokens.user().email()).isEqualTo("alice@example.com");
@@ -137,7 +140,7 @@ class AuthServiceTest {
         RefreshToken aliceExpired = refreshTokenRepository.save(new RefreshToken(alice, "alice-expired", past));
         RefreshToken bobExpired = refreshTokenRepository.save(new RefreshToken(bob, "bob-expired", past));
 
-        authService.login(new LoginRequest("alice@example.com", "password1"));
+        authService.login(new LoginRequest("alice@example.com", "password1"), CLIENT_IP);
 
         assertThat(refreshTokenRepository.findById(aliceExpired.getId())).isEmpty();
         assertThat(refreshTokenRepository.findById(bobExpired.getId())).isPresent();
@@ -150,8 +153,52 @@ class AuthServiceTest {
     void login_withInvalidCredentials_throwsUnauthorized() {
         signupAlice();
 
-        assertUnauthorized(() -> authService.login(new LoginRequest("alice@example.com", "wrong-password")));
-        assertUnauthorized(() -> authService.login(new LoginRequest("nobody@example.com", "password1")));
+        assertUnauthorized(() -> authService.login(new LoginRequest("alice@example.com", "wrong-password"), CLIENT_IP));
+        assertUnauthorized(() -> authService.login(new LoginRequest("nobody@example.com", "password1"), CLIENT_IP));
+    }
+
+    @Test
+    @DisplayName("같은 이메일로 5번 틀리면 올바른 비밀번호로도 로그인을 막고 남은 차단 시간을 담은 429 예외가 발생한다")
+    void login_afterFiveFailures_blocksEvenWithCorrectPassword() {
+        authService.signup(new SignupRequest("locked@example.com", "password1", "잠김"));
+        for (int i = 0; i < 5; i++) {
+            assertUnauthorized(() -> authService.login(new LoginRequest("locked@example.com", "wrong"), "10.1.0.1"));
+        }
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("Locked@example.com", "password1"), "10.1.0.2"))
+                .isInstanceOfSatisfying(TooManyLoginAttemptsException.class, e -> {
+                    assertThat(e.getResultCode()).isEqualTo(ResultCode.TOO_MANY_LOGIN_ATTEMPTS);
+                    assertThat(e.getRetryAfter()).isPositive().isLessThanOrEqualTo(Duration.ofMinutes(15));
+                });
+    }
+
+    @Test
+    @DisplayName("다른 이메일의 로그인 실패는 이메일 기준 차단에 섞이지 않는다")
+    void login_failuresOfOtherEmail_doNotBlock() {
+        authService.signup(new SignupRequest("carol@example.com", "password1", "캐럴"));
+        for (int i = 0; i < 4; i++) {
+            assertUnauthorized(() -> authService.login(new LoginRequest("carol@example.com", "wrong"), "10.1.1.1"));
+            assertUnauthorized(() -> authService.login(new LoginRequest("dave@example.com", "wrong"), "10.1.1.1"));
+        }
+
+        assertThat(authService.login(new LoginRequest("carol@example.com", "password1"), "10.1.1.1").user().email())
+                .isEqualTo("carol@example.com");
+    }
+
+    @Test
+    @DisplayName("로그인에 성공하면 그 이메일의 실패 횟수가 초기화된다")
+    void login_success_resetsEmailFailures() {
+        authService.signup(new SignupRequest("erin@example.com", "password1", "에린"));
+        for (int i = 0; i < 4; i++) {
+            assertUnauthorized(() -> authService.login(new LoginRequest("erin@example.com", "wrong"), "10.1.2.1"));
+        }
+        authService.login(new LoginRequest("erin@example.com", "password1"), "10.1.2.1");
+        for (int i = 0; i < 4; i++) {
+            assertUnauthorized(() -> authService.login(new LoginRequest("erin@example.com", "wrong"), "10.1.2.1"));
+        }
+
+        assertThat(authService.login(new LoginRequest("erin@example.com", "password1"), "10.1.2.1").user().email())
+                .isEqualTo("erin@example.com");
     }
 
     @Test

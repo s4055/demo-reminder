@@ -8,6 +8,7 @@ import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.security.RefreshTokenCookie;
 import demo.ai.reminder.service.AuthResult;
 import demo.ai.reminder.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +36,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
-        return ApiResponse.success(respond(authService.login(request), response));
+    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest,
+                                           HttpServletResponse response) {
+        return ApiResponse.success(respond(authService.login(request, httpRequest.getRemoteAddr()), response));
     }
 
     @PostMapping("/refresh")

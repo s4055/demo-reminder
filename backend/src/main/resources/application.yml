@@ -20,6 +20,12 @@ spring:
         format_sql: true
 
 app:
+  auth:
+    login-attempt:
+      max-failures-per-email: 5
+      max-failures-per-ip: 20
+      window: 15m
+      lock-duration: 15m
   jwt:
     secret: ${JWT_SECRET:local-only-jwt-secret-key-do-not-use-in-production}
     access-token-ttl: 15m

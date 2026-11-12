@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -24,6 +25,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.containsStringIgnoringCase;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -154,6 +156,30 @@ class AuthControllerTest {
                     .andReturn();
             assertThat(result.getResponse().getCookie(RefreshTokenCookie.NAME)).isNull();
         }
+    }
+
+    @Test
+    @DisplayName("같은 이메일로 5번 틀리면 올바른 비밀번호로도 429와 Retry-After 헤더를 반환하고, 다른 계정은 로그인할 수 있다")
+    void login_afterFiveFailures_returnsTooManyRequestsWithRetryAfter() throws Exception {
+        signup("blocked@example.com", "password1", "차단");
+        signup("other@example.com", "password1", "다른 사용자");
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(loginRequest("blocked@example.com", "wrong-password", "10.2.0.1"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        MvcResult blocked = mockMvc.perform(loginRequest("blocked@example.com", "password1", "10.2.0.1")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:3000"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, containsString(HttpHeaders.RETRY_AFTER)))
+                .andExpect(jsonPath("$.resultCode").value("TOO_MANY_LOGIN_ATTEMPTS"))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andReturn();
+        assertThat(Long.parseLong(blocked.getResponse().getHeader(HttpHeaders.RETRY_AFTER))).isBetween(1L, 900L);
+        assertThat(blocked.getResponse().getCookie(RefreshTokenCookie.NAME)).isNull();
+
+        mockMvc.perform(loginRequest("other@example.com", "password1", "10.2.0.1"))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -358,5 +384,15 @@ class AuthControllerTest {
 
     private static String signupJson(String email, String password, String name) {
         return "{\"email\":\"" + email + "\",\"password\":\"" + password + "\",\"name\":\"" + name + "\"}";
+    }
+
+    private static MockHttpServletRequestBuilder loginRequest(String email, String password, String remoteAddr) {
+        return post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
+                .with(request -> {
+                    request.setRemoteAddr(remoteAddr);
+                    return request;
+                });
     }
 }

@@ -25,7 +25,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly resultCode: string | undefined
+    readonly resultCode: string | undefined,
+    readonly retryAfterSeconds?: number
   ) {
     super(message)
     this.name = "ApiError"
@@ -118,6 +119,12 @@ function send(path: string, init?: RequestInit): Promise<Response> {
   })
 }
 
+function parseRetryAfter(value: string | null): number | undefined {
+  const seconds = value?.trim()
+  if (!seconds || !/^\d+$/.test(seconds)) return undefined
+  return Number(seconds)
+}
+
 async function readData<T>(response: Response): Promise<T> {
   const body = (await response.json().catch(() => null)) as ApiResponse<T> | null
   if (!response.ok || body?.resultCode !== SUCCESS) {
@@ -125,7 +132,8 @@ async function readData<T>(response: Response): Promise<T> {
     throw new ApiError(
       `요청에 실패했습니다. (${message})`,
       response.status,
-      body?.resultCode
+      body?.resultCode,
+      parseRetryAfter(response.headers.get("Retry-After"))
     )
   }
   return body.data
