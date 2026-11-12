@@ -22,7 +22,9 @@ public interface ReminderRepositoryCustom {
 
     List<Reminder> findAccessibleIncompleteFlagged(Long userId);
 
-    List<Reminder> findAccessibleCompleted(Long userId);
+    List<Reminder> findAccessibleCompleted(Long userId, int limit);
 
-    List<Reminder> searchAccessible(Long userId, String pattern);
+    List<Reminder> findAccessibleCompletedBefore(Long userId, Instant completedAt, Long id, int limit);
+
+    List<Reminder> searchAccessible(Long userId, String pattern, long offset, int limit);
 }

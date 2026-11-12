@@ -662,6 +662,43 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /api/reminders/completed:
+    get:
+      tags: [Reminders]
+      summary: 완료된 리마인더 페이지 조회
+      description: |
+        현재 사용자가 볼 수 있는 완료된 리마인더(하위 작업 포함)를 완료일시 최신순(같으면 id 큰 순)으로 size개씩 조회한다.
+        키셋 페이지네이션이므로 페이지 사이에 항목이 추가·삭제되어도 이미 받은 항목이 다시 나오거나 빠지지 않는다.
+        다음 페이지가 없으면 nextCursor는 null이다.
+      operationId: getCompletedReminders
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 nextCursor. 생략하면 첫 페이지를 조회한다. 형식이 잘못되면 400
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          description: 페이지 크기 (1~100, 기본 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: 완료된 리마인더 한 페이지
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderSliceApiResponse"
+        "400":
+          description: size가 1~100을 벗어남, 또는 잘못된 cursor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       tags: [Reminders]
       summary: 리스트의 완료 항목 일괄 삭제
@@ -710,7 +747,7 @@ paths:
         - `scheduled`: 마감일이 설정된 모든 미완료 (마감일 순)
         - `all`: 모든 미완료
         - `flagged`: flagged=true 인 미완료
-        - `completed`: completed=true 인 리마인더 (완료일시 최신순)
+        완료된 항목은 스마트 뷰가 아니라 `GET /api/reminders/completed`로 나눠 조회한다 (`completed` 뷰는 400).
       operationId: getSmartReminders
       parameters:
         - name: view
@@ -718,11 +755,11 @@ paths:
           required: true
           schema:
             type: string
-            enum: [today, scheduled, all, flagged, completed]
+            enum: [today, scheduled, all, flagged]
         - name: zone
           in: query
           required: false
-          description: "오늘"을 정할 IANA 시간대 ID. `today` 뷰에서는 필수이고 다른 뷰에서는 무시한다.
+          description: 오늘 날짜를 정할 IANA 시간대 ID. `today` 뷰에서는 필수이고 다른 뷰에서는 무시한다.
           schema:
             type: string
             example: Asia/Seoul
@@ -748,6 +785,7 @@ paths:
         현재 사용자가 볼 수 있는 리마인더(내 리마인더 + 멤버인 리스트의 리마인더) 중 제목·메모·태그 이름에 검색어가 들어 있는 항목을 찾는다 (대소문자 무시).
         하위 작업도 개별 항목으로 포함하며(subtasks는 리스트별 조회와 같이 채워진다), 태그가 여러 개 일치해도 한 번만 나온다.
         정렬: 미완료 항목을 마감일시 순(마감일 없는 항목은 뒤, 같으면 생성순)으로 먼저, 그다음 완료 항목을 완료일시 최신순으로 둔다.
+        결과는 size개씩 나눠 반환하며, nextCursor로 다음 페이지를 이어 받는다 (다음 페이지가 없으면 null).
       operationId: searchReminders
       parameters:
         - name: q
@@ -759,15 +797,30 @@ paths:
             minLength: 1
             maxLength: 100
           example: 우유
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 nextCursor. 생략하면 첫 페이지를 조회한다. 형식이 잘못되면 400
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          description: 페이지 크기 (1~100, 기본 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
       responses:
         "200":
-          description: 검색 결과 (없으면 빈 배열)
+          description: 검색 결과 한 페이지 (없으면 items가 빈 배열)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReminderArrayApiResponse"
+                $ref: "#/components/schemas/ReminderSliceApiResponse"
         "400":
-          description: q 누락, 공백만 있음, 또는 100자 초과 (resultMsg는 "q: 메시지" 형식)
+          description: 'q 누락, 공백만 있음, 또는 100자 초과 (resultMsg는 "q: 메시지" 형식), size가 1~100을 벗어남, 또는 잘못된 cursor'
           content:
             application/json:
               schema:
@@ -1685,6 +1738,24 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/ReminderResponse"
+
+    ReminderSliceApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResult"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReminderResponse"
+                nextCursor:
+                  type: string
+                  nullable: true
+                  description: 다음 페이지를 받을 때 cursor로 보낼 값. 마지막 페이지이면 null
 
     ReminderListApiResponse:
       allOf:

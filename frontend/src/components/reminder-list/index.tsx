@@ -19,6 +19,7 @@ import {
 import type { Reminder } from "@/lib/reminders-api"
 import { emptyMessage, type Selection } from "@/lib/selection"
 import { ReminderItem } from "@/components/reminder-list/reminder-item"
+import { LoadMoreTrigger } from "@/components/reminder-list/load-more-trigger"
 import { findReminder } from "@/components/reminder-list/reminder-items"
 import { SortableReminderItem } from "@/components/reminder-list/sortable-reminder-item"
 import type { ReminderActions } from "@/components/reminder-list/types"
@@ -27,7 +28,15 @@ import { useReminderListItems } from "@/components/reminder-list/use-reminder-li
 
 export function ReminderList({ selection }: { selection: Selection }) {
   const {
-    query: { data: reminders, isLoading, isError, refetch },
+    query: {
+      data: reminders,
+      isLoading,
+      isError,
+      refetch,
+      hasNextPage,
+      isFetchingNextPage,
+      fetchNextPage,
+    },
     listId,
     incomplete,
     completed,
@@ -169,6 +178,12 @@ export function ReminderList({ selection }: { selection: Selection }) {
               />
             ))}
           </ul>
+        )}
+        {hasNextPage && (
+          <LoadMoreTrigger
+            loading={isFetchingNextPage}
+            onVisible={() => fetchNextPage()}
+          />
         )}
       </div>
       {listId !== null && (

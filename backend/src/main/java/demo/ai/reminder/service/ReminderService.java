@@ -8,6 +8,7 @@ import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
+import demo.ai.reminder.dto.response.SliceResponse;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.repository.reminder.ReminderRepository;
 import demo.ai.reminder.security.CurrentUser;
@@ -20,6 +21,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -53,13 +55,22 @@ public class ReminderService {
             case SCHEDULED -> reminderRepository.findAccessibleIncompleteWithDueAt(currentUser.id());
             case ALL -> reminderRepository.findAccessibleIncomplete(currentUser.id());
             case FLAGGED -> reminderRepository.findAccessibleIncompleteFlagged(currentUser.id());
-            case COMPLETED -> reminderRepository.findAccessibleCompleted(currentUser.id());
         });
     }
 
-    public List<ReminderResponse> searchReminders(String query) {
-        return toResponses(
-                reminderRepository.searchAccessible(currentUser.id(), "%" + escapeLike(query.toLowerCase()) + "%"));
+    public SliceResponse<ReminderResponse> getCompletedReminders(CompletedCursor cursor, int size) {
+        List<Reminder> reminders = cursor == null
+                ? reminderRepository.findAccessibleCompleted(currentUser.id(), size + 1)
+                : reminderRepository.findAccessibleCompletedBefore(
+                        currentUser.id(), cursor.completedAt(), cursor.id(), size + 1);
+        return SliceResponse.of(reminders, size, ReminderResponse::from, last -> CompletedCursor.of(last).encode());
+    }
+
+    public SliceResponse<ReminderResponse> searchReminders(String query, OffsetCursor cursor, int size) {
+        OffsetCursor start = Objects.requireNonNullElse(cursor, OffsetCursor.FIRST);
+        String pattern = "%" + escapeLike(query.toLowerCase()) + "%";
+        List<Reminder> reminders = reminderRepository.searchAccessible(currentUser.id(), pattern, start.offset(), size + 1);
+        return SliceResponse.of(reminders, size, ReminderResponse::from, last -> start.next(size).encode());
     }
 
     public List<ReminderResponse> getUpcomingReminders(Instant from, Instant to) {

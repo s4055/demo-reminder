@@ -1,5 +1,6 @@
 package demo.ai.reminder.controller;
 
+import com.jayway.jsonpath.JsonPath;
 import demo.ai.reminder.domain.list.ReminderList;
 import demo.ai.reminder.domain.reminder.Priority;
 import demo.ai.reminder.domain.reminder.Recurrence;
@@ -21,7 +22,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Base64;
 
 import static demo.ai.reminder.support.TestTimes.SEOUL;
 import static demo.ai.reminder.support.TestTimes.seoul;
@@ -30,6 +33,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -373,8 +377,9 @@ class ReminderControllerTest {
         mockMvc.perform(get("/api/reminders/search").param("q", "우유"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
-                .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].title").value("우유 사기"));
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[0].title").value("우유 사기"))
+                .andExpect(jsonPath("$.data.nextCursor").value(nullValue()));
     }
 
     @Test
@@ -387,7 +392,7 @@ class ReminderControllerTest {
 
         mockMvc.perform(get("/api/reminders/search").param("q", "  우유 "))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[*].title").value(contains("우유 사기")));
+                .andExpect(jsonPath("$.data.items[*].title").value(contains("우유 사기")));
         mockMvc.perform(get("/api/reminders").param("tag", " 장보기 "))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[*].title").value(contains("우유 사기")));
@@ -434,12 +439,100 @@ class ReminderControllerTest {
     void searchReminders_withQueryOverMaxLength_returnsBadRequest() throws Exception {
         mockMvc.perform(get("/api/reminders/search").param("q", "가".repeat(100)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(0)));
+                .andExpect(jsonPath("$.data.items", hasSize(0)));
 
         mockMvc.perform(get("/api/reminders/search").param("q", "가".repeat(101)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.resultMsg").value(startsWith("q: ")));
+    }
+
+    @Test
+    @DisplayName("완료됨 조회는 size만큼 완료 시각 최신순으로 담고, nextCursor로 다음 페이지를 이어 받는다")
+    void getCompletedReminders_returnsPagesFollowingNextCursor() throws Exception {
+        Instant completedAt = seoul(2026, 10, 4, 21, 0);
+        Reminder first = saveCompleted("첫째", completedAt);
+        Reminder second = saveCompleted("둘째", completedAt);
+        Reminder latest = saveCompleted("최근", completedAt.plusSeconds(60));
+
+        String body = mockMvc.perform(get("/api/reminders/completed").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[*].id").value(contains(latest.getId().intValue(), second.getId().intValue())))
+                .andExpect(jsonPath("$.data.nextCursor").isString())
+                .andReturn().getResponse().getContentAsString();
+        String nextCursor = JsonPath.read(body, "$.data.nextCursor");
+
+        mockMvc.perform(get("/api/reminders/completed").param("size", "2").param("cursor", nextCursor))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[*].id").value(contains(first.getId().intValue())))
+                .andExpect(jsonPath("$.data.nextCursor").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("검색 결과도 nextCursor로 다음 페이지를 이어 받는다")
+    void searchReminders_returnsPagesFollowingNextCursor() throws Exception {
+        for (String title : new String[]{"우유 1", "우유 2", "우유 3"}) {
+            reminderRepository.save(new Reminder(owner, title, null, null, null, null, null, null));
+        }
+
+        String body = mockMvc.perform(get("/api/reminders/search").param("q", "우유").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[*].title").value(contains("우유 1", "우유 2")))
+                .andReturn().getResponse().getContentAsString();
+        String nextCursor = JsonPath.read(body, "$.data.nextCursor");
+
+        mockMvc.perform(get("/api/reminders/search").param("q", "우유").param("size", "2").param("cursor", nextCursor))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[*].title").value(contains("우유 3")))
+                .andExpect(jsonPath("$.data.nextCursor").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("완료됨·검색 조회의 size가 1~100을 벗어나면 400을 반환한다")
+    void pagedQueries_withSizeOutOfRange_returnBadRequest() throws Exception {
+        for (String size : new String[]{"0", "101", "abc"}) {
+            mockMvc.perform(get("/api/reminders/completed").param("size", size))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+            mockMvc.perform(get("/api/reminders/search").param("q", "우유").param("size", size))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+        }
+        mockMvc.perform(get("/api/reminders/completed").param("size", "100"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("완료됨·검색 조회의 커서 형식이 잘못되면 400을 반환한다")
+    void pagedQueries_withInvalidCursor_returnBadRequest() throws Exception {
+        String notBase64 = "%%%";
+        String notCompletedCursor = Base64.getUrlEncoder().encodeToString("yesterday,1".getBytes(StandardCharsets.UTF_8));
+        String negativeOffset = Base64.getUrlEncoder().encodeToString("-1".getBytes(StandardCharsets.UTF_8));
+
+        for (String cursor : new String[]{notBase64, notCompletedCursor}) {
+            mockMvc.perform(get("/api/reminders/completed").param("cursor", cursor))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+        }
+        for (String cursor : new String[]{notBase64, notCompletedCursor, negativeOffset}) {
+            mockMvc.perform(get("/api/reminders/search").param("q", "우유").param("cursor", cursor))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+        }
+    }
+
+    @Test
+    @DisplayName("완료됨은 스마트 뷰가 아니므로 smart/COMPLETED는 400을 반환한다")
+    void getSmartReminders_completed_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/reminders/smart/{view}", "COMPLETED"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    private Reminder saveCompleted(String title, Instant completedAt) {
+        Reminder reminder = new Reminder(owner, title, null, null, null, null, null, null);
+        reminder.toggleComplete(completedAt);
+        return reminderRepository.save(reminder);
     }
 
     @Test

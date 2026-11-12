@@ -164,7 +164,7 @@ class SharedListAccessTest {
         ReminderResponse bobReminder = reminderService.createReminder(
                 new ReminderRequest("우유 쿠폰", null, null, null, null, null, null, null, null, null, null));
 
-        assertThat(reminderService.searchReminders("우유")).extracting(ReminderResponse::id)
+        assertThat(reminderService.searchReminders("우유", null, 50).items()).extracting(ReminderResponse::id)
                 .containsExactlyInAnyOrder(aliceReminder.id(), bobReminder.id());
     }
 
@@ -251,7 +251,7 @@ class SharedListAccessTest {
             assertThat(reminderService.getSmartReminders(view, SEOUL)).as(view.name()).extracting(ReminderResponse::id)
                     .containsExactly(aliceReminder.id());
         }
-        assertThat(reminderService.getSmartReminders(SmartView.COMPLETED, SEOUL)).extracting(ReminderResponse::id)
+        assertThat(reminderService.getCompletedReminders(null, 50).items()).extracting(ReminderResponse::id)
                 .containsExactly(done.id());
         assertThat(reminderService.getReminders(null, null)).extracting(ReminderResponse::id)
                 .containsExactlyInAnyOrder(aliceReminder.id(), done.id());
@@ -282,7 +282,7 @@ class SharedListAccessTest {
         assertThat(reminderListService.getLists()).isEmpty();
         assertThat(reminderService.getSmartReminders(SmartView.ALL, SEOUL)).isEmpty();
         assertThat(reminderService.getReminders(null, "장보기")).isEmpty();
-        assertThat(reminderService.searchReminders("우유")).isEmpty();
+        assertThat(reminderService.searchReminders("우유", null, 50).items()).isEmpty();
         List<Executable> attempts = List.of(
                 () -> reminderService.getReminders(sharedListId, null),
                 () -> reminderService.createReminder(

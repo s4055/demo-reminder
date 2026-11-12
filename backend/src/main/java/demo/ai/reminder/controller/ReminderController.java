@@ -7,9 +7,14 @@ import demo.ai.reminder.dto.request.ReminderRequest;
 import demo.ai.reminder.dto.request.ReminderUpdateRequest;
 import demo.ai.reminder.dto.response.DeletedCountResponse;
 import demo.ai.reminder.dto.response.ReminderResponse;
+import demo.ai.reminder.dto.response.SliceResponse;
+import demo.ai.reminder.service.CompletedCursor;
+import demo.ai.reminder.service.OffsetCursor;
 import demo.ai.reminder.service.ReminderService;
 import demo.ai.reminder.service.SmartView;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +41,8 @@ import java.util.List;
 public class ReminderController {
 
     static final int SEARCH_QUERY_MAX_LENGTH = 100;
+    static final String DEFAULT_PAGE_SIZE = "50";
+    static final int MAX_PAGE_SIZE = 100;
 
     private final ReminderService reminderService;
 
@@ -53,10 +60,19 @@ public class ReminderController {
         return ApiResponse.success(reminderService.getSmartReminders(view, zone));
     }
 
+    @GetMapping("/completed")
+    public ApiResponse<SliceResponse<ReminderResponse>> getCompletedReminders(
+            @RequestParam(required = false) CompletedCursor cursor,
+            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) @Min(1) @Max(MAX_PAGE_SIZE) int size) {
+        return ApiResponse.success(reminderService.getCompletedReminders(cursor, size));
+    }
+
     @GetMapping("/search")
-    public ApiResponse<List<ReminderResponse>> searchReminders(
-            @RequestParam @NotBlank @Size(max = SEARCH_QUERY_MAX_LENGTH) String q) {
-        return ApiResponse.success(reminderService.searchReminders(q.strip()));
+    public ApiResponse<SliceResponse<ReminderResponse>> searchReminders(
+            @RequestParam @NotBlank @Size(max = SEARCH_QUERY_MAX_LENGTH) String q,
+            @RequestParam(required = false) OffsetCursor cursor,
+            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) @Min(1) @Max(MAX_PAGE_SIZE) int size) {
+        return ApiResponse.success(reminderService.searchReminders(q.strip(), cursor, size));
     }
 
     @GetMapping("/upcoming")

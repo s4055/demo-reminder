@@ -74,15 +74,21 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
     }
 
     @Override
-    public List<Reminder> findAccessibleCompleted(Long userId) {
-        return accessible(userId)
-                .where(reminder.completed.isTrue())
-                .orderBy(reminder.completedAt.desc(), reminder.id.desc())
+    public List<Reminder> findAccessibleCompleted(Long userId, int limit) {
+        return completedNewestFirst(userId).limit(limit).fetch();
+    }
+
+    @Override
+    public List<Reminder> findAccessibleCompletedBefore(Long userId, Instant completedAt, Long id, int limit) {
+        return completedNewestFirst(userId)
+                .where(reminder.completedAt.lt(completedAt)
+                        .or(reminder.completedAt.eq(completedAt).and(reminder.id.lt(id))))
+                .limit(limit)
                 .fetch();
     }
 
     @Override
-    public List<Reminder> searchAccessible(Long userId, String pattern) {
+    public List<Reminder> searchAccessible(Long userId, String pattern, long offset, int limit) {
         return accessible(userId)
                 .where(reminder.title.lower().like(pattern, LIKE_ESCAPE)
                         .or(reminder.memo.lower().like(pattern, LIKE_ESCAPE))
@@ -92,7 +98,15 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
                         dueAtIfIncomplete().asc().nullsLast(),
                         completedAtIfCompleted().desc().nullsLast(),
                         reminder.id.asc())
+                .offset(offset)
+                .limit(limit)
                 .fetch();
+    }
+
+    private JPAQuery<Reminder> completedNewestFirst(Long userId) {
+        return accessible(userId)
+                .where(reminder.completed.isTrue())
+                .orderBy(reminder.completedAt.desc(), reminder.id.desc());
     }
 
     private DateTimeExpression<Instant> dueAtIfIncomplete() {

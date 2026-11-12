@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   createReminder,
+  getCompletedReminders,
   getReminder,
   getReminderIfExists,
   getSmartReminders,
   getUpcomingReminders,
+  searchReminders,
 } from "@/lib/reminders-api"
 
 const BASE_URL = "http://localhost:8080"
@@ -102,5 +104,56 @@ describe("createReminder", () => {
       dueAt: "2026-10-04T22:00:00.000Z",
       timeZone: "Asia/Seoul",
     })
+  })
+})
+
+describe("getCompletedReminders", () => {
+  it("requestsFirstPageWithoutCursorAndParsesSlice", async () => {
+    const page = { items: [reminder], nextCursor: "next-1" }
+    const fetchMock = stubFetch(200, { resultCode: "SUCCESS", resultMsg: "성공", data: page })
+
+    await expect(getCompletedReminders()).resolves.toEqual(page)
+
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/api/reminders/completed`)
+  })
+
+  it("passesCursorForNextPage", async () => {
+    const fetchMock = stubFetch(200, {
+      resultCode: "SUCCESS",
+      resultMsg: "성공",
+      data: { items: [], nextCursor: null },
+    })
+
+    await expect(getCompletedReminders("MjAyNi0xMC0wNFQxMjowMDowMFosNQ")).resolves.toEqual({
+      items: [],
+      nextCursor: null,
+    })
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${BASE_URL}/api/reminders/completed?cursor=MjAyNi0xMC0wNFQxMjowMDowMFosNQ`
+    )
+  })
+})
+
+describe("searchReminders", () => {
+  it("sendsQueryWithoutCursorOnFirstPage", async () => {
+    const fetchMock = stubFetch(200, { resultCode: "SUCCESS", resultMsg: "성공", data: { items: [], nextCursor: null } })
+
+    await searchReminders("우유 & 빵")
+
+    const url = new URL(String(fetchMock.mock.calls[0][0]))
+    expect(url.pathname).toBe("/api/reminders/search")
+    expect([...url.searchParams]).toEqual([["q", "우유 & 빵"]])
+  })
+
+  it("passesCursorWithQuery", async () => {
+    const page = { items: [reminder], nextCursor: "NTA" }
+    const fetchMock = stubFetch(200, { resultCode: "SUCCESS", resultMsg: "성공", data: page })
+
+    await expect(searchReminders("우유", "NTA")).resolves.toEqual(page)
+
+    const url = new URL(String(fetchMock.mock.calls[0][0]))
+    expect(url.searchParams.get("q")).toBe("우유")
+    expect(url.searchParams.get("cursor")).toBe("NTA")
   })
 })

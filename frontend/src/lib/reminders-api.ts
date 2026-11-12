@@ -28,6 +28,13 @@ export type Reminder = {
   updatedAt: string
 }
 
+export type Slice<T> = {
+  items: T[]
+  nextCursor: string | null
+}
+
+export type ListedSmartView = Exclude<SmartView, "completed">
+
 export type CreateReminderInput = {
   title: string
   memo?: string | null
@@ -82,7 +89,7 @@ export function getRemindersByTag(tag: string): Promise<Reminder[]> {
   )
 }
 
-export function getSmartReminders(view: SmartView): Promise<Reminder[]> {
+export function getSmartReminders(view: ListedSmartView): Promise<Reminder[]> {
   const query =
     view === "today"
       ? `?${new URLSearchParams({ zone: browserTimeZone() })}`
@@ -90,10 +97,27 @@ export function getSmartReminders(view: SmartView): Promise<Reminder[]> {
   return apiRequest<Reminder[]>(`/api/reminders/smart/${view}${query}`)
 }
 
-export function searchReminders(query: string): Promise<Reminder[]> {
-  return apiRequest<Reminder[]>(
-    `/api/reminders/search?q=${encodeURIComponent(query)}`
+export function getCompletedReminders(
+  cursor: string | null = null
+): Promise<Slice<Reminder>> {
+  return apiRequest<Slice<Reminder>>(
+    `/api/reminders/completed${pageQuery({}, cursor)}`
   )
+}
+
+export function searchReminders(
+  query: string,
+  cursor: string | null = null
+): Promise<Slice<Reminder>> {
+  return apiRequest<Slice<Reminder>>(
+    `/api/reminders/search${pageQuery({ q: query }, cursor)}`
+  )
+}
+
+function pageQuery(params: Record<string, string>, cursor: string | null) {
+  const query = new URLSearchParams(params)
+  if (cursor !== null) query.set("cursor", cursor)
+  return query.size > 0 ? `?${query}` : ""
 }
 
 export function getUpcomingReminders(from: Date, to: Date): Promise<Reminder[]> {

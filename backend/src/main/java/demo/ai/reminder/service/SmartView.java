@@ -4,6 +4,5 @@ public enum SmartView {
     TODAY,
     SCHEDULED,
     ALL,
-    FLAGGED,
-    COMPLETED
+    FLAGGED
 }
