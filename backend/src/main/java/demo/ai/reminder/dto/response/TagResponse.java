@@ -2,13 +2,13 @@ package demo.ai.reminder.dto.response;
 
 import demo.ai.reminder.repository.tag.TagSummary;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record TagResponse(
         Long id,
         String name,
         long reminderCount,
-        LocalDateTime createdAt
+        Instant createdAt
 ) {
 
     public static TagResponse from(TagSummary summary) {

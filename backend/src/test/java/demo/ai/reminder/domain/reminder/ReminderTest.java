@@ -8,11 +8,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import static demo.ai.reminder.support.TestTimes.SEOUL;
+import static demo.ai.reminder.support.TestTimes.seoul;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -23,7 +27,7 @@ class ReminderTest {
     @Test
     @DisplayName("생성자로 만들면 제목과 메모가 설정되고 미완료 상태다")
     void constructor_setsTitleAndMemo_andDefaultsToIncomplete() {
-        Reminder reminder = new Reminder(owner, "우유 사기", "저지방", null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", "저지방", null, null, null, null, null);
 
         assertThat(reminder.getTitle()).isEqualTo("우유 사기");
         assertThat(reminder.getMemo()).isEqualTo("저지방");
@@ -33,7 +37,7 @@ class ReminderTest {
     @Test
     @DisplayName("메모 없이도 생성할 수 있다")
     void constructor_allowsNullMemo() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getMemo()).isNull();
     }
@@ -41,7 +45,7 @@ class ReminderTest {
     @Test
     @DisplayName("생성 직후에는 생성일과 수정일이 비어있다")
     void constructor_leavesTimestampsNullUntilPersisted() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getCreatedAt()).isNull();
         assertThat(reminder.getUpdatedAt()).isNull();
@@ -50,9 +54,9 @@ class ReminderTest {
     @Test
     @DisplayName("toggleComplete를 호출하면 완료 상태가 반전된다")
     void toggleComplete_flipsCompletedState() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
-        reminder.toggleComplete(LocalDateTime.now());
+        reminder.toggleComplete(Instant.now());
 
         assertThat(reminder.isCompleted()).isTrue();
     }
@@ -60,30 +64,66 @@ class ReminderTest {
     @Test
     @DisplayName("생성자로 만들면 마감일시가 설정되고 플래그는 꺼져 있다")
     void constructor_setsDueAt_andDefaultsToNotFlagged() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 9, 20, 18, 0);
+        Instant dueAt = seoul(2026, 9, 20, 18, 0);
 
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, dueAt, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, dueAt, SEOUL, null, null);
 
         assertThat(reminder.getDueAt()).isEqualTo(dueAt);
+        assertThat(reminder.getTimeZone()).isEqualTo(SEOUL);
         assertThat(reminder.isFlagged()).isFalse();
     }
 
     @Test
     @DisplayName("마감일시 없이도 생성할 수 있다")
     void constructor_allowsNullDueAt() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getDueAt()).isNull();
     }
 
     @Test
+    @DisplayName("마감일시가 있는데 시간대가 없으면 생성할 수 없다")
+    void constructor_throws_whenDueAtWithoutTimeZone() {
+        assertThatThrownBy(() -> new Reminder(owner, "우유 사기", null, null, seoul(2026, 9, 20, 18, 0), null, null, null))
+                .isInstanceOf(DomainException.class);
+    }
+
+    @Test
+    @DisplayName("마감일시가 있는데 시간대 없이 수정하면 예외가 발생하고 기존 값은 유지된다")
+    void update_throws_whenDueAtWithoutTimeZone() {
+        Instant dueAt = seoul(2026, 9, 20, 18, 0);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, dueAt, SEOUL, null, null);
+
+        assertThatThrownBy(() -> reminder.update("우유 사기", null, dueAt.plusSeconds(60), null, false, null, null))
+                .isInstanceOf(DomainException.class);
+        assertThat(reminder.getDueAt()).isEqualTo(dueAt);
+        assertThat(reminder.getTimeZone()).isEqualTo(SEOUL);
+    }
+
+    @Test
+    @DisplayName("반복 리마인더의 다음 회차는 시간대를 이어받아 그 시간대의 같은 현지 시각으로 생성된다")
+    void toggleComplete_whenRepeating_keepsTimeZoneAndLocalTime() {
+        ZoneId newYork = ZoneId.of("America/New_York");
+        Instant beforeDaylightSaving = LocalDateTime.of(2026, 3, 7, 9, 0).atZone(newYork).toInstant();
+        Reminder reminder = new Reminder(owner, "스트레칭", null, null, beforeDaylightSaving, newYork, null,
+                new Recurrence(RepeatRule.DAILY, 1, null));
+
+        Optional<Reminder> next = reminder.toggleComplete(beforeDaylightSaving);
+
+        assertThat(next).hasValueSatisfying(occurrence -> {
+            assertThat(occurrence.getTimeZone()).isEqualTo(newYork);
+            assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 3, 8, 9, 0).atZone(newYork).toInstant());
+        });
+    }
+
+    @Test
     @DisplayName("update를 호출하면 제목, 메모, 마감일시, 플래그가 변경되고 완료 상태는 유지된다")
     void update_changesEditableFields_andKeepsCompletedState() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
-        reminder.toggleComplete(LocalDateTime.now());
-        LocalDateTime dueAt = LocalDateTime.of(2026, 9, 21, 9, 0);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
+        reminder.toggleComplete(Instant.now());
+        Instant dueAt = seoul(2026, 9, 21, 9, 0);
 
-        reminder.update("계란 사기", "12구", dueAt, true, Priority.NONE, null);
+        reminder.update("계란 사기", "12구", dueAt, SEOUL, true, Priority.NONE, null);
 
         assertThat(reminder.getTitle()).isEqualTo("계란 사기");
         assertThat(reminder.getMemo()).isEqualTo("12구");
@@ -95,10 +135,10 @@ class ReminderTest {
     @Test
     @DisplayName("update로 메모와 마감일시를 null로 비울 수 있다")
     void update_allowsClearingMemoAndDueAt() {
-        Reminder reminder = new Reminder(owner, "우유 사기", "저지방", null, LocalDateTime.of(2026, 9, 21, 9, 0),
+        Reminder reminder = new Reminder(owner, "우유 사기", "저지방", null, seoul(2026, 9, 21, 9, 0), SEOUL,
                 null, null);
 
-        reminder.update("우유 사기", null, null, false, Priority.NONE, null);
+        reminder.update("우유 사기", null, null, null, false, Priority.NONE, null);
 
         assertThat(reminder.getMemo()).isNull();
         assertThat(reminder.getDueAt()).isNull();
@@ -107,7 +147,7 @@ class ReminderTest {
     @Test
     @DisplayName("toggleFlag를 호출하면 플래그 상태가 반전된다")
     void toggleFlag_flipsFlaggedState() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         reminder.toggleFlag();
 
@@ -117,7 +157,7 @@ class ReminderTest {
     @Test
     @DisplayName("toggleFlag를 두 번 호출하면 원래 상태로 돌아온다")
     void toggleFlag_calledTwice_restoresOriginalState() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         reminder.toggleFlag();
         reminder.toggleFlag();
@@ -128,7 +168,7 @@ class ReminderTest {
     @Test
     @DisplayName("생성 직후에는 완료일시가 비어있다")
     void constructor_leavesCompletedAtNull() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getCompletedAt()).isNull();
     }
@@ -136,8 +176,8 @@ class ReminderTest {
     @Test
     @DisplayName("완료 처리하면 전달받은 시각이 완료일시로 기록된다")
     void toggleComplete_whenCompleting_recordsCompletedAt() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
-        LocalDateTime now = LocalDateTime.of(2026, 9, 30, 10, 0);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
+        Instant now = seoul(2026, 9, 30, 10, 0);
 
         reminder.toggleComplete(now);
 
@@ -147,10 +187,10 @@ class ReminderTest {
     @Test
     @DisplayName("완료를 취소하면 완료일시가 비워진다")
     void toggleComplete_whenUncompleting_clearsCompletedAt() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
-        reminder.toggleComplete(LocalDateTime.of(2026, 9, 30, 10, 0));
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
+        reminder.toggleComplete(seoul(2026, 9, 30, 10, 0));
 
-        reminder.toggleComplete(LocalDateTime.of(2026, 9, 30, 11, 0));
+        reminder.toggleComplete(seoul(2026, 9, 30, 11, 0));
 
         assertThat(reminder.isCompleted()).isFalse();
         assertThat(reminder.getCompletedAt()).isNull();
@@ -159,11 +199,11 @@ class ReminderTest {
     @Test
     @DisplayName("update는 완료일시를 바꾸지 않는다")
     void update_keepsCompletedAt() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
-        LocalDateTime completedAt = LocalDateTime.of(2026, 9, 30, 10, 0);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
+        Instant completedAt = seoul(2026, 9, 30, 10, 0);
         reminder.toggleComplete(completedAt);
 
-        reminder.update("계란 사기", null, null, false, Priority.NONE, null);
+        reminder.update("계란 사기", null, null, null, false, Priority.NONE, null);
 
         assertThat(reminder.getCompletedAt()).isEqualTo(completedAt);
     }
@@ -171,10 +211,10 @@ class ReminderTest {
     @Test
     @DisplayName("toggleComplete를 두 번 호출하면 원래 상태로 돌아온다")
     void toggleComplete_calledTwice_restoresOriginalState() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
-        reminder.toggleComplete(LocalDateTime.now());
-        reminder.toggleComplete(LocalDateTime.now());
+        reminder.toggleComplete(Instant.now());
+        reminder.toggleComplete(Instant.now());
 
         assertThat(reminder.isCompleted()).isFalse();
     }
@@ -182,7 +222,7 @@ class ReminderTest {
     @Test
     @DisplayName("우선순위를 지정하지 않고 생성하면 우선순위는 없음(NONE)이다")
     void constructor_defaultsPriorityToNone() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getPriority()).isEqualTo(Priority.NONE);
     }
@@ -190,7 +230,7 @@ class ReminderTest {
     @Test
     @DisplayName("우선순위를 지정해 생성하면 해당 우선순위가 설정된다")
     void constructor_setsGivenPriority() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, Priority.HIGH, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, Priority.HIGH, null);
 
         assertThat(reminder.getPriority()).isEqualTo(Priority.HIGH);
     }
@@ -198,7 +238,7 @@ class ReminderTest {
     @Test
     @DisplayName("우선순위를 null로 생성하면 없음(NONE)으로 설정된다")
     void constructor_treatsNullPriorityAsNone() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getPriority()).isEqualTo(Priority.NONE);
     }
@@ -206,9 +246,9 @@ class ReminderTest {
     @Test
     @DisplayName("update로 우선순위를 변경할 수 있다")
     void update_changesPriority() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
-        reminder.update("우유 사기", null, null, false, Priority.MEDIUM, null);
+        reminder.update("우유 사기", null, null, null, false, Priority.MEDIUM, null);
 
         assertThat(reminder.getPriority()).isEqualTo(Priority.MEDIUM);
     }
@@ -216,9 +256,9 @@ class ReminderTest {
     @Test
     @DisplayName("update에 우선순위를 null로 넘기면 없음(NONE)으로 바뀐다")
     void update_treatsNullPriorityAsNone() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, Priority.HIGH, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, Priority.HIGH, null);
 
-        reminder.update("우유 사기", null, null, false, null, null);
+        reminder.update("우유 사기", null, null, null, false, null, null);
 
         assertThat(reminder.getPriority()).isEqualTo(Priority.NONE);
     }
@@ -226,7 +266,7 @@ class ReminderTest {
     @Test
     @DisplayName("생성 직후 표시 순서는 0이다")
     void constructor_defaultsSortOrderToZero() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getSortOrder()).isZero();
     }
@@ -234,7 +274,7 @@ class ReminderTest {
     @Test
     @DisplayName("changeSortOrder를 호출하면 표시 순서가 변경된다")
     void changeSortOrder_changesSortOrder() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         reminder.changeSortOrder(5);
 
@@ -244,7 +284,7 @@ class ReminderTest {
     @Test
     @DisplayName("생성 직후에는 태그가 없다")
     void constructor_hasNoTags() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getTags()).isEmpty();
     }
@@ -252,7 +292,7 @@ class ReminderTest {
     @Test
     @DisplayName("replaceTags를 호출하면 태그가 주어진 목록으로 교체된다")
     void replaceTags_replacesAllTags() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
         Tag home = new Tag(owner, "집");
         Tag errand = new Tag(owner, "심부름");
         Tag urgent = new Tag(owner, "급함");
@@ -266,7 +306,7 @@ class ReminderTest {
     @Test
     @DisplayName("replaceTags에 같은 태그가 여러 번 있거나 이미 붙은 태그가 있어도 한 번만 붙고, 붙인 순서가 유지된다")
     void replaceTags_ignoresDuplicates_andKeepsOrder() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
         Tag home = new Tag(owner, "집");
         Tag errand = new Tag(owner, "심부름");
         Tag urgent = new Tag(owner, "급함");
@@ -280,7 +320,7 @@ class ReminderTest {
     @Test
     @DisplayName("getTags로 받은 태그 목록은 직접 수정할 수 없다")
     void getTags_isUnmodifiable() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThatThrownBy(() -> reminder.getTags().add(new Tag(owner, "집")))
                 .isInstanceOf(UnsupportedOperationException.class);
@@ -289,7 +329,7 @@ class ReminderTest {
     @Test
     @DisplayName("생성 직후에는 최상위 리마인더이고 하위 작업이 없다")
     void constructor_isTopLevel_andHasNoSubtasks() {
-        Reminder reminder = new Reminder(owner, "이사 준비", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
 
         assertThat(reminder.isSubtask()).isFalse();
         assertThat(reminder.getParent()).isNull();
@@ -301,10 +341,10 @@ class ReminderTest {
     void addSubtask_setsParentAndListOfParent_andAssignsSortOrderWithinParent() {
         ReminderList home = new ReminderList(owner, "집", null, null, 0);
         ReminderList work = new ReminderList(owner, "업무", null, null, 0);
-        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null, null);
         parent.changeSortOrder(7);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, work, null, null, null);
-        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, work, null, null, null, null);
+        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null, null);
 
         parent.addSubtask(boxes);
         parent.addSubtask(movers);
@@ -321,20 +361,20 @@ class ReminderTest {
     @Test
     @DisplayName("하위 작업에는 하위 작업을 추가할 수 없다")
     void addSubtask_throws_whenReminderIsSubtask() {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
-        Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
+        Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
         parent.addSubtask(subtask);
 
-        assertThatThrownBy(() -> subtask.addSubtask(new Reminder(owner, "테이프 사기", null, null, null, null, null)))
+        assertThatThrownBy(() -> subtask.addSubtask(new Reminder(owner, "테이프 사기", null, null, null, null, null, null)))
                 .isInstanceOf(DomainException.class);
     }
 
     @Test
     @DisplayName("하위 작업을 부모에서 떼어내면 부모 목록에서 그 하위 작업만 빠지고 부모와의 연결도 끊긴다")
     void detachFromParent_removesFromParentAndClearsParent() {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
-        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
+        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null, null);
         parent.addSubtask(boxes);
         parent.addSubtask(movers);
 
@@ -348,8 +388,8 @@ class ReminderTest {
     @Test
     @DisplayName("최상위 리마인더를 부모에서 떼어내도 아무것도 바뀌지 않는다")
     void detachFromParent_doesNothing_whenTopLevel() {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
         parent.addSubtask(boxes);
 
         parent.detachFromParent();
@@ -363,9 +403,9 @@ class ReminderTest {
     void moveTo_changesListAndSortOrder_andMovesSubtasksTogether() {
         ReminderList home = new ReminderList(owner, "집", null, null, 0);
         ReminderList work = new ReminderList(owner, "업무", null, null, 0);
-        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
-        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
+        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null, null);
         parent.addSubtask(boxes);
         parent.addSubtask(movers);
 
@@ -383,7 +423,7 @@ class ReminderTest {
     @DisplayName("이미 그 리스트에 있으면 moveTo는 순서를 바꾸지 않고 새 순서도 구하지 않는다")
     void moveTo_keepsSortOrder_whenAlreadyInList() {
         ReminderList home = new ReminderList(owner, "집", null, null, 0);
-        Reminder reminder = new Reminder(owner, "우유 사기", null, home, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, home, null, null, null, null);
         reminder.changeSortOrder(2);
 
         reminder.moveTo(home, () -> {
@@ -399,8 +439,8 @@ class ReminderTest {
     void moveTo_throws_whenReminderIsSubtask() {
         ReminderList home = new ReminderList(owner, "집", null, null, 0);
         ReminderList work = new ReminderList(owner, "업무", null, null, 0);
-        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
-        Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null, null);
+        Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
         parent.addSubtask(subtask);
 
         assertThatThrownBy(() -> subtask.moveTo(work, () -> 0))
@@ -413,22 +453,22 @@ class ReminderTest {
     @Test
     @DisplayName("getSubtasks로 받은 하위 작업 목록은 직접 수정할 수 없다")
     void getSubtasks_isUnmodifiable() {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
 
-        assertThatThrownBy(() -> parent.getSubtasks().add(new Reminder(owner, "박스 구하기", null, null, null, null, null)))
+        assertThatThrownBy(() -> parent.getSubtasks().add(new Reminder(owner, "박스 구하기", null, null, null, null, null, null)))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
     @DisplayName("부모를 완료하면 미완료 하위 작업도 같은 시각으로 완료되고, 이미 완료된 하위 작업의 완료일시는 유지된다")
     void toggleComplete_whenCompletingParent_completesIncompleteSubtasks() {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
-        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
+        Reminder movers = new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null, null);
         parent.addSubtask(boxes);
         parent.addSubtask(movers);
-        LocalDateTime earlier = LocalDateTime.of(2026, 10, 1, 9, 0);
-        LocalDateTime now = LocalDateTime.of(2026, 10, 3, 10, 0);
+        Instant earlier = seoul(2026, 10, 1, 9, 0);
+        Instant now = seoul(2026, 10, 3, 10, 0);
         boxes.toggleComplete(earlier);
 
         parent.toggleComplete(now);
@@ -442,12 +482,12 @@ class ReminderTest {
     @Test
     @DisplayName("부모의 완료를 취소해도 하위 작업의 완료 상태는 바뀌지 않는다")
     void toggleComplete_whenUncompletingParent_keepsSubtasksCompleted() {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
         parent.addSubtask(boxes);
-        parent.toggleComplete(LocalDateTime.of(2026, 10, 3, 10, 0));
+        parent.toggleComplete(seoul(2026, 10, 3, 10, 0));
 
-        parent.toggleComplete(LocalDateTime.of(2026, 10, 3, 11, 0));
+        parent.toggleComplete(seoul(2026, 10, 3, 11, 0));
 
         assertThat(parent.isCompleted()).isFalse();
         assertThat(boxes.isCompleted()).isTrue();
@@ -456,11 +496,11 @@ class ReminderTest {
     @Test
     @DisplayName("하위 작업을 완료해도 부모의 완료 상태는 바뀌지 않는다")
     void toggleComplete_whenCompletingSubtask_doesNotCompleteParent() {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
         parent.addSubtask(boxes);
 
-        boxes.toggleComplete(LocalDateTime.of(2026, 10, 3, 10, 0));
+        boxes.toggleComplete(seoul(2026, 10, 3, 10, 0));
 
         assertThat(boxes.isCompleted()).isTrue();
         assertThat(parent.isCompleted()).isFalse();
@@ -469,7 +509,7 @@ class ReminderTest {
     @Test
     @DisplayName("반복을 지정하지 않으면 '반복 안 함'으로 생성된다")
     void constructor_defaultsRepeatRuleToNone() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
 
         assertThat(reminder.getRecurrence().rule()).isEqualTo(RepeatRule.NONE);
     }
@@ -477,11 +517,11 @@ class ReminderTest {
     @Test
     @DisplayName("마감일시 없이 반복을 설정하면 예외가 발생한다")
     void constructorAndUpdate_rejectRepeatWithoutDueAt() {
-        assertThatThrownBy(() -> new Reminder(owner, "우유 사기", null, null, null, null, new Recurrence(RepeatRule.DAILY, 1, null)))
+        assertThatThrownBy(() -> new Reminder(owner, "우유 사기", null, null, null, null, null, new Recurrence(RepeatRule.DAILY, 1, null)))
                 .isInstanceOf(DomainException.class);
 
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, LocalDateTime.of(2026, 10, 4, 9, 0), null, null);
-        assertThatThrownBy(() -> reminder.update("우유 사기", null, null, false, null, new Recurrence(RepeatRule.WEEKLY, 1, null)))
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, seoul(2026, 10, 4, 9, 0), SEOUL, null, null);
+        assertThatThrownBy(() -> reminder.update("우유 사기", null, null, null, false, null, new Recurrence(RepeatRule.WEEKLY, 1, null)))
                 .isInstanceOf(DomainException.class);
     }
 
@@ -489,19 +529,19 @@ class ReminderTest {
     @DisplayName("반복 리마인더를 완료하면 다음 마감일시로 내용을 복사한 다음 회차를 돌려준다")
     void toggleComplete_whenRepeating_returnsNextOccurrenceWithCopiedFields() {
         ReminderList home = new ReminderList(owner, "집", null, null, 0);
-        Reminder reminder = new Reminder(owner, "분리수거", "캔/페트", home, LocalDateTime.of(2026, 10, 4, 20, 0),
+        Reminder reminder = new Reminder(owner, "분리수거", "캔/페트", home, seoul(2026, 10, 4, 20, 0), SEOUL,
                 Priority.HIGH, new Recurrence(RepeatRule.WEEKLY, 1, null));
         reminder.toggleFlag();
         reminder.replaceTags(List.of(new Tag(owner, "집안일")));
 
-        Optional<Reminder> next = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 0));
+        Optional<Reminder> next = reminder.toggleComplete(seoul(2026, 10, 4, 21, 0));
 
         assertThat(reminder.isCompleted()).isTrue();
         assertThat(next).hasValueSatisfying(occurrence -> {
             assertThat(occurrence.getTitle()).isEqualTo("분리수거");
             assertThat(occurrence.getMemo()).isEqualTo("캔/페트");
             assertThat(occurrence.getList()).isSameAs(home);
-            assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 11, 20, 0));
+            assertThat(occurrence.getDueAt()).isEqualTo(seoul(2026, 10, 11, 20, 0));
             assertThat(occurrence.getPriority()).isEqualTo(Priority.HIGH);
             assertThat(occurrence.isFlagged()).isTrue();
             assertThat(occurrence.getRecurrence().rule()).isEqualTo(RepeatRule.WEEKLY);
@@ -516,12 +556,12 @@ class ReminderTest {
     void toggleComplete_whenCustomRecurrence_copiesIntervalAndDaysToNextOccurrence() {
         Recurrence everyTwoWeeksMonWed = new Recurrence(RepeatRule.WEEKLY, 2, Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
         Reminder reminder = new Reminder(owner, "운동", null, null,
-                LocalDateTime.of(2026, 10, 7, 7, 0), null, everyTwoWeeksMonWed);
+                seoul(2026, 10, 7, 7, 0), SEOUL, null, everyTwoWeeksMonWed);
 
-        Optional<Reminder> next = reminder.toggleComplete(LocalDateTime.of(2026, 10, 7, 8, 0));
+        Optional<Reminder> next = reminder.toggleComplete(seoul(2026, 10, 7, 8, 0));
 
         assertThat(next).hasValueSatisfying(occurrence -> {
-            assertThat(occurrence.getDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 19, 7, 0));
+            assertThat(occurrence.getDueAt()).isEqualTo(seoul(2026, 10, 19, 7, 0));
             assertThat(occurrence.getRecurrence()).isEqualTo(everyTwoWeeksMonWed);
             assertThat(occurrence.getRecurrence().interval()).isEqualTo(2);
             assertThat(occurrence.getRecurrence().daysOfWeek()).containsExactlyInAnyOrder(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
@@ -531,17 +571,17 @@ class ReminderTest {
     @Test
     @DisplayName("update로 반복 규칙을 바꾸면 간격과 요일이 교체되고, 반복을 끄면 요일이 비워지고 간격은 1이 된다")
     void update_replacesRecurrence() {
-        LocalDateTime dueAt = LocalDateTime.of(2026, 10, 5, 9, 0);
-        Reminder reminder = new Reminder(owner, "운동", null, null, dueAt, null,
+        Instant dueAt = seoul(2026, 10, 5, 9, 0);
+        Reminder reminder = new Reminder(owner, "운동", null, null, dueAt, SEOUL, null,
                 new Recurrence(RepeatRule.WEEKLY, 2, Set.of(DayOfWeek.MONDAY)));
 
-        reminder.update("운동", null, dueAt, false, Priority.NONE, new Recurrence(RepeatRule.DAILY, 3, null));
+        reminder.update("운동", null, dueAt, SEOUL, false, Priority.NONE, new Recurrence(RepeatRule.DAILY, 3, null));
 
         assertThat(reminder.getRecurrence().rule()).isEqualTo(RepeatRule.DAILY);
         assertThat(reminder.getRecurrence().interval()).isEqualTo(3);
         assertThat(reminder.getRecurrence().daysOfWeek()).isEmpty();
 
-        reminder.update("운동", null, dueAt, false, Priority.NONE, null);
+        reminder.update("운동", null, dueAt, SEOUL, false, Priority.NONE, null);
 
         assertThat(reminder.getRecurrence()).isEqualTo(Recurrence.NONE);
     }
@@ -549,20 +589,20 @@ class ReminderTest {
     @Test
     @DisplayName("반복하지 않는 리마인더를 완료하면 다음 회차가 없다")
     void toggleComplete_whenNotRepeating_returnsEmpty() {
-        Reminder reminder = new Reminder(owner, "우유 사기", null, null, LocalDateTime.of(2026, 10, 4, 9, 0), null, null);
+        Reminder reminder = new Reminder(owner, "우유 사기", null, null, seoul(2026, 10, 4, 9, 0), SEOUL, null, null);
 
-        assertThat(reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 10, 0))).isEmpty();
+        assertThat(reminder.toggleComplete(seoul(2026, 10, 4, 10, 0))).isEmpty();
     }
 
     @Test
     @DisplayName("반복 리마인더의 완료를 취소했다가 다시 완료해도 다음 회차는 한 번만 만든다")
     void toggleComplete_whenRecompleting_doesNotCreateNextOccurrenceAgain() {
-        Reminder reminder = new Reminder(owner, "분리수거", null, null, LocalDateTime.of(2026, 10, 4, 20, 0),
+        Reminder reminder = new Reminder(owner, "분리수거", null, null, seoul(2026, 10, 4, 20, 0), SEOUL,
                 null, new Recurrence(RepeatRule.DAILY, 1, null));
 
-        Optional<Reminder> first = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 0));
-        Optional<Reminder> undo = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 1));
-        Optional<Reminder> again = reminder.toggleComplete(LocalDateTime.of(2026, 10, 4, 21, 2));
+        Optional<Reminder> first = reminder.toggleComplete(seoul(2026, 10, 4, 21, 0));
+        Optional<Reminder> undo = reminder.toggleComplete(seoul(2026, 10, 4, 21, 1));
+        Optional<Reminder> again = reminder.toggleComplete(seoul(2026, 10, 4, 21, 2));
 
         assertThat(first).isPresent();
         assertThat(undo).isEmpty();
@@ -573,12 +613,12 @@ class ReminderTest {
     @Test
     @DisplayName("반복하는 하위 작업을 완료하면 다음 회차가 같은 부모의 마지막 하위 작업으로 붙는다")
     void toggleComplete_whenRepeatingSubtask_attachesNextOccurrenceToSameParent() {
-        Reminder parent = new Reminder(owner, "운동", null, null, null, null, null);
-        Reminder stretching = new Reminder(owner, "스트레칭", null, null, LocalDateTime.of(2026, 10, 4, 7, 0),
+        Reminder parent = new Reminder(owner, "운동", null, null, null, null, null, null);
+        Reminder stretching = new Reminder(owner, "스트레칭", null, null, seoul(2026, 10, 4, 7, 0), SEOUL,
                 null, new Recurrence(RepeatRule.DAILY, 1, null));
         parent.addSubtask(stretching);
 
-        Optional<Reminder> next = stretching.toggleComplete(LocalDateTime.of(2026, 10, 4, 7, 30));
+        Optional<Reminder> next = stretching.toggleComplete(seoul(2026, 10, 4, 7, 30));
 
         assertThat(next).hasValueSatisfying(occurrence -> {
             assertThat(occurrence.getParent()).isSameAs(parent);
@@ -590,11 +630,11 @@ class ReminderTest {
     @Test
     @DisplayName("부모 완료로 함께 완료된 반복 하위 작업은 다음 회차를 만들지 않는다")
     void toggleComplete_whenCompletingParent_doesNotRepeatSubtasks() {
-        Reminder parent = new Reminder(owner, "운동", null, null, null, null, null);
-        parent.addSubtask(new Reminder(owner, "스트레칭", null, null, LocalDateTime.of(2026, 10, 4, 7, 0),
+        Reminder parent = new Reminder(owner, "운동", null, null, null, null, null, null);
+        parent.addSubtask(new Reminder(owner, "스트레칭", null, null, seoul(2026, 10, 4, 7, 0), SEOUL,
                 null, new Recurrence(RepeatRule.DAILY, 1, null)));
 
-        Optional<Reminder> next = parent.toggleComplete(LocalDateTime.of(2026, 10, 4, 8, 0));
+        Optional<Reminder> next = parent.toggleComplete(seoul(2026, 10, 4, 8, 0));
 
         assertThat(next).isEmpty();
         assertThat(parent.getSubtasks()).hasSize(1);
@@ -603,12 +643,12 @@ class ReminderTest {
     @Test
     @DisplayName("완료된 최상위 리마인더는 완료 항목 일괄 삭제 대상이고 하위 작업과 함께 개수를 센다")
     void isDeletedOnCompletedClear_whenCompletedTopLevel_countsWithSubtasks() {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
-        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
+        Reminder boxes = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
         parent.addSubtask(boxes);
-        parent.addSubtask(new Reminder(owner, "업체 예약", null, null, null, null, null));
-        parent.toggleComplete(LocalDateTime.of(2026, 10, 28, 9, 0));
-        boxes.toggleComplete(LocalDateTime.of(2026, 10, 28, 9, 5));
+        parent.addSubtask(new Reminder(owner, "업체 예약", null, null, null, null, null, null));
+        parent.toggleComplete(seoul(2026, 10, 28, 9, 0));
+        boxes.toggleComplete(seoul(2026, 10, 28, 9, 5));
 
         assertThat(parent.isDeletedOnCompletedClear()).isTrue();
         assertThat(parent.countWithSubtasks()).isEqualTo(3);
@@ -617,8 +657,8 @@ class ReminderTest {
     @Test
     @DisplayName("미완료 리마인더는 완료 항목 일괄 삭제 대상이 아니다")
     void isDeletedOnCompletedClear_isFalse_whenIncomplete() {
-        Reminder parent = new Reminder(owner, "파티 준비", null, null, null, null, null);
-        Reminder cake = new Reminder(owner, "케이크 주문", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "파티 준비", null, null, null, null, null, null);
+        Reminder cake = new Reminder(owner, "케이크 주문", null, null, null, null, null, null);
         parent.addSubtask(cake);
 
         assertThat(parent.isDeletedOnCompletedClear()).isFalse();
@@ -628,15 +668,15 @@ class ReminderTest {
     @Test
     @DisplayName("완료된 하위 작업은 부모가 미완료일 때만 단독으로 일괄 삭제 대상이 된다")
     void isDeletedOnCompletedClear_forCompletedSubtask_dependsOnParent() {
-        Reminder parent = new Reminder(owner, "파티 준비", null, null, null, null, null);
-        Reminder invitation = new Reminder(owner, "초대장 보내기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "파티 준비", null, null, null, null, null, null);
+        Reminder invitation = new Reminder(owner, "초대장 보내기", null, null, null, null, null, null);
         parent.addSubtask(invitation);
-        invitation.toggleComplete(LocalDateTime.of(2026, 10, 28, 9, 0));
+        invitation.toggleComplete(seoul(2026, 10, 28, 9, 0));
 
         assertThat(invitation.isDeletedOnCompletedClear()).isTrue();
         assertThat(invitation.countWithSubtasks()).isEqualTo(1);
 
-        parent.toggleComplete(LocalDateTime.of(2026, 10, 28, 10, 0));
+        parent.toggleComplete(seoul(2026, 10, 28, 10, 0));
 
         assertThat(invitation.isDeletedOnCompletedClear()).isFalse();
     }

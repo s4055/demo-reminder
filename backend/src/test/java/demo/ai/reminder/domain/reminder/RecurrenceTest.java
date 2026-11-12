@@ -5,7 +5,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -17,10 +20,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RecurrenceTest {
 
-    private static final LocalDateTime MONDAY_DUE = LocalDateTime.of(2026, 10, 5, 9, 30);
-    private static final LocalDateTime WEDNESDAY_DUE = LocalDateTime.of(2026, 10, 7, 9, 30);
-    private static final LocalDateTime FRIDAY_DUE = LocalDateTime.of(2026, 10, 9, 9, 30);
-    private static final LocalDateTime SUNDAY_DUE = LocalDateTime.of(2026, 10, 11, 9, 30);
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    private static final ZoneId NEW_YORK = ZoneId.of("America/New_York");
+    private static final Instant MONDAY_DUE = seoul(2026, 10, 5, 9, 30);
+    private static final Instant WEDNESDAY_DUE = seoul(2026, 10, 7, 9, 30);
+    private static final Instant FRIDAY_DUE = seoul(2026, 10, 9, 9, 30);
+    private static final Instant SUNDAY_DUE = seoul(2026, 10, 11, 9, 30);
     private static final Set<DayOfWeek> WEEKDAYS = EnumSet.range(MONDAY, FRIDAY);
 
     @Test
@@ -35,34 +40,34 @@ class RecurrenceTest {
     @Test
     @DisplayName("간격을 지정하면 일/주/월/년 단위로 간격만큼 뒤가 다음 마감일시다")
     void nextDueAt_addsIntervalPerUnit() {
-        assertThat(new Recurrence(RepeatRule.DAILY, 3, null).nextDueAt(MONDAY_DUE))
-                .isEqualTo(LocalDateTime.of(2026, 10, 8, 9, 30));
-        assertThat(new Recurrence(RepeatRule.WEEKLY, 2, null).nextDueAt(MONDAY_DUE))
-                .isEqualTo(LocalDateTime.of(2026, 10, 19, 9, 30));
-        assertThat(new Recurrence(RepeatRule.MONTHLY, 2, null).nextDueAt(MONDAY_DUE))
-                .isEqualTo(LocalDateTime.of(2026, 12, 5, 9, 30));
-        assertThat(new Recurrence(RepeatRule.YEARLY, 3, null).nextDueAt(MONDAY_DUE))
-                .isEqualTo(LocalDateTime.of(2029, 10, 5, 9, 30));
+        assertThat(new Recurrence(RepeatRule.DAILY, 3, null).nextDueAt(MONDAY_DUE, SEOUL))
+                .isEqualTo(seoul(2026, 10, 8, 9, 30));
+        assertThat(new Recurrence(RepeatRule.WEEKLY, 2, null).nextDueAt(MONDAY_DUE, SEOUL))
+                .isEqualTo(seoul(2026, 10, 19, 9, 30));
+        assertThat(new Recurrence(RepeatRule.MONTHLY, 2, null).nextDueAt(MONDAY_DUE, SEOUL))
+                .isEqualTo(seoul(2026, 12, 5, 9, 30));
+        assertThat(new Recurrence(RepeatRule.YEARLY, 3, null).nextDueAt(MONDAY_DUE, SEOUL))
+                .isEqualTo(seoul(2029, 10, 5, 9, 30));
     }
 
     @Test
     @DisplayName("간격이 있는 월 반복도 그 달에 같은 날짜가 없으면 말일로 맞춘다")
     void nextDueAt_monthlyWithInterval_clampsToMonthEnd() {
-        assertThat(new Recurrence(RepeatRule.MONTHLY, 2, null).nextDueAt(LocalDateTime.of(2026, 12, 31, 9, 0)))
-                .isEqualTo(LocalDateTime.of(2027, 2, 28, 9, 0));
-        assertThat(new Recurrence(RepeatRule.MONTHLY, 3, null).nextDueAt(LocalDateTime.of(2027, 11, 30, 9, 0)))
-                .isEqualTo(LocalDateTime.of(2028, 2, 29, 9, 0));
+        assertThat(new Recurrence(RepeatRule.MONTHLY, 2, null).nextDueAt(seoul(2026, 12, 31, 9, 0), SEOUL))
+                .isEqualTo(seoul(2027, 2, 28, 9, 0));
+        assertThat(new Recurrence(RepeatRule.MONTHLY, 3, null).nextDueAt(seoul(2027, 11, 30, 9, 0), SEOUL))
+                .isEqualTo(seoul(2028, 2, 29, 9, 0));
     }
 
     @Test
     @DisplayName("2월 29일의 4년 간격 반복은 다음 윤년의 2월 29일, 1년 간격이면 평년의 2월 28일이다")
     void nextDueAt_yearlyFromLeapDay_dependsOnInterval() {
-        LocalDateTime leapDay = LocalDateTime.of(2028, 2, 29, 9, 0);
+        Instant leapDay = seoul(2028, 2, 29, 9, 0);
 
-        assertThat(new Recurrence(RepeatRule.YEARLY, 4, null).nextDueAt(leapDay))
-                .isEqualTo(LocalDateTime.of(2032, 2, 29, 9, 0));
-        assertThat(new Recurrence(RepeatRule.YEARLY, 1, null).nextDueAt(leapDay))
-                .isEqualTo(LocalDateTime.of(2029, 2, 28, 9, 0));
+        assertThat(new Recurrence(RepeatRule.YEARLY, 4, null).nextDueAt(leapDay, SEOUL))
+                .isEqualTo(seoul(2032, 2, 29, 9, 0));
+        assertThat(new Recurrence(RepeatRule.YEARLY, 1, null).nextDueAt(leapDay, SEOUL))
+                .isEqualTo(seoul(2029, 2, 28, 9, 0));
     }
 
     @Test
@@ -70,7 +75,7 @@ class RecurrenceTest {
     void nextDueAt_weeklyDays_returnsNextDayInSameWeek() {
         Recurrence recurrence = new Recurrence(RepeatRule.WEEKLY, 2, Set.of(WEDNESDAY, MONDAY));
 
-        assertThat(recurrence.nextDueAt(MONDAY_DUE)).isEqualTo(WEDNESDAY_DUE);
+        assertThat(recurrence.nextDueAt(MONDAY_DUE, SEOUL)).isEqualTo(WEDNESDAY_DUE);
     }
 
     @Test
@@ -78,7 +83,7 @@ class RecurrenceTest {
     void nextDueAt_weeklyDays_jumpsIntervalWeeksToFirstDay() {
         Recurrence recurrence = new Recurrence(RepeatRule.WEEKLY, 2, Set.of(MONDAY, WEDNESDAY));
 
-        assertThat(recurrence.nextDueAt(WEDNESDAY_DUE)).isEqualTo(LocalDateTime.of(2026, 10, 19, 9, 30));
+        assertThat(recurrence.nextDueAt(WEDNESDAY_DUE, SEOUL)).isEqualTo(seoul(2026, 10, 19, 9, 30));
     }
 
     @Test
@@ -86,9 +91,9 @@ class RecurrenceTest {
     void nextDueAt_weeklyDays_fromUnlistedDay() {
         Recurrence recurrence = new Recurrence(RepeatRule.WEEKLY, 2, Set.of(MONDAY, WEDNESDAY));
 
-        assertThat(recurrence.nextDueAt(LocalDateTime.of(2026, 10, 6, 9, 30)))
+        assertThat(recurrence.nextDueAt(seoul(2026, 10, 6, 9, 30), SEOUL))
                 .isEqualTo(WEDNESDAY_DUE);
-        assertThat(recurrence.nextDueAt(FRIDAY_DUE)).isEqualTo(LocalDateTime.of(2026, 10, 19, 9, 30));
+        assertThat(recurrence.nextDueAt(FRIDAY_DUE, SEOUL)).isEqualTo(seoul(2026, 10, 19, 9, 30));
     }
 
     @Test
@@ -96,9 +101,42 @@ class RecurrenceTest {
     void nextDueAt_weekdays_skipsWeekend() {
         Recurrence weekdays = new Recurrence(RepeatRule.WEEKLY, 1, WEEKDAYS);
 
-        assertThat(weekdays.nextDueAt(MONDAY_DUE)).isEqualTo(LocalDateTime.of(2026, 10, 6, 9, 30));
-        assertThat(weekdays.nextDueAt(FRIDAY_DUE)).isEqualTo(LocalDateTime.of(2026, 10, 12, 9, 30));
-        assertThat(weekdays.nextDueAt(SUNDAY_DUE)).isEqualTo(LocalDateTime.of(2026, 10, 12, 9, 30));
+        assertThat(weekdays.nextDueAt(MONDAY_DUE, SEOUL)).isEqualTo(seoul(2026, 10, 6, 9, 30));
+        assertThat(weekdays.nextDueAt(FRIDAY_DUE, SEOUL)).isEqualTo(seoul(2026, 10, 12, 9, 30));
+        assertThat(weekdays.nextDueAt(SUNDAY_DUE, SEOUL)).isEqualTo(seoul(2026, 10, 12, 9, 30));
+    }
+
+    @Test
+    @DisplayName("요일은 UTC가 아니라 리마인더 시간대의 날짜 기준으로 판단한다")
+    void nextDueAt_weeklyDays_usesZoneLocalDayOfWeek() {
+        Recurrence recurrence = new Recurrence(RepeatRule.WEEKLY, 1, Set.of(MONDAY, WEDNESDAY));
+        Instant mondayMorningInSeoul = seoul(2026, 10, 5, 7, 0);
+
+        assertThat(mondayMorningInSeoul).isEqualTo(Instant.parse("2026-10-04T22:00:00Z"));
+        assertThat(recurrence.nextDueAt(mondayMorningInSeoul, SEOUL)).isEqualTo(seoul(2026, 10, 7, 7, 0));
+    }
+
+    @Test
+    @DisplayName("서머타임이 시작되는 날에도 매일 반복은 같은 현지 시각을 유지한다")
+    void nextDueAt_daily_keepsLocalTimeAcrossDaylightSavingStart() {
+        Instant beforeTransition = newYork(2026, 3, 7, 9, 0);
+
+        Instant next = new Recurrence(RepeatRule.DAILY, 1, null).nextDueAt(beforeTransition, NEW_YORK);
+
+        assertThat(next).isEqualTo(newYork(2026, 3, 8, 9, 0));
+        assertThat(Duration.between(beforeTransition, next)).isEqualTo(Duration.ofHours(23));
+    }
+
+    @Test
+    @DisplayName("서머타임이 끝나는 주를 넘어도 매주·매월 반복은 같은 현지 시각을 유지한다")
+    void nextDueAt_weeklyAndMonthly_keepLocalTimeAcrossDaylightSavingEnd() {
+        Instant duringDaylightSaving = newYork(2026, 10, 30, 9, 0);
+
+        assertThat(new Recurrence(RepeatRule.WEEKLY, 1, null).nextDueAt(duringDaylightSaving, NEW_YORK))
+                .isEqualTo(newYork(2026, 11, 6, 9, 0))
+                .isEqualTo(Instant.parse("2026-11-06T14:00:00Z"));
+        assertThat(new Recurrence(RepeatRule.MONTHLY, 1, null).nextDueAt(duringDaylightSaving, NEW_YORK))
+                .isEqualTo(newYork(2026, 11, 30, 9, 0));
     }
 
     @Test
@@ -134,7 +172,15 @@ class RecurrenceTest {
     @Test
     @DisplayName("반복하지 않으면 다음 마감일시를 계산할 수 없다")
     void nextDueAt_none_throws() {
-        assertThatThrownBy(() -> Recurrence.NONE.nextDueAt(MONDAY_DUE))
+        assertThatThrownBy(() -> Recurrence.NONE.nextDueAt(MONDAY_DUE, SEOUL))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    private static Instant seoul(int year, int month, int day, int hour, int minute) {
+        return LocalDateTime.of(year, month, day, hour, minute).atZone(SEOUL).toInstant();
+    }
+
+    private static Instant newYork(int year, int month, int day, int hour, int minute) {
+        return LocalDateTime.of(year, month, day, hour, minute).atZone(NEW_YORK).toInstant();
     }
 }

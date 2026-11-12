@@ -21,12 +21,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
+import static demo.ai.reminder.support.TestTimes.SEOUL;
+import static demo.ai.reminder.support.TestTimes.seoul;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -40,6 +43,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class ReminderControllerTest {
+
+    private static final String UTC_ISO_INSTANT = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z";
 
     @Autowired
     private MockMvc mockMvc;
@@ -66,7 +71,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 목록 조회 응답은 resultCode, resultMsg와 data 배열을 포함한다")
     void getReminders_wrapsListInApiResponse() throws Exception {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         mockMvc.perform(get("/api/reminders"))
                 .andExpect(status().isOk())
@@ -110,7 +115,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 수정은 200과 data가 null인 성공 응답을 반환하고, 변경된 priority는 목록에서 조회된다")
     void updateReminder_returnsNoData_andPriorityIsListed() throws Exception {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -126,7 +131,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 수정은 version이 필수이며, 생략하면 400이고 지난 버전이면 409와 VERSION_CONFLICT다")
     void updateReminder_requiresCurrentVersion() throws Exception {
-        Reminder saved = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.saveAndFlush(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -151,7 +156,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 목록 조회 응답의 각 항목은 priority를 포함한다")
     void getReminders_includesPriority() throws Exception {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, Priority.MEDIUM, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, Priority.MEDIUM, null));
 
         mockMvc.perform(get("/api/reminders"))
                 .andExpect(status().isOk())
@@ -171,7 +176,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("완료 토글은 200과 data가 null인 성공 응답을 반환하고, 완료 상태와 완료일시는 목록에서 조회된다")
     void toggleComplete_returnsNoData_andCompletionIsListed() throws Exception {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/{id}/complete", saved.getId()))
                 .andExpect(status().isOk())
@@ -186,7 +191,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("플래그 토글은 200과 data가 null인 성공 응답을 반환하고, 플래그는 목록에서 조회된다")
     void toggleFlag_returnsNoData_andFlagIsListed() throws Exception {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/{id}/flag", saved.getId()))
                 .andExpect(status().isOk())
@@ -202,7 +207,7 @@ class ReminderControllerTest {
     void createReminder_returnsRepeatRule() throws Exception {
         mockMvc.perform(post("/api/reminders")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"분리수거\",\"dueAt\":\"2026-10-04T20:00:00\",\"repeatRule\":\"WEEKLY\"}"))
+                        .content("{\"title\":\"분리수거\",\"dueAt\":\"2026-10-04T20:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"WEEKLY\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.repeatRule").value("WEEKLY"));
 
@@ -229,7 +234,7 @@ class ReminderControllerTest {
         mockMvc.perform(post("/api/reminders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"운동","dueAt":"2026-10-05T07:00:00","repeatRule":"WEEKLY",
+                                {"title":"운동","dueAt":"2026-10-05T07:00:00+09:00","timeZone":"Asia/Seoul","repeatRule":"WEEKLY",
                                  "repeatInterval":2,"repeatDaysOfWeek":["WEDNESDAY","MONDAY"]}
                                 """))
                 .andExpect(status().isCreated())
@@ -249,10 +254,10 @@ class ReminderControllerTest {
     @DisplayName("간격이 1~99를 벗어나거나, WEEKLY가 아닌데 요일을 지정하거나, 잘못된 요일 값이면 400을 반환한다")
     void createReminder_withInvalidRecurrence_returnsBadRequest() throws Exception {
         String[] bodies = {
-                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatInterval\":0}",
-                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatInterval\":100}",
-                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatDaysOfWeek\":[\"MONDAY\"]}",
-                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"WEEKLY\",\"repeatDaysOfWeek\":[\"MON\"]}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"DAILY\",\"repeatInterval\":0}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"DAILY\",\"repeatInterval\":100}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"DAILY\",\"repeatDaysOfWeek\":[\"MONDAY\"]}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"WEEKLY\",\"repeatDaysOfWeek\":[\"MON\"]}",
         };
         for (String body : bodies) {
             mockMvc.perform(post("/api/reminders").contentType(MediaType.APPLICATION_JSON).content(body))
@@ -265,11 +270,11 @@ class ReminderControllerTest {
     @DisplayName("수정할 때도 간격이 1~99를 벗어나거나 WEEKLY가 아닌데 요일을 지정하면 400을 반환하고 바뀌지 않는다")
     void updateReminder_withInvalidRecurrence_returnsBadRequest() throws Exception {
         Reminder saved = reminderRepository.save(
-                new Reminder(owner, "운동", null, null, LocalDateTime.of(2026, 10, 5, 7, 0), null, null));
+                new Reminder(owner, "운동", null, null, seoul(2026, 10, 5, 7, 0), SEOUL, null, null));
         String[] bodies = {
-                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatInterval\":0,\"version\":0}",
-                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatInterval\":100,\"version\":0}",
-                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00\",\"repeatRule\":\"DAILY\",\"repeatDaysOfWeek\":[\"MONDAY\"],\"version\":0}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"DAILY\",\"repeatInterval\":0,\"version\":0}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"DAILY\",\"repeatInterval\":100,\"version\":0}",
+                "{\"title\":\"운동\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"DAILY\",\"repeatDaysOfWeek\":[\"MONDAY\"],\"version\":0}",
         };
         for (String body : bodies) {
             mockMvc.perform(put("/api/reminders/{id}", saved.getId()).contentType(MediaType.APPLICATION_JSON).content(body))
@@ -284,7 +289,7 @@ class ReminderControllerTest {
     void createReminder_withUnknownRepeatRule_returnsBadRequest() throws Exception {
         mockMvc.perform(post("/api/reminders")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"분리수거\",\"dueAt\":\"2026-10-04T20:00:00\",\"repeatRule\":\"HOURLY\"}"))
+                        .content("{\"title\":\"분리수거\",\"dueAt\":\"2026-10-04T20:00:00+09:00\",\"timeZone\":\"Asia/Seoul\",\"repeatRule\":\"HOURLY\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
     }
@@ -294,7 +299,7 @@ class ReminderControllerTest {
     void toggleComplete_whenRepeating_returnsNoData_andNextOccurrenceIsListed() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         Reminder saved = reminderRepository.save(new Reminder(owner, "분리수거", null, home,
-                LocalDateTime.of(2026, 10, 4, 20, 0), null, new Recurrence(RepeatRule.WEEKLY, 1, null)));
+                seoul(2026, 10, 4, 20, 0), SEOUL, null, new Recurrence(RepeatRule.WEEKLY, 1, null)));
 
         mockMvc.perform(patch("/api/reminders/{id}/complete", saved.getId()))
                 .andExpect(status().isOk())
@@ -304,36 +309,36 @@ class ReminderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(2)))
                 .andExpect(jsonPath("$.data[1].completed").value(false))
-                .andExpect(jsonPath("$.data[1].dueAt").value("2026-10-11T20:00:00"))
+                .andExpect(jsonPath("$.data[1].dueAt").value("2026-10-11T11:00:00Z"))
                 .andExpect(jsonPath("$.data[1].repeatRule").value("WEEKLY"));
     }
 
     @Test
     @DisplayName("다가오는 리마인더 조회는 기간 안에 마감되는 미완료 리마인더를 data에 담는다")
     void getUpcomingReminders_returnsRemindersDueInRange() throws Exception {
-        reminderRepository.save(new Reminder(owner, "회의", null, null, LocalDateTime.of(2026, 10, 4, 21, 1), null, null));
-        reminderRepository.save(new Reminder(owner, "내일 회의", null, null, LocalDateTime.of(2026, 10, 5, 21, 1), null, null));
+        reminderRepository.save(new Reminder(owner, "회의", null, null, seoul(2026, 10, 4, 21, 1), SEOUL, null, null));
+        reminderRepository.save(new Reminder(owner, "내일 회의", null, null, seoul(2026, 10, 5, 21, 1), SEOUL, null, null));
 
         mockMvc.perform(get("/api/reminders/upcoming")
-                        .param("from", "2026-10-04T21:00:00")
-                        .param("to", "2026-10-04T21:02:00"))
+                        .param("from", "2026-10-04T12:00:00Z")
+                        .param("to", "2026-10-04T12:02:00Z"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("SUCCESS"))
                 .andExpect(jsonPath("$.data", hasSize(1)))
                 .andExpect(jsonPath("$.data[0].title").value("회의"))
-                .andExpect(jsonPath("$.data[0].dueAt").value("2026-10-04T21:01:00"));
+                .andExpect(jsonPath("$.data[0].dueAt").value("2026-10-04T12:01:00Z"));
     }
 
     @Test
     @DisplayName("다가오는 리마인더 조회에서 from/to가 없거나 형식이 잘못되면 400을 반환한다")
     void getUpcomingReminders_withMissingOrInvalidRange_returnsBadRequest() throws Exception {
-        mockMvc.perform(get("/api/reminders/upcoming").param("from", "2026-10-04T21:00:00"))
+        mockMvc.perform(get("/api/reminders/upcoming").param("from", "2026-10-04T12:00:00Z"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
 
         mockMvc.perform(get("/api/reminders/upcoming")
                         .param("from", "not-a-date")
-                        .param("to", "2026-10-04T21:02:00"))
+                        .param("to", "2026-10-04T12:02:00Z"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
     }
@@ -342,8 +347,8 @@ class ReminderControllerTest {
     @DisplayName("다가오는 리마인더 조회에서 from이 to보다 늦으면 400을 반환한다")
     void getUpcomingReminders_withFromAfterTo_returnsBadRequest() throws Exception {
         mockMvc.perform(get("/api/reminders/upcoming")
-                        .param("from", "2026-10-04T21:02:00")
-                        .param("to", "2026-10-04T21:00:00"))
+                        .param("from", "2026-10-04T12:02:00Z")
+                        .param("to", "2026-10-04T12:00:00Z"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
     }
@@ -351,7 +356,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 삭제는 200과 함께 data가 null인 성공 응답을 반환한다")
     void deleteReminder_returnsSuccessWithNullData() throws Exception {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         mockMvc.perform(delete("/api/reminders/{id}", saved.getId()))
                 .andExpect(status().isOk())
@@ -362,8 +367,8 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 검색은 200과 함께 일치하는 리마인더 목록을 반환한다")
     void searchReminders_returnsMatchingReminders() throws Exception {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
-        reminderRepository.save(new Reminder(owner, "보고서", null, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "보고서", null, null, null, null, null, null));
 
         mockMvc.perform(get("/api/reminders/search").param("q", "우유"))
                 .andExpect(status().isOk())
@@ -391,7 +396,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더를 만들거나 수정할 때 제목과 태그 이름의 앞뒤 공백은 지운다")
     void createAndUpdateReminder_stripTitleAndTagNames() throws Exception {
-        Reminder reminder = reminderRepository.saveAndFlush(new Reminder(owner, "빨래", null, null, null, null, null));
+        Reminder reminder = reminderRepository.saveAndFlush(new Reminder(owner, "빨래", null, null, null, null, null, null));
 
         mockMvc.perform(post("/api/reminders")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -441,8 +446,8 @@ class ReminderControllerTest {
     @DisplayName("완료 항목 일괄 삭제는 200과 함께 삭제 개수를 반환한다")
     void deleteCompletedReminders_returnsDeletedCount() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
-        Reminder done = reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null));
-        reminderRepository.save(new Reminder(owner, "청소", null, home, null, null, null));
+        Reminder done = reminderRepository.save(new Reminder(owner, "빨래", null, home, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "청소", null, home, null, null, null, null));
         mockMvc.perform(patch("/api/reminders/{id}/complete", done.getId()))
                 .andExpect(status().isOk());
 
@@ -469,7 +474,7 @@ class ReminderControllerTest {
     void moveReminder_returnsNoData_andReminderIsListedInTarget() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
         ReminderList work = reminderListRepository.save(new ReminderList(owner, "업무", null, null, 0));
-        Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/{id}/list", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -487,7 +492,7 @@ class ReminderControllerTest {
     @DisplayName("리마인더 이동에서 listId가 없으면 400을 반환한다")
     void moveReminder_withoutListId_returnsBadRequest() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
-        Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "보고서", null, home, null, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/{id}/list", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -499,8 +504,8 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더 단건 조회 응답은 data에 하위 작업을 포함한 리마인더를 담는다")
     void getReminder_returnsReminderWithSubtasks() throws Exception {
-        Reminder parent = new Reminder(owner, "우유 사기", null, null, null, null, null);
-        parent.addSubtask(new Reminder(owner, "저지방", null, null, null, null, null));
+        Reminder parent = new Reminder(owner, "우유 사기", null, null, null, null, null, null);
+        parent.addSubtask(new Reminder(owner, "저지방", null, null, null, null, null, null));
         reminderRepository.save(parent);
 
         mockMvc.perform(get("/api/reminders/{id}", parent.getId()))
@@ -516,7 +521,7 @@ class ReminderControllerTest {
     @DisplayName("다른 사용자의 리마인더를 단건 조회하면 404와 NOT_FOUND 응답을 반환한다")
     void getReminder_returnsNotFound_forOtherUsersReminder() throws Exception {
         User other = userRepository.save(new User("other@example.com", "{noop}password", "다른 사람"));
-        Reminder othersReminder = reminderRepository.save(new Reminder(other, "비밀", null, null, null, null, null));
+        Reminder othersReminder = reminderRepository.save(new Reminder(other, "비밀", null, null, null, null, null, null));
 
         mockMvc.perform(get("/api/reminders/{id}", othersReminder.getId()))
                 .andExpect(status().isNotFound())
@@ -556,7 +561,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("스마트 뷰 이름은 대소문자를 구분하지 않는다")
     void getSmartReminders_isCaseInsensitive() throws Exception {
-        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         for (String view : new String[]{"all", "ALL", "All"}) {
             mockMvc.perform(get("/api/reminders/smart/{view}", view))
@@ -575,11 +580,83 @@ class ReminderControllerTest {
     }
 
     @Test
+    @DisplayName("오프셋이 있는 마감 시각과 시간대로 생성하면 응답 시각은 Z가 붙은 UTC ISO-8601이고 시간대가 담긴다")
+    void createReminder_withOffsetDueAt_returnsUtcInstantAndTimeZone() throws Exception {
+        mockMvc.perform(post("/api/reminders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"회의","dueAt":"2026-10-05T07:00:00+09:00","timeZone":"Asia/Seoul"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.dueAt").value("2026-10-04T22:00:00Z"))
+                .andExpect(jsonPath("$.data.timeZone").value("Asia/Seoul"))
+                .andExpect(jsonPath("$.data.createdAt").value(matchesPattern(UTC_ISO_INSTANT)))
+                .andExpect(jsonPath("$.data.updatedAt").value(matchesPattern(UTC_ISO_INSTANT)));
+    }
+
+    @Test
+    @DisplayName("마감 시각에 오프셋이 없거나, 시간대 ID가 잘못되었거나, 마감 시각만 있고 시간대가 없으면 400을 반환한다")
+    void createReminder_withInvalidDueAtOrTimeZone_returnsBadRequest() throws Exception {
+        String[] bodies = {
+                "{\"title\":\"회의\",\"dueAt\":\"2026-10-05T07:00:00\",\"timeZone\":\"Asia/Seoul\"}",
+                "{\"title\":\"회의\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"Asia/Nowhere\"}",
+                "{\"title\":\"회의\",\"dueAt\":\"2026-10-05T07:00:00+09:00\",\"timeZone\":\"not a zone\"}",
+                "{\"title\":\"회의\",\"dueAt\":\"2026-10-05T07:00:00+09:00\"}",
+        };
+        for (String body : bodies) {
+            mockMvc.perform(post("/api/reminders").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+        }
+        assertThat(reminderRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("수정할 때 시간대 ID가 잘못되면 400을 반환하고 바뀌지 않는다")
+    void updateReminder_withInvalidTimeZone_returnsBadRequest() throws Exception {
+        Reminder saved = reminderRepository.save(
+                new Reminder(owner, "회의", null, null, seoul(2026, 10, 5, 7, 0), SEOUL, null, null));
+
+        mockMvc.perform(put("/api/reminders/{id}", saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"회의","dueAt":"2026-10-05T07:00:00Z","timeZone":"Mars/Base","version":0}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+
+        assertThat(reminderRepository.findById(saved.getId()).orElseThrow().getTimeZone()).isEqualTo(SEOUL);
+    }
+
+    @Test
+    @DisplayName("today 뷰는 zone 파라미터로 받은 시간대의 오늘을 조회한다")
+    void getSmartReminders_today_usesZoneParameter() throws Exception {
+        reminderRepository.save(new Reminder(owner, "오늘", null, null, Instant.now(), SEOUL, null, null));
+
+        mockMvc.perform(get("/api/reminders/smart/{view}", "TODAY").param("zone", "Asia/Seoul"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].dueAt").value(matchesPattern(UTC_ISO_INSTANT)));
+    }
+
+    @Test
+    @DisplayName("today 뷰에 zone이 없거나 잘못된 시간대면 400을 반환한다")
+    void getSmartReminders_today_withMissingOrInvalidZone_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/reminders/smart/{view}", "TODAY"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+
+        mockMvc.perform(get("/api/reminders/smart/{view}", "TODAY").param("zone", "Asia/Nowhere"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
     @DisplayName("리마인더 순서 변경은 200 성공 응답을 반환하고, 리스트별 조회에 반영된다")
     void reorderReminders_returnsSuccess_andIsReflected() throws Exception {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        Reminder milk = reminderRepository.save(new Reminder(owner, "우유", null, shopping, null, null, null));
-        Reminder eggs = reminderRepository.save(new Reminder(owner, "계란", null, shopping, null, null, null));
+        Reminder milk = reminderRepository.save(new Reminder(owner, "우유", null, shopping, null, null, null, null));
+        Reminder eggs = reminderRepository.save(new Reminder(owner, "계란", null, shopping, null, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/order")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -597,8 +674,8 @@ class ReminderControllerTest {
     @DisplayName("리마인더 순서 변경 ids가 리스트 항목과 일치하지 않으면 400과 BAD_REQUEST 응답을 반환한다")
     void reorderReminders_returnsBadRequest_whenIdsDoNotMatch() throws Exception {
         ReminderList shopping = reminderListRepository.save(new ReminderList(owner, "장보기", null, null, 0));
-        Reminder milk = reminderRepository.save(new Reminder(owner, "우유", null, shopping, null, null, null));
-        reminderRepository.save(new Reminder(owner, "계란", null, shopping, null, null, null));
+        Reminder milk = reminderRepository.save(new Reminder(owner, "우유", null, shopping, null, null, null, null));
+        reminderRepository.save(new Reminder(owner, "계란", null, shopping, null, null, null, null));
 
         mockMvc.perform(patch("/api/reminders/order")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -650,7 +727,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더를 수정하면 교체된 tags가 목록에서 조회된다")
     void updateReminder_replacesTagsInList() throws Exception {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
 
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -680,7 +757,7 @@ class ReminderControllerTest {
     @DisplayName("parentId를 담아 생성하면 응답의 parentId에 부모 id가 담기고 listId는 부모의 리스트를 따른다")
     void createReminder_withParentId_returnsSubtask() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
-        Reminder parent = reminderRepository.save(new Reminder(owner, "이사 준비", null, home, null, null, null));
+        Reminder parent = reminderRepository.save(new Reminder(owner, "이사 준비", null, home, null, null, null, null));
 
         mockMvc.perform(post("/api/reminders")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -715,8 +792,8 @@ class ReminderControllerTest {
     @Test
     @DisplayName("하위 작업 아래에 하위 작업을 생성하면 400과 BAD_REQUEST 응답을 반환한다")
     void createReminder_returnsBadRequest_whenParentIsSubtask() throws Exception {
-        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null);
-        Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null, null, null);
+        Reminder parent = new Reminder(owner, "이사 준비", null, null, null, null, null, null);
+        Reminder subtask = new Reminder(owner, "박스 구하기", null, null, null, null, null, null);
         parent.addSubtask(subtask);
         reminderRepository.save(parent);
 
@@ -731,9 +808,9 @@ class ReminderControllerTest {
     @DisplayName("리스트별 조회 응답은 최상위 리마인더만 담고, 하위 작업은 각 항목의 subtasks에 담는다")
     void getReminders_byList_nestsSubtasks() throws Exception {
         ReminderList home = reminderListRepository.save(new ReminderList(owner, "집", null, null, 0));
-        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null);
-        parent.addSubtask(new Reminder(owner, "박스 구하기", null, null, null, null, null));
-        parent.addSubtask(new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null));
+        Reminder parent = new Reminder(owner, "이사 준비", null, home, null, null, null, null);
+        parent.addSubtask(new Reminder(owner, "박스 구하기", null, null, null, null, null, null));
+        parent.addSubtask(new Reminder(owner, "이삿짐센터 예약", null, null, null, null, null, null));
         reminderRepository.save(parent);
 
         mockMvc.perform(get("/api/reminders").param("listId", home.getId().toString()))
@@ -782,7 +859,7 @@ class ReminderControllerTest {
     @Test
     @DisplayName("리마인더를 수정할 때도 메모가 255자를 넘으면 400과 memo 필드 오류를 반환한다")
     void updateReminder_withMemoOverMaxLength_returnsBadRequest() throws Exception {
-        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null));
+        Reminder saved = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null));
         String longMemo = "나".repeat(Reminder.MEMO_MAX_LENGTH + 1);
 
         mockMvc.perform(put("/api/reminders/{id}", saved.getId())

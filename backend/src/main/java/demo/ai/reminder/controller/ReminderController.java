@@ -13,7 +13,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +26,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 
 @RestController
@@ -47,8 +47,10 @@ public class ReminderController {
     }
 
     @GetMapping("/smart/{view}")
-    public ApiResponse<List<ReminderResponse>> getSmartReminders(@PathVariable SmartView view) {
-        return ApiResponse.success(reminderService.getSmartReminders(view));
+    public ApiResponse<List<ReminderResponse>> getSmartReminders(
+            @PathVariable SmartView view,
+            @RequestParam(required = false) ZoneId zone) {
+        return ApiResponse.success(reminderService.getSmartReminders(view, zone));
     }
 
     @GetMapping("/search")
@@ -59,8 +61,8 @@ public class ReminderController {
 
     @GetMapping("/upcoming")
     public ApiResponse<List<ReminderResponse>> getUpcomingReminders(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @RequestParam Instant from,
+            @RequestParam Instant to) {
         return ApiResponse.success(reminderService.getUpcomingReminders(from, to));
     }
 

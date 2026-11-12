@@ -41,7 +41,7 @@ class CommitTimeVersionConflictTest {
     @BeforeEach
     void setUp() {
         User owner = TestAuth.signIn(userRepository, EMAIL);
-        reminderId = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null)).getId();
+        reminderId = reminderRepository.save(new Reminder(owner, "우유 사기", null, null, null, null, null, null)).getId();
     }
 
     @AfterEach

@@ -43,6 +43,8 @@ cd backend
 
 - 데이터는 H2 파일 DB `backend/data/reminderdb.mv.db`에 저장되어 서버를 재시작해도 유지됩니다 (Git에는 올라가지 않습니다).
 - 데이터를 초기화하려면 서버를 끄고 `backend/data/` 폴더를 지운 뒤 다시 실행합니다. 스키마는 `ddl-auto: update`로 관리하므로, 엔티티 변경이 기존 데이터와 맞지 않아 기동에 실패할 때도 같은 방법으로 초기화합니다.
+  - Phase 34(시간대 처리)에서 시각 컬럼이 `Instant`로 바뀌고 리마인더에 `timeZone` 컬럼이 추가되었습니다. 이전 버전에서 만든 로컬 DB가 있다면 `backend/data/`를 지우고 다시 실행해 새 스키마로 만듭니다.
+- 서버 기본 시간대와 관계없이 동작합니다. 시각은 UTC 기준 `Instant`로 저장·응답하고, "오늘"과 반복 일정은 브라우저가 보내는 시간대로 계산합니다(`-Duser.timezone=UTC`로 실행해도 같은 결과).
 - 테스트는 파일 DB를 건드리지 않고 in-memory DB(`jdbc:h2:mem:reminderdb`)를 사용합니다.
 - H2 콘솔: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:file:./data/reminderdb`, 사용자 `sa`, 비밀번호 없음)
 - 인증은 서버 세션 없이 JWT로 합니다. 로그인·회원가입 응답의 액세스 토큰(수명 15분)을 `Authorization: Bearer` 헤더로 보내고,

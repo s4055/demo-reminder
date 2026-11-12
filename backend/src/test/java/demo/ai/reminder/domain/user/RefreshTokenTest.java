@@ -3,15 +3,17 @@ package demo.ai.reminder.domain.user;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
+import static demo.ai.reminder.support.TestTimes.seoul;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RefreshTokenTest {
 
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 6, 12, 0);
-    private static final LocalDateTime EXPIRES_AT = NOW.plusDays(14);
+    private static final Instant NOW = seoul(2026, 11, 6, 12, 0);
+    private static final Instant EXPIRES_AT = NOW.plus(Duration.ofDays(14));
 
     private final User user = new User("alice@example.com", "password", "앨리스");
 
@@ -57,7 +59,7 @@ class RefreshTokenTest {
         RefreshToken token = newToken();
         token.revoke(NOW);
 
-        token.revoke(NOW.plusHours(1));
+        token.revoke(NOW.plus(Duration.ofHours(1)));
 
         assertThat(token.getRevokedAt()).isEqualTo(NOW);
     }
@@ -66,7 +68,7 @@ class RefreshTokenTest {
     @DisplayName("회전하면 기존 토큰은 폐기되고 같은 사용자의 새 토큰이 만들어진다")
     void rotate_revokesCurrentAndCreatesNewToken() {
         RefreshToken token = newToken();
-        LocalDateTime newExpiresAt = NOW.plusDays(14).plusHours(1);
+        Instant newExpiresAt = NOW.plus(Duration.ofDays(14)).plus(Duration.ofHours(1));
 
         RefreshToken rotated = token.rotate("new-hash", newExpiresAt, NOW);
 
@@ -87,7 +89,7 @@ class RefreshTokenTest {
 
         assertThatThrownBy(() -> revoked.rotate("new-hash", EXPIRES_AT, NOW))
                 .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> expired.rotate("new-hash", EXPIRES_AT.plusDays(14), EXPIRES_AT))
+        assertThatThrownBy(() -> expired.rotate("new-hash", EXPIRES_AT.plus(Duration.ofDays(14)), EXPIRES_AT))
                 .isInstanceOf(IllegalStateException.class);
     }
 }

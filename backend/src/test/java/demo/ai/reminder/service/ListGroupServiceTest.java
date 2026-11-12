@@ -126,7 +126,7 @@ class ListGroupServiceTest {
         Long list = reminderListService.createList(new ReminderListRequest("장보기", null, null)).id();
         reminderListService.changeGroup(list, group);
         ReminderResponse milk = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, list, null, null, null, null, null, null, null));
+                new ReminderRequest("우유 사기", null, list, null, null, null, null, null, null, null, null));
         entityManager.flush();
         entityManager.clear();
 

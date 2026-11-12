@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   formValuesOf,
   toUpdateInput,
@@ -16,6 +16,7 @@ function reminder(overrides: Partial<Reminder> = {}): Reminder {
     flagged: false,
     priority: "NONE",
     dueAt: null,
+    timeZone: null,
     repeatRule: "NONE",
     repeatInterval: 1,
     repeatDaysOfWeek: [],
@@ -26,8 +27,8 @@ function reminder(overrides: Partial<Reminder> = {}): Reminder {
     parentId: null,
     subtasks: [],
     version: 2,
-    createdAt: "2026-11-01T09:00:00",
-    updatedAt: "2026-11-01T09:00:00",
+    createdAt: "2026-11-01T00:00:00Z",
+    updatedAt: "2026-11-01T00:00:00Z",
     ...overrides,
   }
 }
@@ -51,7 +52,8 @@ describe("formValuesOf", () => {
     const result = formValuesOf(
       reminder({
         memo: "저지방",
-        dueAt: "2026-11-12T08:30:00",
+        dueAt: "2026-11-11T23:30:00Z",
+        timeZone: "Asia/Seoul",
         repeatRule: "WEEKLY",
         repeatInterval: 2,
         repeatDaysOfWeek: ["MONDAY"],
@@ -99,7 +101,8 @@ describe("toUpdateInput", () => {
     expect(input).toEqual({
       title: "우유 2개",
       memo: "저지방",
-      dueAt: "2026-11-12T08:30:00",
+      dueAt: "2026-11-11T23:30:00.000Z",
+      timeZone: "Asia/Seoul",
       flagged: true,
       priority: "LOW",
       tagNames: ["장보기"],
@@ -107,6 +110,15 @@ describe("toUpdateInput", () => {
       repeatInterval: 1,
       repeatDaysOfWeek: ["MONDAY", "FRIDAY"],
       version: 7,
+    })
+  })
+
+  it("sendsBrowserTimeZone", () => {
+    vi.stubEnv("TZ", "Europe/London")
+
+    expect(toUpdateInput(values({ dueAt: new Date("2026-11-12T08:30:00Z") }), 1)).toMatchObject({
+      dueAt: "2026-11-12T08:30:00.000Z",
+      timeZone: "Europe/London",
     })
   })
 

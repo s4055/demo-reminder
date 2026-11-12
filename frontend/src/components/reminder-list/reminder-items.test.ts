@@ -15,6 +15,7 @@ function reminder(id: number, overrides: Partial<Reminder> = {}): Reminder {
     flagged: false,
     priority: "NONE",
     dueAt: null,
+    timeZone: null,
     repeatRule: "NONE",
     repeatInterval: 1,
     repeatDaysOfWeek: [],
@@ -25,8 +26,8 @@ function reminder(id: number, overrides: Partial<Reminder> = {}): Reminder {
     parentId: null,
     subtasks: [],
     version: 0,
-    createdAt: "2026-11-01T09:00:00",
-    updatedAt: "2026-11-01T09:00:00",
+    createdAt: "2026-11-01T00:00:00Z",
+    updatedAt: "2026-11-01T00:00:00Z",
     ...overrides,
   }
 }
@@ -56,9 +57,9 @@ describe("findReminder", () => {
 describe("byRecentCompletion", () => {
   it("putsRecentlyCompletedFirstAndMissingTimeLast", () => {
     const sorted = [
-      done(1, "2026-11-01T09:00:00"),
+      done(1, "2026-11-01T00:00:00Z"),
       reminder(2),
-      done(3, "2026-11-03T09:00:00"),
+      done(3, "2026-11-03T09:00:00Z"),
     ].sort(byRecentCompletion)
 
     expect(sorted.map((item) => item.id)).toEqual([3, 1, 2])
@@ -68,9 +69,9 @@ describe("byRecentCompletion", () => {
 describe("partitionByCompletion", () => {
   it("splitsIncompleteAndCompletedInRecentOrder", () => {
     const result = partitionByCompletion([
-      done(1, "2026-11-01T09:00:00"),
+      done(1, "2026-11-01T00:00:00Z"),
       reminder(2),
-      done(3, "2026-11-02T09:00:00"),
+      done(3, "2026-11-02T09:00:00Z"),
       reminder(4),
     ])
 
@@ -82,12 +83,12 @@ describe("partitionByCompletion", () => {
     const result = partitionByCompletion([
       reminder(1, {
         subtasks: [
-          done(11, "2026-11-01T09:00:00", { parentId: 1 }),
+          done(11, "2026-11-01T00:00:00Z", { parentId: 1 }),
           reminder(12, { parentId: 1 }),
         ],
       }),
-      done(2, "2026-11-01T09:00:00", {
-        subtasks: [done(21, "2026-11-01T09:00:00", { parentId: 2 })],
+      done(2, "2026-11-01T00:00:00Z", {
+        subtasks: [done(21, "2026-11-01T00:00:00Z", { parentId: 2 })],
       }),
     ])
 

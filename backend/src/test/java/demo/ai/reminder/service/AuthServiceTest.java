@@ -20,7 +20,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -132,7 +133,7 @@ class AuthServiceTest {
         AuthResult signedUp = signupAlice();
         User alice = userRepository.findById(signedUp.user().id()).orElseThrow();
         User bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
-        LocalDateTime past = LocalDateTime.now().minusMinutes(1);
+        Instant past = Instant.now().minus(Duration.ofMinutes(1));
         RefreshToken aliceExpired = refreshTokenRepository.save(new RefreshToken(alice, "alice-expired", past));
         RefreshToken bobExpired = refreshTokenRepository.save(new RefreshToken(bob, "bob-expired", past));
 

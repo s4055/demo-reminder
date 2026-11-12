@@ -19,7 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,9 +60,9 @@ class TagServiceTest {
         reminder("우유 사기", home);
         reminder("빨래", home);
         Reminder done = reminder("청소", home);
-        done.toggleComplete(LocalDateTime.now());
+        done.toggleComplete(Instant.now());
         Reminder doneAtWork = reminder("보고서", work);
-        doneAtWork.toggleComplete(LocalDateTime.now());
+        doneAtWork.toggleComplete(Instant.now());
 
         List<TagResponse> result = tagService.getTags();
 
@@ -136,7 +136,7 @@ class TagServiceTest {
     }
 
     private Reminder reminder(String title, Tag... tags) {
-        Reminder reminder = new Reminder(owner, title, null, null, null, null, null);
+        Reminder reminder = new Reminder(owner, title, null, null, null, null, null, null);
         reminder.replaceTags(List.of(tags));
         return reminderRepository.save(reminder);
     }

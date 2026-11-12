@@ -67,7 +67,7 @@ class VersionConflictTest {
     void create_startsAtVersionZero() {
         ReminderListResponse list = reminderListService.createList(new ReminderListRequest("장보기", null, null));
         ReminderResponse reminder = reminderService.createReminder(
-                new ReminderRequest("우유 사기", null, list.id(), null, null, null, null, null, null, null));
+                new ReminderRequest("우유 사기", null, list.id(), null, null, null, null, null, null, null, null));
 
         assertThat(list.version()).isZero();
         assertThat(reminder.version()).isZero();
@@ -129,9 +129,9 @@ class VersionConflictTest {
     void reorderReminders_incrementsVersion() {
         Long listId = reminderListService.createList(new ReminderListRequest("장보기", null, null)).id();
         ReminderResponse first = reminderService.createReminder(
-                new ReminderRequest("우유", null, listId, null, null, null, null, null, null, null));
+                new ReminderRequest("우유", null, listId, null, null, null, null, null, null, null, null));
         ReminderResponse second = reminderService.createReminder(
-                new ReminderRequest("빵", null, listId, null, null, null, null, null, null, null));
+                new ReminderRequest("빵", null, listId, null, null, null, null, null, null, null, null));
 
         reminderService.reorderReminders(new ReminderOrderRequest(listId, List.of(second.id(), first.id())));
         entityManager.flush();
@@ -177,8 +177,8 @@ class VersionConflictTest {
     void subtaskChanges_doNotIncrementParentVersion() {
         ReminderResponse parent = createReminder("장보기");
         ReminderResponse subtask = reminderService.createReminder(
-                new ReminderRequest("우유", null, null, null, null, null, parent.id(), null, null, null));
-        reminderService.createReminder(new ReminderRequest("빵", null, null, null, null, null, parent.id(), null, null, null));
+                new ReminderRequest("우유", null, null, null, null, null, null, parent.id(), null, null, null));
+        reminderService.createReminder(new ReminderRequest("빵", null, null, null, null, null, null, parent.id(), null, null, null));
         reminderService.deleteReminder(subtask.id());
         entityManager.flush();
         entityManager.clear();
@@ -239,10 +239,10 @@ class VersionConflictTest {
     }
 
     private ReminderResponse createReminder(String title) {
-        return reminderService.createReminder(new ReminderRequest(title, null, null, null, null, null, null, null, null, null));
+        return reminderService.createReminder(new ReminderRequest(title, null, null, null, null, null, null, null, null, null, null));
     }
 
     private static ReminderUpdateRequest updateRequest(String title, Long version) {
-        return new ReminderUpdateRequest(title, null, null, false, null, null, null, null, null, version);
+        return new ReminderUpdateRequest(title, null, null, null, false, null, null, null, null, null, version);
     }
 }

@@ -15,7 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Getter
@@ -36,22 +36,22 @@ public class RefreshToken extends BaseTimeEntity {
     private String tokenHash;
 
     @Column(nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
-    private LocalDateTime revokedAt;
+    private Instant revokedAt;
 
     @Version
     @ColumnDefault("0")
     @Column(nullable = false)
     private Long version;
 
-    public RefreshToken(User user, String tokenHash, LocalDateTime expiresAt) {
+    public RefreshToken(User user, String tokenHash, Instant expiresAt) {
         this.user = user;
         this.tokenHash = tokenHash;
         this.expiresAt = expiresAt;
     }
 
-    public boolean isExpired(LocalDateTime now) {
+    public boolean isExpired(Instant now) {
         return !now.isBefore(expiresAt);
     }
 
@@ -59,11 +59,11 @@ public class RefreshToken extends BaseTimeEntity {
         return revokedAt != null;
     }
 
-    public boolean isUsable(LocalDateTime now) {
+    public boolean isUsable(Instant now) {
         return !isRevoked() && !isExpired(now);
     }
 
-    public RefreshToken rotate(String newTokenHash, LocalDateTime newExpiresAt, LocalDateTime now) {
+    public RefreshToken rotate(String newTokenHash, Instant newExpiresAt, Instant now) {
         if (!isUsable(now)) {
             throw new IllegalStateException("Cannot rotate a revoked or expired refresh token: id=" + id);
         }
@@ -71,7 +71,7 @@ public class RefreshToken extends BaseTimeEntity {
         return new RefreshToken(user, newTokenHash, newExpiresAt);
     }
 
-    public void revoke(LocalDateTime now) {
+    public void revoke(Instant now) {
         if (!isRevoked()) {
             revokedAt = now;
         }

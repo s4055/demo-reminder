@@ -2,7 +2,7 @@ package demo.ai.reminder.repository.reminder;
 
 import demo.ai.reminder.domain.reminder.Reminder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,7 +16,7 @@ public interface ReminderRepositoryCustom {
 
     List<Reminder> findAccessibleIncomplete(Long userId);
 
-    List<Reminder> findAccessibleIncompleteDueBetween(Long userId, LocalDateTime from, LocalDateTime to);
+    List<Reminder> findAccessibleIncompleteDueBetween(Long userId, Instant from, Instant to);
 
     List<Reminder> findAccessibleIncompleteWithDueAt(Long userId);
 

@@ -10,7 +10,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import demo.ai.reminder.domain.reminder.Reminder;
 import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,7 +50,7 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
     }
 
     @Override
-    public List<Reminder> findAccessibleIncompleteDueBetween(Long userId, LocalDateTime from, LocalDateTime to) {
+    public List<Reminder> findAccessibleIncompleteDueBetween(Long userId, Instant from, Instant to) {
         return accessible(userId)
                 .where(reminder.completed.isFalse(), reminder.dueAt.goe(from), reminder.dueAt.lt(to))
                 .orderBy(reminder.dueAt.asc(), reminder.id.asc())
@@ -95,16 +95,16 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
                 .fetch();
     }
 
-    private DateTimeExpression<LocalDateTime> dueAtIfIncomplete() {
+    private DateTimeExpression<Instant> dueAtIfIncomplete() {
         return new CaseBuilder()
                 .when(reminder.completed.isFalse()).then(reminder.dueAt)
-                .otherwise(Expressions.nullExpression(LocalDateTime.class));
+                .otherwise(Expressions.nullExpression(Instant.class));
     }
 
-    private DateTimeExpression<LocalDateTime> completedAtIfCompleted() {
+    private DateTimeExpression<Instant> completedAtIfCompleted() {
         return new CaseBuilder()
                 .when(reminder.completed.isTrue()).then(reminder.completedAt)
-                .otherwise(Expressions.nullExpression(LocalDateTime.class));
+                .otherwise(Expressions.nullExpression(Instant.class));
     }
 
     private JPAQuery<Reminder> accessible(Long userId) {

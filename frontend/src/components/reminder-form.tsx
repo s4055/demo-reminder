@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { useCreateReminder } from "@/hooks/use-reminders"
 import { toDueAtParam } from "@/lib/due-date"
 import { NO_REPEAT, toRepeatFields, type Recurrence } from "@/lib/repeat"
+import { browserTimeZone } from "@/lib/timezone"
 
 export function ReminderForm({
   listId,
@@ -39,6 +40,7 @@ export function ReminderForm({
         title: trimmedTitle,
         listId,
         dueAt: dueAt ? toDueAtParam(dueAt) : null,
+        timeZone: browserTimeZone(),
         tagNames,
         ...toRepeatFields(dueAt ? recurrence : NO_REPEAT),
       },

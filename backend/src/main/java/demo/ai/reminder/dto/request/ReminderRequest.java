@@ -12,7 +12,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.DayOfWeek;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 
@@ -20,7 +21,8 @@ public record ReminderRequest(
         @NotBlank @Size(max = Reminder.TITLE_MAX_LENGTH) String title,
         @Size(max = Reminder.MEMO_MAX_LENGTH) String memo,
         Long listId,
-        LocalDateTime dueAt,
+        Instant dueAt,
+        ZoneId timeZone,
         Priority priority,
         List<@NotBlank @Size(max = Tag.NAME_MAX_LENGTH) String> tagNames,
         Long parentId,

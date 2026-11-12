@@ -16,8 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -46,13 +47,9 @@ public class ReminderService {
         return ReminderResponse.from(findReminderOrThrow(id));
     }
 
-    public List<ReminderResponse> getSmartReminders(SmartView view) {
+    public List<ReminderResponse> getSmartReminders(SmartView view, ZoneId zone) {
         return toResponses(switch (view) {
-            case TODAY -> {
-                LocalDate today = LocalDate.now(clock);
-                yield reminderRepository.findAccessibleIncompleteDueBetween(
-                        currentUser.id(), today.atStartOfDay(), today.plusDays(1).atStartOfDay());
-            }
+            case TODAY -> findDueToday(zone);
             case SCHEDULED -> reminderRepository.findAccessibleIncompleteWithDueAt(currentUser.id());
             case ALL -> reminderRepository.findAccessibleIncomplete(currentUser.id());
             case FLAGGED -> reminderRepository.findAccessibleIncompleteFlagged(currentUser.id());
@@ -65,7 +62,7 @@ public class ReminderService {
                 reminderRepository.searchAccessible(currentUser.id(), "%" + escapeLike(query.toLowerCase()) + "%"));
     }
 
-    public List<ReminderResponse> getUpcomingReminders(LocalDateTime from, LocalDateTime to) {
+    public List<ReminderResponse> getUpcomingReminders(Instant from, Instant to) {
         if (!from.isBefore(to)) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "from must be before to: from=" + from + ", to=" + to);
         }
@@ -77,7 +74,8 @@ public class ReminderService {
         Reminder parent = request.parentId() == null ? null : findReminderOrThrow(request.parentId());
         ReminderList list = parent == null ? memberListOrNull(request.listId()) : null;
         Reminder reminder = new Reminder(currentUser.reference(),
-                request.strippedTitle(), request.memo(), list, request.dueAt(), request.priority(), request.recurrence());
+                request.strippedTitle(), request.memo(), list, request.dueAt(), request.timeZone(), request.priority(),
+                request.recurrence());
         if (parent == null) {
             reminder.changeSortOrder(nextSortOrder(list));
         } else {
@@ -91,8 +89,8 @@ public class ReminderService {
     public void updateReminder(Long id, ReminderUpdateRequest request) {
         Reminder reminder = findReminderOrThrow(id);
         Versions.verify(reminder.getVersion(), request.version(), "Reminder " + id);
-        reminder.update(request.strippedTitle(), request.memo(), request.dueAt(), request.flagged(), request.priority(),
-                request.recurrence());
+        reminder.update(request.strippedTitle(), request.memo(), request.dueAt(), request.timeZone(), request.flagged(),
+                request.priority(), request.recurrence());
         reminder.replaceTags(tagService.resolveTags(request.strippedTagNames()));
     }
 
@@ -113,7 +111,7 @@ public class ReminderService {
     @Transactional
     public void toggleComplete(Long id) {
         Reminder reminder = findReminderOrThrow(id);
-        reminder.toggleComplete(LocalDateTime.now(clock)).ifPresent(next -> {
+        reminder.toggleComplete(Instant.now(clock)).ifPresent(next -> {
             if (!next.isSubtask()) {
                 next.changeSortOrder(nextSortOrder(next.getList()));
             }
@@ -145,6 +143,15 @@ public class ReminderService {
             reminderRepository.delete(reminder);
         });
         return DeletedCountResponse.from(deletedCount);
+    }
+
+    private List<Reminder> findDueToday(ZoneId zone) {
+        if (zone == null) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "zone is required for the today view");
+        }
+        LocalDate today = LocalDate.now(clock.withZone(zone));
+        return reminderRepository.findAccessibleIncompleteDueBetween(currentUser.id(),
+                today.atStartOfDay(zone).toInstant(), today.plusDays(1).atStartOfDay(zone).toInstant());
     }
 
     private static String escapeLike(String value) {

@@ -27,7 +27,8 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OptimisticLock;
 
 import java.time.DayOfWeek;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -46,6 +47,7 @@ public class Reminder extends BaseTimeEntity {
 
     public static final int TITLE_MAX_LENGTH = 200;
     public static final int MEMO_MAX_LENGTH = 255;
+    public static final int TIME_ZONE_MAX_LENGTH = 64;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -65,13 +67,16 @@ public class Reminder extends BaseTimeEntity {
 
     private boolean flagged;
 
-    private LocalDateTime dueAt;
+    private Instant dueAt;
+
+    @Column(length = TIME_ZONE_MAX_LENGTH)
+    private ZoneId timeZone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Priority priority;
 
-    private LocalDateTime completedAt;
+    private Instant completedAt;
 
     @Getter(AccessLevel.NONE)
     @Enumerated(EnumType.STRING)
@@ -118,25 +123,23 @@ public class Reminder extends BaseTimeEntity {
     @Column(nullable = false)
     private Long version;
 
-    public Reminder(User user, String title, String memo, ReminderList list, LocalDateTime dueAt, Priority priority,
-                    Recurrence recurrence) {
+    public Reminder(User user, String title, String memo, ReminderList list, Instant dueAt, ZoneId timeZone,
+                    Priority priority, Recurrence recurrence) {
         this.user = user;
         this.title = title;
         this.memo = memo;
         this.list = list;
-        this.dueAt = dueAt;
         this.priority = priorityOrNone(priority);
-        applyRecurrence(recurrence, dueAt);
+        schedule(dueAt, timeZone, recurrence);
     }
 
-    public void update(String title, String memo, LocalDateTime dueAt, boolean flagged, Priority priority,
-                       Recurrence recurrence) {
+    public void update(String title, String memo, Instant dueAt, ZoneId timeZone, boolean flagged,
+                       Priority priority, Recurrence recurrence) {
+        schedule(dueAt, timeZone, recurrence);
         this.title = title;
         this.memo = memo;
-        this.dueAt = dueAt;
         this.flagged = flagged;
         this.priority = priorityOrNone(priority);
-        applyRecurrence(recurrence, dueAt);
     }
 
     public Recurrence getRecurrence() {
@@ -225,7 +228,7 @@ public class Reminder extends BaseTimeEntity {
         this.flagged = !this.flagged;
     }
 
-    public Optional<Reminder> toggleComplete(LocalDateTime now) {
+    public Optional<Reminder> toggleComplete(Instant now) {
         if (completed) {
             this.completed = false;
             this.completedAt = null;
@@ -244,7 +247,8 @@ public class Reminder extends BaseTimeEntity {
             return Optional.empty();
         }
         this.nextOccurrenceCreated = true;
-        Reminder next = new Reminder(user, title, memo, list, recurrence.nextDueAt(dueAt), priority, recurrence);
+        Reminder next = new Reminder(user, title, memo, list, recurrence.nextDueAt(dueAt, timeZone), timeZone,
+                priority, recurrence);
         next.flagged = flagged;
         next.replaceTags(getTags());
         if (isSubtask()) {
@@ -253,16 +257,21 @@ public class Reminder extends BaseTimeEntity {
         return Optional.of(next);
     }
 
-    private void complete(LocalDateTime now) {
+    private void complete(Instant now) {
         this.completed = true;
         this.completedAt = now;
     }
 
-    private void applyRecurrence(Recurrence recurrence, LocalDateTime dueAt) {
+    private void schedule(Instant dueAt, ZoneId timeZone, Recurrence recurrence) {
+        if (dueAt != null && timeZone == null) {
+            throw new DomainException("A due date requires a time zone");
+        }
         Recurrence rule = Objects.requireNonNullElse(recurrence, Recurrence.NONE);
         if (rule.isRepeating() && dueAt == null) {
             throw new DomainException("A repeating reminder requires a due date");
         }
+        this.dueAt = dueAt;
+        this.timeZone = timeZone;
         this.repeatRule = rule.rule();
         this.repeatInterval = rule.interval();
         repeatDays.removeIf(repeatDay -> !rule.daysOfWeek().contains(repeatDay.getDayOfWeek()));

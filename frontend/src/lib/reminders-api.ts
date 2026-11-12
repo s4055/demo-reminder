@@ -3,6 +3,7 @@ import { toDueAtParam } from "@/lib/due-date"
 import type { Priority } from "@/lib/priority"
 import type { DayOfWeek, RepeatRule } from "@/lib/repeat"
 import type { SmartView } from "@/lib/selection"
+import { browserTimeZone } from "@/lib/timezone"
 
 export type Reminder = {
   id: number
@@ -12,6 +13,7 @@ export type Reminder = {
   flagged: boolean
   priority: Priority
   dueAt: string | null
+  timeZone: string | null
   repeatRule: RepeatRule
   repeatInterval: number
   repeatDaysOfWeek: DayOfWeek[]
@@ -31,6 +33,7 @@ export type CreateReminderInput = {
   memo?: string | null
   listId?: number | null
   dueAt?: string | null
+  timeZone?: string
   priority?: Priority
   tagNames?: string[]
   parentId?: number | null
@@ -43,6 +46,7 @@ export type UpdateReminderInput = {
   title: string
   memo: string | null
   dueAt: string | null
+  timeZone: string
   flagged: boolean
   priority: Priority
   tagNames: string[]
@@ -79,7 +83,11 @@ export function getRemindersByTag(tag: string): Promise<Reminder[]> {
 }
 
 export function getSmartReminders(view: SmartView): Promise<Reminder[]> {
-  return apiRequest<Reminder[]>(`/api/reminders/smart/${view}`)
+  const query =
+    view === "today"
+      ? `?${new URLSearchParams({ zone: browserTimeZone() })}`
+      : ""
+  return apiRequest<Reminder[]>(`/api/reminders/smart/${view}${query}`)
 }
 
 export function searchReminders(query: string): Promise<Reminder[]> {
