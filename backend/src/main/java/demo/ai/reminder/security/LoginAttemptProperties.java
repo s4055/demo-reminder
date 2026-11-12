@@ -7,7 +7,12 @@ import java.util.Objects;
 
 @ConfigurationProperties("app.auth.login-attempt")
 public record LoginAttemptProperties(int maxFailuresPerEmail, int maxFailuresPerIp, Duration window,
-                                     Duration lockDuration) {
+                                     Duration lockDuration, Store store) {
+
+    public enum Store {
+        MEMORY,
+        REDIS
+    }
 
     public LoginAttemptProperties {
         if (maxFailuresPerEmail < 1 || maxFailuresPerIp < 1) {
@@ -15,5 +20,6 @@ public record LoginAttemptProperties(int maxFailuresPerEmail, int maxFailuresPer
         }
         Objects.requireNonNull(window, "app.auth.login-attempt.window is required");
         Objects.requireNonNull(lockDuration, "app.auth.login-attempt.lock-duration is required");
+        store = Objects.requireNonNullElse(store, Store.MEMORY);
     }
 }

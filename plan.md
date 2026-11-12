@@ -925,6 +925,48 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 
 ---
 
+## Phase 37 — 로그인 시도 기록 공유 (서버 이중화 대응)
+**목표**: 백엔드를 여러 대로 띄워도 로그인 실패 횟수와 차단 상태가 모든 서버에서 같게 적용되도록, 기록을 서버 메모리가 아닌 공유 저장소(Redis)에 둔다.
+
+### 배경
+- Phase 36의 `LoginAttemptLimiter`는 실패 기록을 각 서버의 메모리에 두므로, 서버가 N대면 이메일 한도가 사실상 5×N회가 되고 차단도 한 서버에만 걸린다.
+- 로그인 흐름(차단 확인 → 인증 → 실패 기록 / 성공 시 초기화)과 API 응답(429, `Retry-After`)은 바꾸지 않고 저장 방식만 바꾼다.
+
+### 백엔드
+- 기록 저장을 `LoginAttemptStore` 인터페이스로 분리한다 (`remainingLock`, `recordFailure`, `reset`)
+  - `InMemoryLoginAttemptStore`: Phase 36의 메모리 구현을 옮긴다 (로컬 개발·단일 서버, 테스트 기본값)
+  - `RedisLoginAttemptStore`: Redis에 기록한다
+  - `AuthService`는 인터페이스에만 의존한다
+- `app.auth.login-attempt.store`(`memory` 기본, `redis`)로 구현을 고른다. `redis`일 때만 Redis 연결 설정(`spring.data.redis.*`)을 사용한다
+- Redis 키와 만료
+  - 실패 횟수: `login:fail:email:{정규화한 이메일}`, `login:fail:ip:{IP}` — 첫 실패 때 `window` 만큼 TTL을 건다
+  - 차단: `login:lock:email:{이메일}`, `login:lock:ip:{IP}` — 한도에 닿으면 `lock-duration` 만큼 TTL로 만들고, 실패 횟수 키는 지운다
+  - 횟수 증가·TTL 설정·차단 키 생성은 Lua 스크립트 하나로 실행해, 여러 서버의 동시 요청에서도 원자적으로 처리한다
+  - 남은 차단 시간(`Retry-After`)은 차단 키의 남은 TTL(`PTTL`)로 구한다
+  - 만료된 기록은 Redis TTL로 사라지므로 별도 정리 작업이 없다
+- Redis 장애 시에는 로그인을 막지 않고(fail-open) ERROR 로그를 남긴다. 로그인 가용성을 우선하며, 이 결정을 `README.md`에 적는다
+- 차단 시작 WARN 로그는 Lua 스크립트가 "이번 실패로 차단이 시작됨"을 돌려줄 때 한 번만 남긴다
+- 로컬 실행용 Redis를 `docker-compose.yml`(또는 README 안내)로 제공하고, `README.md`에 이중화 실행 방법(`store=redis`, 서버 2대 실행)을 적는다
+- `CLAUDE.md`의 시각 처리 관례에 예외를 적는다: Redis TTL로 관리하는 만료는 주입한 `Clock`이 아니라 Redis 서버 시각을 따른다
+- `openapi.yml`의 로그인 시도 제한 설명에 "여러 서버가 같은 기록을 공유한다"를 반영한다 (응답 형식 변경 없음)
+- 테스트
+  - 두 구현에 같은 시나리오를 적용하는 공통 테스트: 이메일 5회 실패 차단, 기간 경과 후 해제, 성공 시 초기화, IP 기준 차단, 다른 이메일 분리
+  - `RedisLoginAttemptStore`: Testcontainers로 실제 Redis를 띄우고 짧은 `window`·`lock-duration`으로 검증. 같은 Redis를 쓰는 저장소 객체 두 개(서버 2대 역할)에 실패를 나눠 기록해도 합산되어 차단되는지, 동시 실패 요청에서 횟수가 유실되지 않는지
+  - Redis 연결 실패 시 로그인이 막히지 않는지 (fail-open)
+  - 기존 `LoginAttemptLimiterTest`, 서비스·컨트롤러 테스트는 `memory` 구현으로 그대로 통과
+
+### 프론트엔드
+- 변경 없음 (429·`Retry-After` 응답 형식이 같다)
+
+### 완료 기준
+- 같은 Redis를 쓰는 백엔드 2대(`:8080`, `:8081`)에 실패 요청을 번갈아 보내면, 합쳐서 5번째 실패에서 차단되고 두 서버 모두 429를 응답한다.
+- 한 서버에서 로그인에 성공하면 다른 서버에서도 그 이메일의 실패 횟수가 초기화되어 있다.
+- `lock-duration`을 짧게 두면 시간이 지난 뒤 두 서버 모두에서 다시 로그인할 수 있다.
+- Redis를 끈 상태에서도 로그인은 동작하고 ERROR 로그가 남는다.
+- `store=memory`(기본값)로는 Redis 없이 지금처럼 실행된다.
+
+---
+
 ## 참고
 - 각 Phase는 이전 Phase 위에서 빌드/실행 가능한 상태를 유지하며 순차 진행한다.
 - spec.md 3번의 Out-of-Scope 중 10번에 포함되지 않은 항목(자연어 날짜 입력, 첨부파일, 위치 기반 리마인더)과 Web Push, 실시간(WebSocket) 동기화는 이 계획 범위 밖이며 필요 시 별도 논의한다.
