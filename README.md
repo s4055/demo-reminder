@@ -54,6 +54,8 @@ cd backend
   해당 사용자의 리프레시 토큰을 모두 폐기하므로 다시 로그인해야 합니다. 만료된 토큰은 로그인할 때 정리합니다.
 - 서명 키는 `app.jwt.secret`(32바이트 이상)이며 로컬 전용 기본값이 있습니다. 운영에서는 `JWT_SECRET` 환경 변수로 주입하고,
   HTTPS 환경이면 `JWT_COOKIE_SECURE=true`로 리프레시 쿠키에 `Secure`를 붙입니다.
+- 로그인 시도 제한: 15분 안에 같은 이메일로 5번, 같은 IP에서 20번 실패하면 15분 동안 로그인을 막고 429와 `Retry-After` 헤더로 응답합니다.
+  기록은 서버 메모리에 두므로 재시작하면 초기화되며, 기준값은 `app.auth.login-attempt`(`max-failures-per-email`, `max-failures-per-ip`, `window`, `lock-duration`)로 바꿀 수 있습니다.
 - CORS는 `http://localhost:3000`만 허용하며, 리프레시 토큰 쿠키를 보낼 수 있도록 `allowCredentials`를 켭니다.
 
 ### 프론트엔드 (`:3000`)

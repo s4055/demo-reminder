@@ -650,21 +650,21 @@
 
 ## Phase 36 — 로그인 시도 제한
 ### 백엔드
-- [ ] `app.auth.login-attempt` 설정 추가 (`@ConfigurationProperties`)
-- [ ] `LoginAttemptLimiter` 구현 (이메일·IP별 실패 기록, `Clock` 기준, 만료 기록 정리)
-- [ ] `AuthService.login`에 차단 확인·실패 기록·성공 시 초기화 적용, 컨트롤러가 IP 전달
-- [ ] `ResultCode.TOO_MANY_LOGIN_ATTEMPTS`(429) 추가, `Retry-After` 헤더 응답
-- [ ] 차단 시작 WARN 로그
-- [ ] `openapi.yml`에 429·`Retry-After` 추가
-- [ ] 테스트: 이메일 5회 실패 차단, 기간 경과 후 해제, 성공 시 초기화, IP 기준 차단, 만료 기록 정리
-- [ ] 테스트: 차단 중 올바른 비밀번호도 429, `Retry-After` 헤더, 다른 이메일 실패와 분리
+- [x] `app.auth.login-attempt` 설정 추가 (`@ConfigurationProperties`)
+- [x] `LoginAttemptLimiter` 구현 (이메일·IP별 실패 기록, `Clock` 기준, 만료 기록 정리)
+- [x] `AuthService.login`에 차단 확인·실패 기록·성공 시 초기화 적용, 컨트롤러가 IP 전달
+- [x] `ResultCode.TOO_MANY_LOGIN_ATTEMPTS`(429) 추가, `Retry-After` 헤더 응답
+- [x] 차단 시작 WARN 로그
+- [x] `openapi.yml`에 429·`Retry-After` 추가
+- [x] 테스트: 이메일 5회 실패 차단, 기간 경과 후 해제, 성공 시 초기화, IP 기준 차단, 만료 기록 정리
+- [x] 테스트: 차단 중 올바른 비밀번호도 429, `Retry-After` 헤더, 다른 이메일 실패와 분리
 
 ### 프론트엔드
-- [ ] `ApiError`에 재시도 시간 전달
-- [ ] 로그인 폼에 429 안내 문구 표시
-- [ ] 테스트: 429 응답의 `ApiError` 재시도 시간
+- [x] `ApiError`에 재시도 시간 전달
+- [x] 로그인 폼에 429 안내 문구 표시
+- [x] 테스트: 429 응답의 `ApiError` 재시도 시간
 
 ### 완료 기준 검증
-- [ ] 같은 이메일로 5번 틀린 뒤 올바른 비밀번호로도 로그인되지 않고 안내 문구가 보이는지 확인
-- [ ] `lock-duration`을 짧게 두고 시간이 지난 뒤 다시 로그인되는지 확인
-- [ ] 다른 계정 로그인은 영향받지 않는지 확인
+- [x] 같은 이메일로 5번 틀린 뒤 올바른 비밀번호로도 로그인되지 않고 안내 문구가 보이는지 확인
+- [x] `lock-duration`을 짧게 두고 시간이 지난 뒤 다시 로그인되는지 확인
+- [x] 다른 계정 로그인은 영향받지 않는지 확인

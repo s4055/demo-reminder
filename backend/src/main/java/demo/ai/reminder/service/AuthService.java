@@ -7,9 +7,11 @@ import demo.ai.reminder.dto.request.SignupRequest;
 import demo.ai.reminder.dto.response.UserResponse;
 import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.exception.RefreshTokenReuseException;
+import demo.ai.reminder.exception.TooManyLoginAttemptsException;
 import demo.ai.reminder.repository.user.UserRepository;
 import demo.ai.reminder.security.CurrentUser;
 import demo.ai.reminder.security.JwtProvider;
+import demo.ai.reminder.security.LoginAttemptLimiter;
 import demo.ai.reminder.security.LoginUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,6 +32,7 @@ public class AuthService {
     private final CurrentUser currentUser;
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
     @Transactional
     public AuthResult signup(SignupRequest request) {
@@ -44,8 +47,12 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResult login(LoginRequest request) {
-        Long userId = authenticate(request.email(), request.password());
+    public AuthResult login(LoginRequest request, String clientIp) {
+        loginAttemptLimiter.remainingLock(request.email(), clientIp).ifPresent(retryAfter -> {
+            throw new TooManyLoginAttemptsException(retryAfter);
+        });
+        Long userId = authenticate(request.email(), request.password(), clientIp);
+        loginAttemptLimiter.reset(request.email());
         refreshTokenService.deleteExpired(userId);
         return issueTokens(loadUser(userId), refreshTokenService.issue(userId));
     }
@@ -65,12 +72,13 @@ public class AuthService {
         return UserResponse.from(currentUser.load());
     }
 
-    private Long authenticate(String email, String password) {
+    private Long authenticate(String email, String password, String clientIp) {
         try {
             LoginUser loginUser = (LoginUser) authenticationManager.authenticate(
                     UsernamePasswordAuthenticationToken.unauthenticated(email, password)).getPrincipal();
             return loginUser.getId();
         } catch (AuthenticationException e) {
+            loginAttemptLimiter.recordFailure(email, clientIp);
             throw new BusinessException(ResultCode.UNAUTHORIZED, "Invalid email or password");
         }
     }

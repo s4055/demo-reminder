@@ -269,3 +269,34 @@ describe("isVersionConflict", () => {
     expect(api.isVersionConflict(new Error("x"))).toBe(false)
   })
 })
+
+describe("ApiError retryAfterSeconds", () => {
+  it("carriesRetryAfterSecondsOfTooManyRequests", async () => {
+    stubFetch(() =>
+      new Response(
+        JSON.stringify({ resultCode: "TOO_MANY_LOGIN_ATTEMPTS", resultMsg: "로그인 시도가 너무 많습니다.", data: null }),
+        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "900" } }
+      )
+    )
+
+    await expect(api.apiRequest("/api/auth/login", api.jsonBody("POST", {}))).rejects.toMatchObject({
+      status: 429,
+      resultCode: "TOO_MANY_LOGIN_ATTEMPTS",
+      retryAfterSeconds: 900,
+    })
+  })
+
+  it("leavesRetryAfterUndefinedWhenHeaderMissingOrNotSeconds", async () => {
+    stubFetch(() =>
+      new Response(JSON.stringify({ resultCode: "TOO_MANY_LOGIN_ATTEMPTS", resultMsg: "x", data: null }), {
+        status: 429,
+        headers: { "Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT" },
+      })
+    )
+
+    const error = await api.apiRequest("/api/auth/login", api.jsonBody("POST", {})).catch((e) => e)
+
+    expect(error).toBeInstanceOf(api.ApiError)
+    expect((error as InstanceType<ApiModule["ApiError"]>).retryAfterSeconds).toBeUndefined()
+  })
+})
