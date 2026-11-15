@@ -2,6 +2,9 @@ package demo.ai.reminder.repository.user;
 
 import demo.ai.reminder.domain.user.RefreshToken;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
@@ -13,5 +16,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     List<RefreshToken> findAllByUserIdAndRevokedAtIsNull(Long userId);
 
-    long deleteByUserIdAndExpiresAtLessThanEqual(Long userId, Instant now);
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from RefreshToken t where t.user.id = :userId and t.expiresAt <= :now")
+    int deleteExpired(@Param("userId") Long userId, @Param("now") Instant now);
 }

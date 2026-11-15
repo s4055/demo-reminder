@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -97,6 +98,27 @@ class ListMemberControllerTest {
         invite("owner@example.com")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("대문자가 섞인 이메일로 초대해도 소문자로 정규화한 이메일의 사용자를 멤버로 추가한다")
+    void invite_withMixedCaseEmail_addsNormalizedUser() throws Exception {
+        invite("Bob@Example.COM")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.userId").value(bob.getId()));
+    }
+
+    @Test
+    @DisplayName("초대 이메일이 100자를 넘으면 400을 반환한다")
+    void invite_withTooLongEmail_returnsBadRequest() throws Exception {
+        String email = "bob@" + "a".repeat(45) + "." + "b".repeat(47) + ".com";
+
+        invite(email)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value(startsWith("email: ")));
+        invite(email.substring(1))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -322,6 +322,42 @@ class SharedListAccessTest {
     }
 
     @Test
+    @DisplayName("리스트에서 제거된 멤버의 태그 목록에서 그 리스트의 리마인더가 빠지고, 다시 초대되면 다시 보인다")
+    void removedMember_tagsExcludeInaccessibleReminders_untilReinvited() {
+        TestAuth.signIn(bob);
+        reminderService.createReminder(
+                new ReminderRequest("빵", null, sharedListId, null, null, null, List.of("빵집"), null, null, null, null));
+        reminderService.createReminder(
+                new ReminderRequest("케이크", null, null, null, null, null, List.of("빵집"), null, null, null, null));
+        assertThat(tagService.getTags()).singleElement().extracting(TagResponse::reminderCount).isEqualTo(2L);
+
+        TestAuth.signIn(alice);
+        listMemberService.removeMember(sharedListId, bob.getId());
+        TestAuth.signIn(bob);
+        assertThat(tagService.getTags()).singleElement().extracting(TagResponse::reminderCount).isEqualTo(1L);
+        assertThat(reminderService.getReminders(null, "빵집")).extracting(ReminderResponse::title)
+                .containsExactly("케이크");
+
+        TestAuth.signIn(alice);
+        listMemberService.invite(sharedListId, "bob@example.com");
+        TestAuth.signIn(bob);
+        assertThat(tagService.getTags()).singleElement().extracting(TagResponse::reminderCount).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("리스트에서 제거된 멤버가 붙인 태그가 접근할 수 없는 리마인더에만 남으면 태그 목록에서 빠진다")
+    void removedMember_tagOnlyOnInaccessibleReminders_isHidden() {
+        TestAuth.signIn(bob);
+        reminderService.createReminder(
+                new ReminderRequest("빵", null, sharedListId, null, null, null, List.of("빵집"), null, null, null, null));
+        TestAuth.signIn(alice);
+        listMemberService.removeMember(sharedListId, bob.getId());
+
+        TestAuth.signIn(bob);
+        assertThat(tagService.getTags()).isEmpty();
+    }
+
+    @Test
     @DisplayName("소유자가 리스트를 삭제하면 멤버 정보와 다른 멤버가 만든 리마인더도 함께 삭제된다")
     void deleteList_removesMembersAndAllReminders() {
         TestAuth.signIn(bob);
@@ -348,15 +384,37 @@ class SharedListAccessTest {
     }
 
     @Test
-    @DisplayName("편집자가 같은 이름의 태그를 그대로 두고 리마인더를 수정해도 소유자의 태그 연결은 유지된다")
+    @DisplayName("편집자가 같은 이름의 태그를 그대로 두고 리마인더를 수정해도 소유자의 태그 연결은 유지되고, 편집자의 태그 목록에도 그 리마인더가 세어진다")
     void editorUpdate_keepsOwnerTagOfSameName() {
         TestAuth.signIn(bob);
         reminderService.updateReminder(aliceReminder.id(), new ReminderUpdateRequest(
                 "우유 2개", null, today, SEOUL, false, null, List.of("장보기"), null, null, null, aliceReminder.version()));
 
-        assertThat(tagService.getTags()).isEmpty();
+        assertThat(tagService.getTags()).singleElement().satisfies(tag -> {
+            assertThat(tag.name()).isEqualTo("장보기");
+            assertThat(tag.reminderCount()).isEqualTo(1L);
+        });
         TestAuth.signIn(alice);
         assertThat(tagService.getTags()).extracting(TagResponse::name).containsExactly("장보기");
+    }
+
+    @Test
+    @DisplayName("다른 멤버가 붙인 같은 이름의 태그도 내 태그 개수와 태그 필터에 똑같이 포함된다")
+    void sameNameTagOfOtherMember_isCountedAndFilteredByName() {
+        TestAuth.signIn(bob);
+        reminderService.createReminder(
+                new ReminderRequest("세제", null, null, null, null, null, List.of("장보기"), null, null, null, null));
+
+        assertThat(tagService.getTags()).singleElement().extracting(TagResponse::reminderCount).isEqualTo(2L);
+        assertThat(reminderService.getReminders(null, "장보기")).extracting(ReminderResponse::title)
+                .containsExactly("우유", "세제");
+
+        TestAuth.signIn(carol);
+        reminderService.createReminder(
+                new ReminderRequest("휴지", null, null, null, null, null, List.of("장보기"), null, null, null, null));
+        assertThat(tagService.getTags()).singleElement().extracting(TagResponse::reminderCount).isEqualTo(1L);
+        assertThat(reminderService.getReminders(null, "장보기")).extracting(ReminderResponse::title)
+                .containsExactly("휴지");
     }
 
     private static void assertResultCode(Executable executable, ResultCode resultCode) {

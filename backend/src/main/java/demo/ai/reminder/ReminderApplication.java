@@ -8,8 +8,8 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 @ConfigurationPropertiesScan
 public class ReminderApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(ReminderApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(ReminderApplication.class, args);
+    }
 
 }

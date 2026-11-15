@@ -140,6 +140,19 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("로그인 이메일이 100자를 넘으면 인증을 시도하지 않고 400을 반환한다")
+    void login_withTooLongEmail_returnsBadRequest() throws Exception {
+        String email = "a".repeat(89) + "@example.com";
+
+        mockMvc.perform(loginRequest(email, "password1", "10.3.0.1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.resultCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.resultMsg").value(containsString("email: ")));
+        mockMvc.perform(loginRequest(email.substring(1), "password1", "10.3.0.1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("비밀번호가 틀리거나 없는 이메일이면 같은 메시지로 401을 반환하고 리프레시 쿠키를 발급하지 않는다")
     void login_withInvalidCredentials_returnsUnauthorized() throws Exception {
         signup("alice@example.com", "password1", "앨리스");

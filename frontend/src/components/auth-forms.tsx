@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useLogin, useMe, useSignup } from "@/hooks/use-auth"
 import { ApiError } from "@/lib/api"
+import { EMAIL_TOO_LONG_MESSAGE, isEmailTooLong } from "@/lib/email"
 import { loginErrorMessage } from "@/lib/login-error"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -63,8 +64,10 @@ export function LoginForm() {
             autoFocus
             aria-invalid={errors.email ? true : undefined}
             {...register("email", {
-              validate: (value) =>
-                value.trim().length > 0 || "이메일을 입력해 주세요.",
+              validate: (value) => {
+                if (!value.trim()) return "이메일을 입력해 주세요."
+                return !isEmailTooLong(value) || EMAIL_TOO_LONG_MESSAGE
+              },
             })}
           />
         </Field>
@@ -148,6 +151,7 @@ export function SignupForm() {
             {...register("email", {
               validate: (value) => {
                 if (!value.trim()) return "이메일을 입력해 주세요."
+                if (isEmailTooLong(value)) return EMAIL_TOO_LONG_MESSAGE
                 return (
                   EMAIL_PATTERN.test(value.trim()) ||
                   "이메일 형식이 올바르지 않습니다."

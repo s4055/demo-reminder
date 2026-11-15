@@ -34,7 +34,7 @@ public class ListMemberController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ListMemberResponse> invite(@PathVariable Long listId,
                                                   @Valid @RequestBody ListMemberRequest request) {
-        return ApiResponse.success(listMemberService.invite(listId, request.email()));
+        return ApiResponse.success(listMemberService.invite(listId, request.normalizedEmail()));
     }
 
     @DeleteMapping("/{userId}")

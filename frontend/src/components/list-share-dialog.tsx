@@ -23,6 +23,7 @@ import {
   useRemoveListMember,
 } from "@/hooks/use-lists"
 import { ApiError } from "@/lib/api"
+import { EMAIL_TOO_LONG_MESSAGE, isEmailTooLong } from "@/lib/email"
 import { isOwner, type ReminderList } from "@/lib/lists-api"
 
 export function ListShareDialog({
@@ -215,9 +216,13 @@ function InviteForm({ listId }: { listId: number }) {
           autoComplete="off"
           aria-invalid={errorMessage ? true : undefined}
           {...register("email", {
-            validate: (value) =>
-              /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ||
-              "이메일 형식으로 입력해 주세요.",
+            validate: (value) => {
+              if (isEmailTooLong(value)) return EMAIL_TOO_LONG_MESSAGE
+              return (
+                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ||
+                "이메일 형식으로 입력해 주세요."
+              )
+            },
             onChange: () => invite.reset(),
           })}
         />

@@ -54,10 +54,12 @@ public class RefreshTokenService {
         if (current.isExpired(now)) {
             throw invalidToken("Refresh token is expired");
         }
+        Long userId = current.getUser().getId();
         String newToken = generateToken();
         refreshTokenRepository.save(current.rotate(hash(newToken), expiresAt(now), now));
         flushRotation();
-        return new IssuedRefreshToken(current.getUser().getId(), newToken);
+        refreshTokenRepository.deleteExpired(userId, now);
+        return new IssuedRefreshToken(userId, newToken);
     }
 
     public void revoke(String token) {
@@ -68,8 +70,8 @@ public class RefreshTokenService {
                 .ifPresent(refreshToken -> refreshToken.revoke(now()));
     }
 
-    public long deleteExpired(Long userId) {
-        return refreshTokenRepository.deleteByUserIdAndExpiresAtLessThanEqual(userId, now());
+    public int deleteExpired(Long userId) {
+        return refreshTokenRepository.deleteExpired(userId, now());
     }
 
     private RefreshToken find(String token) {

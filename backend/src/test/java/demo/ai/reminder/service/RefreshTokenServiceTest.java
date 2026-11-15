@@ -226,6 +226,38 @@ class RefreshTokenServiceTest {
     }
 
     @Test
+    @DisplayName("회전하면 그 사용자의 만료된 토큰을 지우고, 만료되지 않은 토큰과 다른 사용자의 토큰은 남긴다")
+    void rotate_removesExpiredTokensOfUser() throws Exception {
+        String expired = refreshTokenService.issue(alice.getId()).token();
+        User bob = userRepository.save(new User("bob@example.com", "{noop}password", "밥"));
+        String bobExpired = refreshTokenService.issue(bob.getId()).token();
+        clock.advance(Duration.ofHours(1));
+        String current = refreshTokenService.issue(alice.getId()).token();
+        clock.advance(jwtProperties.refreshTokenTtl().minusMinutes(30));
+
+        String rotated = refreshTokenService.rotate(current).token();
+
+        assertThat(refreshTokenRepository.findByTokenHash(sha256Hex(expired))).isEmpty();
+        assertThat(stored(current).isRevoked()).isTrue();
+        assertThat(stored(rotated).isRevoked()).isFalse();
+        assertThat(refreshTokenRepository.findByTokenHash(sha256Hex(bobExpired))).isPresent();
+    }
+
+    @Test
+    @DisplayName("재발급만 반복해도 이전에 회전한 토큰이 만료되면 다음 회전 때 지워진다")
+    void rotate_removesRotatedTokensOnceExpired() throws Exception {
+        String first = refreshTokenService.issue(alice.getId()).token();
+        clock.advance(Duration.ofMinutes(15));
+        String second = refreshTokenService.rotate(first).token();
+        clock.advance(jwtProperties.refreshTokenTtl().minusMinutes(1));
+        String third = refreshTokenService.rotate(second).token();
+
+        assertThat(refreshTokenRepository.findByTokenHash(sha256Hex(first))).isEmpty();
+        assertThat(refreshTokenRepository.findAll()).extracting(RefreshToken::getTokenHash)
+                .containsExactlyInAnyOrder(sha256Hex(second), sha256Hex(third));
+    }
+
+    @Test
     @DisplayName("저장되지 않았거나 비어 있는 토큰으로 회전하면 401 예외가 발생한다")
     void rotate_throwsUnauthorized_whenTokenUnknownOrBlank() {
         assertUnauthorized(() -> refreshTokenService.rotate("unknown-token"));

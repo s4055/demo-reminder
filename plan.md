@@ -739,7 +739,7 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 
 # v7 — 품질·확장성 개선 (spec.md 15번)
 
-### 공통 원칙 (Phase 30~36)
+### 공통 원칙 (Phase 30~38)
 - 위험이 적은 정리와 테스트 기반을 먼저 마련한 뒤, API가 바뀌는 작업을 진행한다.
 - 서버와 프론트엔드가 함께 바뀌어야 동작하는 API 변경은 한 Phase에서 끝낸다.
 - API를 바꾸는 Phase는 `backend/openapi.yml`, 백엔드 테스트, 프론트엔드 테스트를 같은 Phase에서 갱신한다.
@@ -964,6 +964,72 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 - `lock-duration`을 짧게 두면 시간이 지난 뒤 두 서버 모두에서 다시 로그인할 수 있다.
 - Redis를 끈 상태에서도 로그인은 동작하고 ERROR 로그가 남는다.
 - `store=memory`(기본값)로는 Redis 없이 지금처럼 실행된다.
+
+---
+
+## Phase 38 — 코드 리뷰 지적 사항 정리
+**목표**: 백엔드 전체 리뷰(관례·정확성)에서 확인된 문제를 바로잡고, 실제 관례와 다르게 적힌 `CLAUDE.md` 문구를 명확히 한다.
+
+### 배경
+- 리뷰에서 확정되었거나 가능성이 있다고 판정된 9개 항목을 다룬다. 기각된 항목(운영 기본 JWT 키, 프록시 IP 판별, 재발급 유예, sortOrder 중복, ListGroup 낙관적 락, H2 콘솔)은 의도된 설계이거나 v7 범위 밖이라 다루지 않는다.
+- 아래 순서는 영향이 큰 것부터다. 각 항목은 독립적이라 순서를 바꿔도 된다.
+
+### 백엔드
+1. **리마인더 수정 시 `flagged` 필수 강제**
+   - `ReminderUpdateRequest.flagged`를 `@NotNull Boolean`으로 바꾼다. 서비스는 값을 받아 쓰기만 한다
+   - 먼저 `flagged` 없는 PUT 테스트로 현재 동작(200으로 `false` 덮어쓰기인지, 이미 400인지)을 확인하고 PR 설명에 적는다
+   - `openapi.yml`은 이미 필수로 적혀 있으므로 바꾸지 않는다
+   - 테스트(컨트롤러): `flagged` 누락 시 400(`BAD_REQUEST`)이고 플래그가 바뀌지 않음
+2. **로그인·멤버 초대 이메일 길이 제한**
+   - `LoginRequest.email`과 `ListMemberRequest.email`에 `@Size(max = User.EMAIL_MAX_LENGTH)`를 추가한다 (`SignupRequest`와 같은 제한)
+   - `openapi.yml`의 두 요청 스키마에 `maxLength: 100`을 반영한다
+   - 테스트(컨트롤러): 101자 이메일로 로그인·멤버 초대하면 400
+3. **태그 목록·개수와 태그 필터의 기준을 이름 + 접근 가능한 리마인더로 통일**
+   - 처음에는 소유자 기준으로 정했으나, 리마인더 하나에 같은 이름의 태그는 하나만 붙고 화면에는 누가 붙였든 이름이 보이므로, 소유자 기준이면 "보이는 태그로 필터해도 안 나오는" 경우가 생겨 이름 기준으로 바꿨다
+   - "접근 가능한 리마인더" 조건(`ReminderRepositoryCustomImpl.accessible`의 조건)을 `AccessibleReminders`로 옮겨 태그 조회에서도 쓴다
+   - `TagRepositoryCustomImpl.findAllInUseWithReminderCount`: 내 태그를 대상으로, 존재 확인과 개수 모두 "같은 이름의 태그가 붙은 접근 가능한 리마인더"로 센다
+   - `ReminderRepositoryCustomImpl.findAccessibleByTagName`: 지금처럼 이름으로 찾는다
+   - 멤버를 제거할 때 그 멤버의 `ReminderTag`는 지우지 않는다 (조회 시점에 제외)
+   - `openapi.yml`의 `/api/tags`, `TagResponse.reminderCount`, `?tag=` 설명에 기준을 반영한다
+   - 테스트(`SharedListAccessTest`)
+     - 공유 리스트에서 제거된 멤버의 태그 목록과 개수에서 그 리스트의 리마인더가 빠지는지
+     - 다시 초대되면 태그가 다시 보이는지
+     - 다른 멤버가 붙인 같은 이름의 태그가 개수와 필터에 똑같이 포함되고, 멤버가 아닌 사용자에게는 포함되지 않는지
+4. **리프레시 토큰 재발급 시 만료 행 정리**
+   - `RefreshTokenService.rotate`에서 회전 결과를 flush한 뒤 해당 사용자의 만료된 행을 지운다
+   - 삭제는 일괄 삭제 쿼리(`@Modifying`)로 한다. 행마다 `@Version`을 확인하는 파생 삭제는 두 기기가 동시에 재발급하며 같은 만료 행을 지울 때 낙관적 락 충돌로 401이 날 수 있다
+   - 재사용 감지로 실패하는 경로(`noRollbackFor`)의 동작은 바꾸지 않는다
+   - `README.md`의 "만료된 토큰은 로그인할 때 정리합니다"를 "로그인과 재발급 때 정리합니다"로 고친다
+   - 테스트(`RefreshTokenServiceTest`): `MutableClock`으로 만료 행을 만든 뒤 재발급하면 그 행이 삭제되고, 만료되지 않은 행과 새 토큰은 남는지
+5. **이메일 정규화를 요청 DTO 메서드로 이동**
+   - `SignupRequest`와 `ListMemberRequest`에 `normalizedEmail()`을 두고, 내부에서 `User.normalizeEmail`에 위임한다
+   - `AuthService.signup`은 `request.normalizedEmail()`을 쓰고, `ListMemberController`는 정규화한 값을 서비스에 넘긴다 (필드 하나짜리 요청이라 값을 넘긴다)
+   - `LoginUserDetailsService`는 Spring Security가 원문을 넘기는 콜백이라 지금처럼 `User.normalizeEmail`을 쓴다
+   - 테스트: 앞뒤 공백·대문자가 섞인 이메일로 회원가입·멤버 초대가 기존처럼 동작하는지 (기존 테스트 호출부 갱신)
+6. **`ReminderApplication.java` 들여쓰기**
+   - 탭 3줄을 4칸 공백으로 바꾼다
+7. **JPA Auditing 시각에 `Clock` 적용**
+   - `Instant.now(clock)`을 돌려주는 `DateTimeProvider` 빈을 두고 `@EnableJpaAuditing(dateTimeProviderRef = ...)`로 연결한다 (`JpaAuditingConfig`)
+   - 테스트: 고정 `Clock`을 주입한 통합 테스트에서 저장한 엔티티의 `createdAt`/`updatedAt`이 그 시각인지, 시각을 옮긴 뒤 수정하면 `updatedAt`만 바뀌는지
+8. **`CLAUDE.md` 테스트 관례 문구 정리** (코드 변경 없음)
+   - 테스트 메서드명: 영어 camelCase 구간을 밑줄로 이어 `대상_조건_결과` 형태로 쓰는 것을 허용한다고 명시한다 (지금 저장소의 형식)
+   - Service 테스트: 커밋 시점 동작(`noRollbackFor` 커밋, 커밋 시점 낙관적 락 충돌)을 검증하는 테스트는 `@Transactional` 없이 쓰고 `@AfterEach`로 직접 정리하는 것을 예외로 허용한다고 명시한다
+   - 시각 처리 관례에 JPA Auditing도 주입한 `Clock`을 따른다는 점을 반영한다
+
+### 프론트엔드
+- 리마인더 수정은 항상 `flagged`를 보내고, 태그 필터는 이름을 그대로 쓰므로 바꿀 것이 없다
+- 이메일 100자 제한을 화면에서도 먼저 검사한다
+  - 이유: 서버가 100자를 넘는 이메일을 400으로 막자, 초대 폼은 400을 "이미 이 리스트의 멤버입니다."로, 로그인 폼은 일반 오류로 표시해 안내가 틀렸다
+  - `lib/email.ts`에 기준값(`EMAIL_MAX_LENGTH`)과 판정 함수를 두고, 로그인·회원가입·멤버 초대 폼에서 "이메일은 100자 이하로 입력해 주세요."로 막는다 (요청을 보내지 않는다)
+  - 테스트(`lib/email.test.ts`): 100자 허용, 101자 거부, 앞뒤 공백 무시
+
+### 완료 기준
+- `flagged` 없이 리마인더를 수정하면 400이고, 플래그 상태가 유지된다.
+- 공유 리스트에서 멤버를 제거하면, 그 멤버의 사이드바 태그 개수에서 그 리스트의 리마인더가 빠진다.
+- 사이드바 태그 개수와 그 태그로 필터한 미완료 리마인더 수가 일치한다(다른 멤버가 같은 이름의 태그를 붙인 공유 리마인더 포함).
+- 재발급을 반복해도 만료된 리프레시 토큰 행이 남지 않는다.
+- 로그인, 회원가입, 멤버 초대, 태그 필터가 화면에서 이전과 같게 동작한다.
+- 백엔드 테스트가 모두 통과한다.
 
 ---
 
