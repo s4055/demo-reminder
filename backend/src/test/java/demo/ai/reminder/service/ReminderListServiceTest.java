@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +54,9 @@ class ReminderListServiceTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private Clock clock;
 
     private User owner;
 
@@ -98,7 +102,7 @@ class ReminderListServiceTest {
     @Test
     @DisplayName("리스트를 생성하면 JPA Auditing이 생성일과 수정일을 채운다")
     void createList_fillsCreatedAtAndUpdatedAt() {
-        Instant before = Instant.now();
+        Instant before = Instant.now(clock);
 
         ReminderListResponse result = reminderListService.createList(new ReminderListRequest("장보기", null, null));
 

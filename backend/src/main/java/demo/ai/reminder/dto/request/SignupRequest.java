@@ -15,6 +15,10 @@ public record SignupRequest(
     public static final int PASSWORD_MIN_LENGTH = 8;
     public static final int BCRYPT_MAX_PASSWORD_BYTES = 72;
 
+    public String normalizedEmail() {
+        return User.normalizeEmail(email);
+    }
+
     public String strippedName() {
         return name.strip();
     }

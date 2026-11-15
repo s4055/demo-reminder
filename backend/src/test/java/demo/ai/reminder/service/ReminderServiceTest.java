@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
@@ -63,6 +64,9 @@ class ReminderServiceTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private Clock clock;
 
     private User owner;
 
@@ -191,7 +195,7 @@ class ReminderServiceTest {
     @Test
     @DisplayName("리마인더를 생성하면 JPA Auditing이 생성일과 수정일을 채운다")
     void createReminder_fillsCreatedAtAndUpdatedAt() {
-        Instant before = Instant.now();
+        Instant before = Instant.now(clock);
 
         ReminderResponse result = reminderService.createReminder(new ReminderRequest("우유 사기", null, null, null, null, null, null, null, null, null, null));
 

@@ -66,9 +66,9 @@ class ListMemberServiceTest {
     }
 
     @Test
-    @DisplayName("소유자가 이메일(대소문자 무시)로 초대하면 EDITOR 멤버로 추가되고, 멤버 목록은 소유자 다음에 초대 순으로 나온다")
+    @DisplayName("소유자가 이메일로 초대하면 EDITOR 멤버로 추가되고, 멤버 목록은 소유자 다음에 초대 순으로 나온다")
     void invite_addsEditorMember() {
-        ListMemberResponse member = listMemberService.invite(listId, "  BOB@example.com ");
+        ListMemberResponse member = listMemberService.invite(listId, "bob@example.com");
         listMemberService.invite(listId, "carol@example.com");
 
         assertThat(member.userId()).isEqualTo(bob.getId());

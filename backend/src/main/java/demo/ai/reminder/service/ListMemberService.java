@@ -35,9 +35,8 @@ public class ListMemberService {
     @Transactional
     public ListMemberResponse invite(Long listId, String email) {
         ReminderList list = listAccess.ownedList(listId);
-        String normalizedEmail = User.normalizeEmail(email);
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "User not found: " + normalizedEmail));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND, "User not found: " + email));
         return ListMemberResponse.from(UniqueSaves.saveOrConflict(listMemberRepository, list.addMember(user),
                 "Already a member of the list: " + listId));
     }

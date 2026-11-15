@@ -14,7 +14,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import static demo.ai.reminder.domain.list.QListMember.listMember;
 import static demo.ai.reminder.domain.reminder.QReminder.reminder;
 import static demo.ai.reminder.domain.reminder.QReminderTag.reminderTag;
 
@@ -122,15 +121,7 @@ class ReminderRepositoryCustomImpl implements ReminderRepositoryCustom {
     }
 
     private JPAQuery<Reminder> accessible(Long userId) {
-        return queryFactory.selectFrom(reminder).where(accessibleBy(userId));
-    }
-
-    private BooleanExpression accessibleBy(Long userId) {
-        return reminder.list.isNull().and(reminder.user.id.eq(userId))
-                .or(JPAExpressions.selectOne()
-                        .from(listMember)
-                        .where(listMember.list.eq(reminder.list), listMember.user.id.eq(userId))
-                        .exists());
+        return queryFactory.selectFrom(reminder).where(AccessibleReminders.accessibleBy(reminder, userId));
     }
 
     private BooleanExpression hasTagNameLike(String pattern) {

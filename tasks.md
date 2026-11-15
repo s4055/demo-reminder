@@ -549,7 +549,7 @@
 
 # v7 — 품질·확장성 개선 (spec.md 15번)
 
-`plan.md`의 Phase 30~36을 기준으로 한다. 모든 작업은 CI가 통과한 PR로 머지한다.
+`plan.md`의 Phase 30~38을 기준으로 한다. 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 30 — 코드 정리
 - [x] 백엔드 import 순서를 IntelliJ 기본 배치로 통일 (main, test)
@@ -690,3 +690,39 @@
 - [x] `lock-duration`을 짧게 두고 두 서버 모두에서 다시 로그인되는지 확인
 - [x] Redis를 끈 상태에서 로그인이 동작하고 ERROR 로그가 남는지 확인
 - [x] `store=memory`(기본값)로 Redis 없이 실행되는지 확인
+
+## Phase 38 — 코드 리뷰 지적 사항 정리
+### 백엔드
+- [x] `flagged` 없는 PUT의 현재 동작 확인 후 `ReminderUpdateRequest.flagged`를 `@NotNull Boolean`으로 변경 (기존에도 Jackson 역직렬화 실패로 400이었으나 메시지가 "잘못된 요청입니다."였고, 이제 `flagged: ...`로 필드를 알려준다)
+- [x] 테스트: `flagged` 누락 시 400이고 플래그가 바뀌지 않음
+- [x] `LoginRequest`·`ListMemberRequest`의 `email`에 `@Size(max = User.EMAIL_MAX_LENGTH)` 추가, `openapi.yml`에 `maxLength: 100` 반영
+- [x] 테스트: 101자 이메일로 로그인·멤버 초대 시 400
+- [x] 접근 가능한 리마인더 조건을 `AccessibleReminders`로 옮겨 태그 조회와 공유
+- [x] 태그 목록의 존재 확인·개수를 "같은 이름의 태그가 붙은 접근 가능한 리마인더"로 변경 (소유자 기준 대신 이름 기준으로 결정)
+- [x] 태그 필터(`findAccessibleByTagName`)는 이름 기준 유지
+- [x] `openapi.yml`의 `/api/tags`, `TagResponse.reminderCount`, `?tag=` 설명 갱신
+- [x] 테스트: 멤버 제거 후 태그 목록·개수에서 제외, 재초대 시 다시 보임, 다른 멤버의 같은 이름 태그가 개수와 필터에 함께 포함, 멤버가 아니면 제외
+- [x] `RefreshTokenService.rotate`에서 해당 사용자의 만료된 리프레시 토큰 행 정리(일괄 삭제 쿼리), `README.md` 문구 수정
+- [x] 테스트: 재발급 시 만료 행 삭제, 만료되지 않은 행과 새 토큰 유지, 재발급만 반복해도 만료된 이전 토큰 정리
+- [x] `SignupRequest`·`ListMemberRequest`에 `normalizedEmail()` 추가, 서비스·컨트롤러 호출부 변경
+- [x] 테스트: 대문자 섞인 이메일로 회원가입·멤버 초대 동작 유지 (앞뒤 공백이 있는 이메일은 `@Email`에서 400)
+- [x] `ReminderApplication.java`의 탭 들여쓰기를 공백으로 변경
+- [x] `Clock` 기반 `DateTimeProvider`를 `@EnableJpaAuditing(dateTimeProviderRef = ...)`로 연결
+- [x] 테스트: 고정 `Clock`에서 `createdAt`/`updatedAt` 기록, 시각을 옮긴 뒤 수정 시 `updatedAt`만 변경
+- [x] `CLAUDE.md`: 테스트 메서드명 밑줄 구분(`대상_조건_결과`) 허용 명시
+- [x] `CLAUDE.md`: 커밋 시점 검증 Service 테스트의 `@Transactional` 예외(`@AfterEach` 정리) 명시
+- [x] `CLAUDE.md`: JPA Auditing도 주입한 `Clock`을 따른다는 점 반영
+
+### 프론트엔드
+- [x] `lib/email.ts`에 이메일 100자 기준과 판정 함수 추가
+- [x] 로그인·회원가입·멤버 초대 폼에서 100자 초과 이메일을 "이메일은 100자 이하로 입력해 주세요."로 막음 (서버 400을 "이미 멤버"·일반 오류로 잘못 안내하던 문제)
+- [x] 테스트: 100자 허용, 101자 거부, 앞뒤 공백 무시
+
+### 완료 기준 검증
+- [x] `flagged` 없이 리마인더 수정 시 400이고 플래그 상태가 유지되는지 확인
+- [x] 공유 리스트에서 멤버 제거 후 그 멤버의 태그 개수에서 리스트 리마인더가 빠지는지 확인
+- [x] 사이드바 태그 개수와 그 태그로 필터한 미완료 리마인더 수가 일치하는지 확인 (다른 멤버가 같은 이름 태그를 붙인 공유 리마인더 포함)
+- [x] 재발급을 반복해도 만료된 리프레시 토큰 행이 남지 않는지 확인
+- [x] 로그인, 회원가입, 멤버 초대, 태그 필터가 화면에서 이전과 같게 동작하는지 확인
+- [x] 화면에서 100자 초과 이메일로 로그인·회원가입·멤버 초대 시 길이 안내가 나오고 요청을 보내지 않는지 확인
+- [x] 백엔드 테스트 전체 통과, 프론트엔드 `npm test` 통과

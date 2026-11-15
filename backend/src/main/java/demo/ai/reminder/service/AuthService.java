@@ -36,7 +36,7 @@ public class AuthService {
 
     @Transactional
     public AuthResult signup(SignupRequest request) {
-        String email = User.normalizeEmail(request.email());
+        String email = request.normalizedEmail();
         if (userRepository.existsByEmail(email)) {
             throw new BusinessException(ResultCode.CONFLICT, "Email already registered: " + email);
         }

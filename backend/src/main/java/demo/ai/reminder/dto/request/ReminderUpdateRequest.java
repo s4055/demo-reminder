@@ -22,7 +22,7 @@ public record ReminderUpdateRequest(
         @Size(max = Reminder.MEMO_MAX_LENGTH) String memo,
         Instant dueAt,
         ZoneId timeZone,
-        boolean flagged,
+        @NotNull Boolean flagged,
         Priority priority,
         List<@NotBlank @Size(max = Tag.NAME_MAX_LENGTH) String> tagNames,
         RepeatRule repeatRule,
