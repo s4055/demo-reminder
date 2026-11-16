@@ -733,37 +733,37 @@
 
 ## Phase 39 — E2E 기반 + 인증
 ### 구성
-- [ ] `@playwright/test` devDependency 추가, `frontend/e2e/` 디렉터리와 `npm run e2e`·`npm run e2e:ui` 스크립트
-- [ ] `playwright.config.ts`: Chromium, `ko-KR`·`Asia/Seoul` 고정, 실패 시 스크린샷·trace, CI 재시도 1회
-- [ ] `webServer`: 백엔드(인메모리 H2, IP 로그인 시도 한도 상향, 액세스 토큰 30초)·프론트엔드(CI는 build+start, 로컬은 dev 재사용)
-- [ ] `.gitignore`에 `playwright-report/`, `test-results/` 추가
-- [ ] `e2e/support/`: 고유 사용자 생성, API 헬퍼(리스트·리마인더·그룹 생성), 화면 로그인 헬퍼, 사용자별 컨텍스트 fixture
+- [x] `@playwright/test` devDependency 추가, `frontend/e2e/` 디렉터리와 `npm run e2e`·`npm run e2e:ui` 스크립트
+- [x] `playwright.config.ts`: Chromium, `ko-KR`·`Asia/Seoul` 고정, 실패 시 스크린샷·trace, CI 재시도 1회
+- [x] `webServer`: 백엔드(인메모리 H2, IP 로그인 시도 한도 상향, 액세스 토큰 30초)·프론트엔드(CI는 build+start, 로컬은 dev 재사용)
+- [x] `.gitignore`에 `playwright-report/`, `test-results/` 추가
+- [x] `e2e/support/`: 고유 사용자 생성, API 헬퍼(리스트·리마인더·그룹 생성), 화면 로그인 헬퍼, 사용자별 컨텍스트 fixture
 
 ### 시나리오 — `auth.spec.ts`
-- [ ] 회원가입 후 메인 이동과 내 이메일 표시
-- [ ] 회원가입 입력 검증 안내 (빈 값, 이메일 형식, 100자 초과, 비밀번호 8자 미만·72바이트 초과, 확인 불일치)
-- [ ] 중복 이메일 가입 안내
-- [ ] 로그아웃 후 대문자 섞인 이메일로 로그인
-- [ ] 비밀번호 오류·없는 이메일 안내, 100자 초과 이메일 길이 안내
-- [ ] 비로그인 시 `/` → 로그인 화면, 로그인 상태에서 `/login` → 메인
-- [ ] 새로고침과 탭 두 개 동시 새로고침 후 로그인 유지
-- [ ] 액세스 토큰 만료 후에도 작업이 이어서 처리됨
-- [ ] 같은 이메일 5회 실패 후 차단과 재시도 시각 안내
+- [x] 회원가입 후 메인 이동과 내 이메일 표시
+- [x] 회원가입 입력 검증 안내 (빈 값, 이메일 형식, 100자 초과, 비밀번호 8자 미만·72바이트 초과, 확인 불일치)
+- [x] 중복 이메일 가입 안내
+- [x] 로그아웃 후 대문자 섞인 이메일로 로그인
+- [x] 비밀번호 오류·없는 이메일 안내, 100자 초과 이메일 길이 안내
+- [x] 비로그인 시 `/` → 로그인 화면, 로그인 상태에서 `/login` → 메인
+- [x] 새로고침과 탭 두 개 동시 새로고침 후 로그인 유지
+- [x] 액세스 토큰 만료 후에도 작업이 이어서 처리됨
+- [x] 같은 이메일 5회 실패 후 차단과 재시도 시각 안내
 
 ### CI
-- [ ] `ci.yml`에 `e2e` job 추가 (Java 21, Node, `playwright install --with-deps chromium`, 캐시), 기존 job과 병렬
-- [ ] 실패 시 `playwright-report/`·`test-results/` artifact 업로드
+- [x] `ci.yml`에 `e2e` job 추가 (Java 21, Node, `playwright install --with-deps chromium`, 캐시), 기존 job과 병렬
+- [x] 실패 시 `playwright-report/`·`test-results/` artifact 업로드
 
 ### 문서
-- [ ] `README.md`에 E2E 실행 방법 추가
-- [ ] `CLAUDE.md`: 사용자 흐름이 바뀌는 화면 변경은 E2E 시나리오도 함께 갱신, E2E 테스트 이름 규칙, 화면 검증에 `npm run e2e` 사용 가능
+- [x] `README.md`에 E2E 실행 방법 추가
+- [x] `CLAUDE.md`: 사용자 흐름이 바뀌는 화면 변경은 E2E 시나리오도 함께 갱신, E2E 테스트 이름 규칙, 화면 검증에 `npm run e2e` 사용 가능
 
 ### 완료 기준 검증
-- [ ] 서버를 띄우지 않은 상태에서 `npm run e2e` 하나로 인증 시나리오 통과
-- [ ] 실행 후 로컬 개발 DB(`backend/data/`)가 바뀌지 않았는지 확인
-- [ ] PR CI에서 `e2e` job 통과
-- [ ] 시나리오를 일부러 깨뜨려 CI 실패와 리포트(실패 화면, trace) 확인 후 되돌림
-- [ ] 연속 3번 실행 모두 통과
+- [x] 서버를 띄우지 않은 상태에서 `npm run e2e` 하나로 인증 시나리오 통과
+- [x] 실행 후 로컬 개발 DB(`backend/data/`)가 바뀌지 않았는지 확인
+- [x] PR CI에서 `e2e` job 통과
+- [x] 시나리오를 일부러 깨뜨려 CI 실패와 리포트(실패 화면, trace) 확인 후 되돌림
+- [x] 연속 3번 실행 모두 통과
 
 ## Phase 40 — 리스트·그룹·리마인더 기본 기능
 ### 시나리오
@@ -778,7 +778,7 @@
 
 ### 완료 기준 검증
 - [ ] 연속 3번 실행 모두 통과
-- [ ] PR CI에서 `e2e` job 통과
+- [x] PR CI에서 `e2e` job 통과
 
 ## Phase 41 — 리마인더 확장 기능
 ### 시나리오
@@ -792,7 +792,7 @@
 
 ### 완료 기준 검증
 - [ ] 연속 3번 실행 모두 통과
-- [ ] PR CI에서 `e2e` job 통과
+- [x] PR CI에서 `e2e` job 통과
 
 ## Phase 42 — 공유·협업
 ### 시나리오
@@ -805,5 +805,5 @@
 
 ### 완료 기준 검증
 - [ ] 연속 3번 실행 모두 통과
-- [ ] PR CI에서 `e2e` job 통과
+- [x] PR CI에서 `e2e` job 통과
 - [ ] spec.md 16번 "E2E 대상 기능" 표의 모든 항목이 시나리오로 확인되는지 대조
