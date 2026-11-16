@@ -100,12 +100,30 @@ cd backend && ./gradlew test
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
+### E2E 테스트 (Playwright)
+
+브라우저로 실제 화면을 조작해 사용자 흐름을 확인합니다. 시나리오는 `frontend/e2e/*.spec.ts`에 있습니다.
+
+```bash
+cd frontend
+npx playwright install chromium   # 처음 한 번
+npm run e2e                       # 헤드리스 실행
+npm run e2e:ui                    # 디버그용 UI 모드
+```
+
+- 서버를 미리 띄우지 않아도 `npm run e2e`가 백엔드(`bootRun`)와 프론트엔드(`npm run dev`)를 띄우고, 끝나면 종료합니다. 이미 떠 있는 서버가 있으면 재사용합니다(CI에서는 항상 새로 띄우고 프론트엔드는 `build` 후 `start`).
+- 백엔드는 인메모리 H2(`jdbc:h2:mem:e2e`)로 실행하므로 로컬 개발 DB(`backend/data/`)를 건드리지 않습니다.
+  모든 테스트가 같은 IP에서 실행되므로 IP 로그인 시도 한도를 1000으로 높이고(이메일 한도 5회는 그대로), 액세스 토큰 수명을 30초로 줄여 자동 재발급을 거치게 합니다.
+  이미 떠 있는 백엔드를 재사용하면 이 설정이 적용되지 않으므로, E2E 전에는 로컬 백엔드를 끄고 실행합니다.
+- 브라우저는 Chromium, `ko-KR` 로케일, `Asia/Seoul` 시간대로 고정합니다. 실패하면 스크린샷과 trace를 남기며, 리포트는 `npx playwright show-report`로 봅니다.
+
 ### CI
 
 `master`로 향하는 PR과 `master` 푸시마다 GitHub Actions(`.github/workflows/ci.yml`)가 위 검사를 자동으로 실행합니다.
 
 - **Backend test**: JDK 21(Temurin)에서 `./gradlew test`, 실패하면 테스트 리포트를 아티팩트(`backend-test-report`)로 업로드
 - **Frontend lint & build**: `package.json`의 Volta Node 버전에서 `npm ci` → `npm run lint` → `npm run build`(타입 검사 포함)
+- **E2E test**: JDK 21과 Node에서 `npx playwright install --with-deps chromium` → `npm run e2e`, 실패하면 리포트와 실패 화면·trace를 아티팩트(`e2e-report`)로 업로드
 
 ## API 명세
 
