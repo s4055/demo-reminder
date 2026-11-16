@@ -15,6 +15,7 @@
 - 들여쓰기, 줄 끝 공백, 파일 끝 줄바꿈은 루트 `.editorconfig`를 따른다.
 - Java import는 IntelliJ 기본 배치로 둔다: 그 밖의 import(알파벳순) → 빈 줄 → `javax.*`, `java.*` → 빈 줄 → static import. 와일드카드 import는 쓰지 않는다.
 - PR 제목과 설명은 한글로 작성한다.
+- 커밋과 푸시는 자동으로 하지 않는다. 사용자가 요청할 때만 한다.
 
 ## frontend 하위 - 프론트엔드(Next.js) 관례
 
