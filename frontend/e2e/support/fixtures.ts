@@ -1,27 +1,28 @@
-import { test as base, type Browser, type BrowserContext, type Page } from "@playwright/test"
-import { ApiClient, loginViaApi, signupViaApi } from "./api"
+import {
+  expect,
+  test as base,
+  type BrowserContext,
+  type BrowserContextOptions,
+  type Page,
+} from "@playwright/test"
+import { ApiClient, loginViaApi } from "./api"
 import { newTestUser, type TestUser } from "./users"
 
-export type UserSession = {
-  user: TestUser
-  context: BrowserContext
-  page: Page
-}
-
-export async function newUserSession(
-  browser: Browser,
-  user: TestUser = newTestUser()
-): Promise<UserSession> {
-  const context = await browser.newContext()
-  await signupViaApi(context.request, user)
-  const page = await context.newPage()
-  return { user, context, page }
-}
+type OpenSession = (user: TestUser, options?: BrowserContextOptions) => Promise<Page>
 
 type Fixtures = {
   user: TestUser
   api: ApiClient
   signedInPage: Page
+  openSession: OpenSession
+}
+
+async function gotoSignedIn(page: Page, url: string): Promise<void> {
+  const refreshed = page.waitForResponse((response) =>
+    response.url().endsWith("/api/auth/refresh")
+  )
+  await page.goto(url)
+  expect((await refreshed).ok()).toBe(true)
 }
 
 export const test = base.extend<Fixtures>({
@@ -35,9 +36,27 @@ export const test = base.extend<Fixtures>({
   },
   signedInPage: async ({ api, page }, provide) => {
     await loginViaApi(page.context().request, api.user)
-    await page.goto("/")
+    await gotoSignedIn(page, "/")
     await provide(page)
+  },
+  openSession: async ({ browser, baseURL, locale, timezoneId, viewport }, provide) => {
+    const contexts: BrowserContext[] = []
+    await provide(async (user, options = {}) => {
+      const context = await browser.newContext({
+        baseURL,
+        locale,
+        timezoneId,
+        viewport,
+        ...options,
+      })
+      contexts.push(context)
+      await loginViaApi(context.request, user)
+      const page = await context.newPage()
+      await gotoSignedIn(page, "/")
+      return page
+    })
+    await Promise.all(contexts.map((context) => context.close()))
   },
 })
 
-export { expect } from "@playwright/test"
+export { expect }

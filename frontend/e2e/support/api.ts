@@ -11,6 +11,19 @@ type AuthData = {
   accessToken: string
 }
 
+export type DayOfWeek =
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY"
+  | "SUNDAY"
+
+export type RepeatRule = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"
+
+export type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH"
+
 export type CreatedList = {
   id: number
   name: string
@@ -26,7 +39,19 @@ export type CreatedGroup = {
 export type CreatedReminder = {
   id: number
   title: string
+  memo: string | null
+  completed: boolean
+  flagged: boolean
+  priority: Priority
+  dueAt: string | null
+  timeZone: string | null
+  repeatRule: RepeatRule
+  repeatInterval: number
+  repeatDaysOfWeek: DayOfWeek[]
   listId: number | null
+  tags: string[]
+  parentId: number | null
+  version: number
 }
 
 export type ListInput = {
@@ -41,9 +66,12 @@ export type ReminderInput = {
   memo?: string
   dueAt?: string
   timeZone?: string
-  priority?: "NONE" | "LOW" | "MEDIUM" | "HIGH"
+  priority?: Priority
   tagNames?: string[]
   parentId?: number
+  repeatRule?: RepeatRule
+  repeatInterval?: number
+  repeatDaysOfWeek?: DayOfWeek[]
 }
 
 export async function signupViaApi(
@@ -104,6 +132,41 @@ export class ApiClient {
     return this.send("POST", "/api/reminders", {
       timeZone: "Asia/Seoul",
       ...input,
+    })
+  }
+
+  async createCompletedReminder(input: ReminderInput): Promise<CreatedReminder> {
+    const reminder = await this.createReminder(input)
+    await this.toggleComplete(reminder.id)
+    return reminder
+  }
+
+  getReminder(id: number): Promise<CreatedReminder> {
+    return this.send("GET", `/api/reminders/${id}`)
+  }
+
+  toggleComplete(id: number): Promise<void> {
+    return this.send("PATCH", `/api/reminders/${id}/complete`)
+  }
+
+  toggleFlag(id: number): Promise<void> {
+    return this.send("PATCH", `/api/reminders/${id}/flag`)
+  }
+
+  async rescheduleReminder(id: number, dueAt: string): Promise<CreatedReminder> {
+    const current = await this.getReminder(id)
+    return this.send("PUT", `/api/reminders/${id}`, {
+      title: current.title,
+      memo: current.memo,
+      dueAt,
+      timeZone: current.timeZone ?? "Asia/Seoul",
+      flagged: current.flagged,
+      priority: current.priority,
+      tagNames: current.tags,
+      repeatRule: current.repeatRule,
+      repeatInterval: current.repeatInterval,
+      repeatDaysOfWeek: current.repeatDaysOfWeek,
+      version: current.version,
     })
   }
 
