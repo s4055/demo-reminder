@@ -75,7 +75,7 @@ test.describe("회원가입", () => {
   test("signup_withRegisteredEmail_showsDuplicateMessage", async ({ page, api }) => {
     await signupViaUi(page, api.user)
 
-    await expect(page.getByText("이미 가입한 이메일입니다.")).toBeVisible()
+    await expect(page.getByText("이미 가입한 이메일입니다!")).toBeVisible()
     await expect(page).toHaveURL("/signup")
   })
 })
