@@ -297,7 +297,7 @@
 ## Phase 14 — CI (GitHub Actions)
 - [x] `backend/gradlew` 실행 권한 부여 (`git update-index --chmod=+x`)
 - [x] `.github/workflows/ci.yml` 작성 (`pull_request`→`master`, `push`→`master` 트리거)
-- [x] backend 잡: Temurin 21 + Gradle 캐시, `./gradlew test`, 실패 시 테스트 리포트 아티팩트 업로드
+- [x] backend 잡: Temurin 21 + Gradle 캐시, `./gradlew test`, 실패 시 테스트 리포트 아티팩트 업로드 (PR #79부터 성공한 실행에서도 HTML 리포트와 XML 결과를 항상 업로드)
 - [x] frontend 잡: Node 24 + npm 캐시, `npm ci` → `npm run lint` → `npm run build`
 - [x] 현재 코드에서 lint/build/test가 모두 통과하는지 확인 (실패 항목 수정)
 - [x] README에 CI 배지와 설명 추가
