@@ -15,6 +15,7 @@ type Fixtures = {
   api: ApiClient
   signedInPage: Page
   openSession: OpenSession
+  memberApi: ApiClient
 }
 
 async function gotoSignedIn(page: Page, url: string): Promise<void> {
@@ -33,6 +34,11 @@ export const test = base.extend<Fixtures>({
     const api = await ApiClient.signup(user)
     await provide(api)
     await api.dispose()
+  },
+  memberApi: async ({}, provide) => {
+    const memberApi = await ApiClient.signup(newTestUser({ name: "공유 멤버" }))
+    await provide(memberApi)
+    await memberApi.dispose()
   },
   signedInPage: async ({ api, page }, provide) => {
     await loginViaApi(page.context().request, api.user)
