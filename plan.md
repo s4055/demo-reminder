@@ -4,19 +4,25 @@
 기능을 추가**하는 방식으로 개발한다. 각 Phase는 그 자체로 실행 가능한 상태(빌드/구동 가능)를 유지한다.
 
 ## 기술 스택
+v1(Phase 1~5)에서 시작한 스택에 이후 Phase에서 추가한 도구를 괄호 안에 도입 Phase와 함께 적는다.
 
 ### 공통 / 개발 환경
 - 백엔드: `C:\project\demo-reminder\backend` (기존 Spring Boot 4 프로젝트 재사용)
 - 프론트엔드: `C:\project\demo-reminder\frontend` 하위에 신규 Next.js 프로젝트 생성 (모노레포 구조)
 - 로컬 포트: 백엔드 `:8080`, 프론트엔드 `:3000`
-- 인증 없음 (spec.md 기준)
+- 인증: v1은 인증 없음. Phase 12에서 세션 로그인, Phase 28에서 JWT(액세스 토큰 + 리프레시 토큰 쿠키)로 전환
+- CI: GitHub Actions (Phase 14, 프론트엔드 테스트는 Phase 31, E2E는 Phase 39에서 추가)
 
 ### 백엔드
 - Spring Boot 4.1.1, Gradle(Groovy DSL), Java 21
-- Spring Data JPA + Hibernate, H2 (in-memory)
-- Lombok (`@Getter/@Setter/@NoArgsConstructor/@AllArgsConstructor`)
+- Spring Data JPA + Hibernate, QueryDSL
+- H2: v1은 in-memory, Phase 12부터 파일 모드(`backend/data/`). 테스트와 E2E는 in-memory
+- Lombok (`@Getter`, `@NoArgsConstructor(access = PROTECTED)`, `@RequiredArgsConstructor`. 엔티티는 setter 없이 생성자와 도메인 메서드로만 변경)
 - Bean Validation (`spring-boot-starter-validation`)
 - CORS: `WebMvcConfigurer`로 `http://localhost:3000` 허용
+- Spring Security (Phase 12), JJWT (Phase 27)
+- Spring Data Redis: 로그인 시도 기록 공유 저장소, 설정으로 선택 (Phase 37)
+- 테스트: JUnit Jupiter + AssertJ, Spring Boot Test, Testcontainers(Redis, Phase 37)
 
 ### 프론트엔드
 - Next.js latest (App Router), TypeScript
@@ -24,6 +30,8 @@
 - 데이터 페칭: TanStack Query (React Query) — 서버 상태 캐싱/재조회에 유리, Phase 1부터 도입
 - 날짜 처리: `date-fns`
 - 폼: React Hook Form (Phase 4 상세 편집부터 도입)
+- 드래그 정렬: `@dnd-kit` (Phase 7), 토스트: `sonner`
+- 테스트: Vitest (Phase 31), Playwright E2E (Phase 39)
 
 ---
 
@@ -368,7 +376,7 @@ v2까지 끝난 뒤 사용 경험을 보강한다. 이후 작업을 안전하게
 - `.github/workflows/ci.yml` — `pull_request`(대상 `master`), `push`(`master`) 트리거
 - **backend 잡**: `actions/setup-java`(Temurin 21) + Gradle 캐시, `backend/`에서 `./gradlew test`
   - Windows에서 커밋된 `gradlew`에 실행 권한이 없으므로(`100644`) `git update-index --chmod=+x backend/gradlew`로 고친다.
-  - 실패 시 테스트 리포트(`build/reports/tests`)를 아티팩트로 업로드
+  - 테스트 리포트(`build/reports/tests`)를 아티팩트로 업로드. 처음에는 실패 시에만 올렸으나, 성공한 실행에서도 건너뛴 테스트를 확인할 수 있도록 항상 올리고 XML 결과(`build/test-results/test`)도 함께 올린다 (PR #79)
 - **frontend 잡**: `actions/setup-node`(Volta 설정과 같은 Node 24) + npm 캐시, `frontend/`에서 `npm ci` → `npm run lint` → `npm run build`
 - 두 잡은 병렬로 실행한다. 프론트엔드 테스트는 아직 없으므로 lint와 build(타입 검사 포함)로 검증한다.
 
@@ -662,6 +670,15 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 
 # v6 — JWT 인증 (spec.md 14번)
 
+세션 쿠키 인증을 JWT 액세스 토큰과 리프레시 토큰 방식으로 전환한다. 기존 세션 인증을 유지한 채 부품을 먼저 만들고,
+서버와 프론트엔드를 한 번에 전환한 뒤, 재사용 감지와 정리를 마지막에 더한다.
+
+| 순서 | Phase | 내용 |
+|---|---|---|
+| 1 | Phase 27 | 토큰 발급·검증 기반 (`JwtProvider`, `RefreshToken`, `RefreshTokenService`) |
+| 2 | Phase 28 | 세션에서 JWT로 전환 (Bearer 인증 필터, 재발급·로그아웃 API, 프론트엔드 자동 재발급) |
+| 3 | Phase 29 | 리프레시 토큰 재사용 감지·정리, 문서 |
+
 ### 공통 원칙 (Phase 27~29)
 - 인증 방식 외의 기능과 API 동작은 바꾸지 않는다.
 - 토큰 원문은 DB와 로그에 남기지 않는다.
@@ -738,6 +755,21 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 ---
 
 # v7 — 품질·확장성 개선 (spec.md 15번)
+
+동작이 바뀌지 않는 정리와 테스트 기반을 먼저 마련한 뒤, API가 바뀌는 시간대 처리와 페이지네이션,
+로그인 보호를 진행하고, 마지막에 백엔드 전체 리뷰에서 나온 지적 사항을 정리한다.
+
+| 순서 | Phase | 내용 |
+|---|---|---|
+| 1 | Phase 30 | 코드 정리 (import 순서, `.editorconfig`) |
+| 2 | Phase 31 | 프론트엔드 테스트 기반 (Vitest, CI 실행) |
+| 3 | Phase 32 | 프론트엔드 컴포넌트 분리 (`reminder-list`, `reminder-edit-dialog`) |
+| 4 | Phase 33 | 리마인더 단건 조회 (`GET /api/reminders/{id}`) |
+| 5 | Phase 34 | 시간대 처리 (`Instant`, 리마인더 `timeZone`) |
+| 6 | Phase 35 | 목록 페이지네이션 ("완료됨"과 검색의 커서 기반 조회) |
+| 7 | Phase 36 | 로그인 시도 제한 |
+| 8 | Phase 37 | 로그인 시도 기록 공유 (Redis, 서버 이중화 대응) |
+| 9 | Phase 38 | 코드 리뷰 지적 사항 정리 |
 
 ### 공통 원칙 (Phase 30~38)
 - 위험이 적은 정리와 테스트 기반을 먼저 마련한 뒤, API가 바뀌는 작업을 진행한다.

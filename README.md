@@ -121,8 +121,8 @@ npm run e2e:ui                    # 디버그용 UI 모드
 
 `master`로 향하는 PR과 `master` 푸시마다 GitHub Actions(`.github/workflows/ci.yml`)가 위 검사를 자동으로 실행합니다.
 
-- **Backend test**: JDK 21(Temurin)에서 `./gradlew test`, 실패하면 테스트 리포트를 아티팩트(`backend-test-report`)로 업로드
-- **Frontend lint & build**: `package.json`의 Volta Node 버전에서 `npm ci` → `npm run lint` → `npm run build`(타입 검사 포함)
+- **Backend test**: JDK 21(Temurin)에서 `./gradlew test`, 성공·실패와 관계없이 테스트 리포트(HTML)와 결과(XML)를 아티팩트(`backend-test-report`)로 업로드해 건너뛴 테스트도 확인할 수 있게 함
+- **Frontend lint & build**: `package.json`의 Volta Node 버전에서 `npm ci` → `npm run lint` → `npm test` → `npm run build`(타입 검사 포함)
 - **E2E test**: JDK 21과 Node에서 `npx playwright install --with-deps chromium` → `npm run e2e`, 실패하면 리포트와 실패 화면·trace를 아티팩트(`e2e-report`)로 업로드
 
 ## API 명세

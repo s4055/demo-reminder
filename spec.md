@@ -5,6 +5,10 @@ Apple Reminders 앱의 핵심 사용 경험(리스트 관리, 할 일 등록/완
 웹에서 재현하는 데모 프로젝트. 단일 사용자 기준으로 인증 없이 동작하며,
 Spring Boot REST API + Next.js 프론트엔드로 구성한다.
 
+> 1~9번은 v1(MVP, `plan.md` Phase 1~5) 시점의 요구사항이다. 이후 버전에서 멀티 유저 인증(v2, v6), 리스트 공유(v2),
+> 영구 저장(v2), 시간대가 있는 시각(v7) 등이 더해지거나 바뀌었으므로, 현재 동작은 10번 이후의 버전별 범위를 함께 본다.
+> API의 최신 명세는 `backend/openapi.yml`이다.
+
 ## 2. 목표
 - Apple Reminders의 핵심 UX(리스트, 리마인더, 완료 처리, 스마트 리스트)를 웹에서 사용 가능하게 구현
 - 기존 Spring Boot(JPA/H2) 백엔드를 API 서버로 확장
@@ -62,6 +66,8 @@ Spring Boot REST API + Next.js 프론트엔드로 구성한다.
 
 관계: List 1 --- N Reminder
 
+> v1 기준이다. 이후 추가된 필드와 엔티티는 10번(v2)과 각 버전의 "데이터 모델 변경"을 참고한다. 시각 필드는 v7에서 `Instant`로 바뀌었다.
+
 ## 6. API 설계 (Spring Boot, REST/JSON)
 Base path: `/api`
 
@@ -87,6 +93,8 @@ Base path: `/api`
 - 인증 없음 (전체 공개 API)
 - CORS: Next.js 개발 서버(localhost:3000) 허용
 
+> v1 기준이다. v2에서 로그인이 필요해졌고(v6부터 Bearer 토큰), 이후 추가·변경된 API는 각 버전의 "API 추가/변경"과 `backend/openapi.yml`을 참고한다.
+
 ## 7. 프론트엔드 설계 (Next.js latest, App Router)
 - **스타일링**: Tailwind CSS + shadcn/ui
 - **레이아웃**: 좌측 사이드바(스마트 리스트 + 사용자 리스트, 개수 뱃지) + 우측 리마인더 목록/상세
@@ -103,6 +111,9 @@ Base path: `/api`
 - 로컬 개발: 백엔드 `:8080`, 프론트엔드 `:3000`, CORS 허용 설정 필요
 - 인증 없음 → 별도 보안 요구사항 없음 (데모 목적)
 
+> v1 기준이다. 현재는 H2 파일 모드로 데이터를 영구 저장하고(v2, 테스트와 E2E는 in-memory), JWT로 인증하며(v6),
+> 로그인 시도 제한(v7)과 요청 로그의 토큰·쿠키 마스킹(v5, v6)을 갖춘다.
+
 ## 9. 성공 기준 (Acceptance Criteria)
 - 리스트를 생성/삭제할 수 있고 사이드바에 실시간 반영된다.
 - 리마인더를 생성하면 소속 리스트와 해당 스마트 뷰(오늘/예정됨 등)에 정확히 나타난다.
@@ -117,7 +128,65 @@ Base path: `/api`
 - 알림(브라우저 푸시), 반복 리마인더
 - 드래그앤드롭 순서 변경
 
-> 위 항목은 v2(plan.md Phase 6~13)에서 모두 구현되었다.
+> 위 항목은 v2(plan.md Phase 6~13)에서 모두 구현되었다. 구현한 범위는 아래 "v2 범위"에 정리한다.
+
+### v2 범위
+위 향후 고려 사항을 작업이 단순한 것부터 구현했다. 세부 계획은 `plan.md` Phase 6~13, 체크리스트는 `tasks.md`를 따른다.
+
+#### In-Scope
+- **우선순위**: 없음/낮음/보통/높음을 지정하고 목록에 `!`/`!!`/`!!!`로 표시
+- **드래그앤드롭 순서 변경**: 사이드바 리스트 순서와 리스트 안 미완료 리마인더 순서. 스마트 뷰에서는 비활성
+- **태그**: 리마인더에 여러 태그를 붙이고, 사이드바 태그 목록(미완료 개수)과 태그별 보기, 태그 삭제(리마인더는 유지)
+- **하위 작업**: 1단계 깊이의 하위 작업. 부모 완료 시 함께 완료, 부모 삭제 시 함께 삭제, 리스트 개수에는 최상위만 센다
+- **반복 리마인더**: 매일/매주/매월/매년. 마감일시가 있어야 하며, 완료하면 다음 마감일시로 같은 내용의 새 리마인더를 만든다
+- **알림**: 웹 앱이 열려 있는 동안 마감 시각에 브라우저 알림을 한 번 띄우고, 클릭하면 편집 창을 연다
+- **사용자 인증/멀티 유저**: 회원가입·로그인·로그아웃(세션 쿠키, v6에서 JWT로 전환), 모든 데이터를 소유자별로 분리, 다른 사용자의 리소스는 404
+- **영구 저장**: H2 파일 모드(`backend/data/`)
+- **리스트 공유**: 이메일로 멤버 초대, 멤버는 리마인더를 함께 관리하고 리스트 수정·삭제와 멤버 관리는 소유자만 가능. 다른 사용자의 변경은 주기적 재조회로 반영
+
+#### Out-of-Scope (v2)
+- 브라우저가 닫혀 있을 때의 알림(Web Push)
+- 실시간(WebSocket) 동기화
+- 별도 DB 서버(PostgreSQL 등)
+
+#### 데이터 모델 변경
+| 대상 | 필드 | 설명 |
+|---|---|---|
+| Reminder | priority | `NONE`, `LOW`, `MEDIUM`, `HIGH` (기본 `NONE`) |
+| Reminder, ReminderList | sortOrder | 정렬 순서 (새 항목은 같은 범위의 마지막) |
+| Tag (신규) | id, user, name, createdAt | 태그 (이름은 사용자별 고유) |
+| ReminderTag (신규) | reminder, tag | 리마인더-태그 연결 (`(reminder_id, tag_id)` 유니크) |
+| Reminder | parent | 상위 리마인더 (자기 참조, 1단계까지, 같은 리스트) |
+| Reminder | repeatRule | `NONE`, `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY` (기본 `NONE`, 마감일시가 있을 때만) |
+| User (신규) | id, email, password, name, createdAt | 사용자 (이메일 고유, 비밀번호는 BCrypt 해시) |
+| ReminderList, Reminder | user | 소유자 |
+| ListMember (신규) | id, list, user, role, createdAt | 리스트 멤버 (`OWNER`, `EDITOR`, 소유자도 `OWNER`로 저장) |
+
+#### API 추가/변경
+| Method | Path | 설명 |
+|---|---|---|
+| POST/PUT | /api/reminders, /api/reminders/{id} | `priority`, `tagNames`, `repeatRule` 추가, 생성에 `parentId` 추가 |
+| GET | /api/reminders?listId= | `sortOrder` 순, 최상위 리마인더만 반환하고 `subtasks` 포함 |
+| PATCH | /api/lists/order | 리스트 순서 일괄 변경 |
+| PATCH | /api/reminders/order | 리스트 안 리마인더 순서 일괄 변경 |
+| GET | /api/tags | 태그 목록 (미완료 리마인더 개수 포함, 쓰이지 않는 태그 제외) |
+| DELETE | /api/tags/{id} | 태그 삭제 (리마인더에서 떼어냄) |
+| GET | /api/reminders?tag= | 태그별 리마인더 조회 |
+| GET | /api/reminders/upcoming?from=&to= | 기간 안에 마감되는 미완료 리마인더 (알림 스케줄링용) |
+| POST | /api/auth/signup, /api/auth/login, /api/auth/logout | 회원가입, 로그인, 로그아웃 |
+| GET | /api/auth/me | 현재 사용자 |
+| GET/POST | /api/lists/{id}/members | 멤버 목록, 이메일로 초대 (초대는 소유자만, 없는 사용자 404, 이미 멤버 400) |
+| DELETE | /api/lists/{id}/members/{userId} | 멤버 제거(소유자) 또는 본인 나가기 |
+
+- `/api/auth/**`를 제외한 모든 API는 로그인이 필요하다 (미인증 401).
+- `GET /api/lists`와 스마트 뷰는 공유받은 리스트와 그 리마인더를 포함한다.
+
+#### 성공 기준
+- 우선순위·순서·태그·하위 작업·반복 설정이 새로고침 후에도 유지된다.
+- 매주 반복 리마인더를 완료하면 "완료됨"에 현재 항목이 들어가고, 7일 뒤 마감일의 새 항목이 "예정됨"에 나타난다.
+- 마감 시각에 브라우저 알림이 한 번만 뜬다.
+- 두 계정은 서로의 리스트와 리마인더를 볼 수 없고, 서버를 재시작해도 데이터가 유지된다.
+- A가 리스트에 B를 초대하면 B의 사이드바에 리스트가 나타나고, B가 추가한 리마인더가 A 화면에도 반영된다.
 
 ## 11. v3 범위 (추가 개선)
 v2 이후 Apple Reminders 사용 경험에 가까워지도록 기능을 보강하고, 변경을 안전하게 쌓을 수 있도록 CI를 갖춘다.
@@ -229,6 +298,7 @@ v4까지 끝난 뒤 백엔드 코드를 `CLAUDE.md` 관례에 맞추고, 중복�
 
 학습을 목적으로 세션 쿠키 인증을 JWT 액세스 토큰과 리프레시 토큰 방식으로 전환한다.
 사용자에게 보이는 기능은 바꾸지 않는다.
+세부 계획은 `plan.md` Phase 27~29, 체크리스트는 `tasks.md`를 따른다.
 
 ### In-Scope
 - **액세스 토큰**: 로그인/회원가입 성공 시 수명 15분의 JWT(HS256)를 응답 본문으로 발급하고, 이후 요청은 `Authorization: Bearer` 헤더로 인증한다
