@@ -35,11 +35,13 @@ jobs:
         run: ./gradlew test
 
       - name: Upload test report
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-report
-          path: backend/build/reports/tests/test
+          path: |
+            backend/build/reports/tests/test
+            backend/build/test-results/test
 
   frontend:
     name: Frontend lint & build
