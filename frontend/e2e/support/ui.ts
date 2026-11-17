@@ -26,6 +26,8 @@ export async function expectSignedIn(page: Page, email: string): Promise<void> {
   await expect(page.getByText(email, { exact: true })).toBeVisible()
 }
 
+export const SYNC_TIMEOUT = 25_000
+
 export function sidebar(page: Page): Locator {
   return page.locator("aside")
 }
@@ -34,14 +36,26 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
-export function sidebarItem(page: Page, name: string): Locator {
-  return sidebar(page).getByRole("button", {
-    name: new RegExp(`^${escapeRegExp(name)} \\d+$`),
-  })
+const SHARED_LABEL = "(?: 공유된 리스트 \\(멤버 \\d+명\\))?"
+
+function sidebarItemName(name: string, count: string): RegExp {
+  return new RegExp(`^${escapeRegExp(name)}${SHARED_LABEL} ${count}$`)
 }
 
-export async function expectSidebarCount(page: Page, name: string, count: number): Promise<void> {
-  await expect(sidebarItem(page, name)).toHaveAccessibleName(`${name} ${count}`)
+export function sidebarItem(page: Page, name: string): Locator {
+  return sidebar(page).getByRole("button", { name: sidebarItemName(name, "\\d+") })
+}
+
+export async function expectSidebarCount(
+  page: Page,
+  name: string,
+  count: number,
+  options?: { timeout?: number }
+): Promise<void> {
+  await expect(sidebarItem(page, name)).toHaveAccessibleName(
+    sidebarItemName(name, String(count)),
+    options
+  )
 }
 
 export function pageTitle(page: Page): Locator {
@@ -144,4 +158,17 @@ export async function dragWithKeyboard(
   }
   await page.keyboard.press("Space")
   await expect(handle).not.toHaveAttribute("aria-pressed", "true")
+}
+
+export async function openShareDialog(page: Page, listName: string): Promise<Locator> {
+  await sidebar(page).getByRole("button", { name: `${listName} 리스트 공유` }).click()
+  const dialog = page.getByRole("dialog", { name: `“${listName}” 공유` })
+  await expect(dialog).toBeVisible()
+  return dialog
+}
+
+export function sharedListSection(page: Page): Locator {
+  return sidebar(page)
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "공유받은 리스트" }) })
 }

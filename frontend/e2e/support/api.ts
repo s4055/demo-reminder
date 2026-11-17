@@ -54,6 +54,13 @@ export type CreatedReminder = {
   version: number
 }
 
+export type CreatedMember = {
+  userId: number
+  email: string
+  name: string
+  role: "OWNER" | "EDITOR"
+}
+
 export type ListInput = {
   name: string
   color?: string
@@ -118,6 +125,16 @@ export class ApiClient {
 
   createList(input: ListInput): Promise<CreatedList> {
     return this.send("POST", "/api/lists", input)
+  }
+
+  inviteMember(listId: number, email: string): Promise<CreatedMember> {
+    return this.send("POST", `/api/lists/${listId}/members`, { email })
+  }
+
+  async shareList(input: ListInput, ...members: ApiClient[]): Promise<CreatedList> {
+    const list = await this.createList(input)
+    for (const member of members) await this.inviteMember(list.id, member.user.email)
+    return list
   }
 
   createGroup(name: string): Promise<CreatedGroup> {
