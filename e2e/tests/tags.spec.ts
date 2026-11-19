@@ -65,7 +65,7 @@ test("selectTag_showsOnlyTaggedReminders_matchingSidebarCount", async ({
   expect((await reminderTitles(page)).toSorted()).toEqual(["빨래", "청소"])
 })
 
-test("deleteTag_removesItFromSidebar_andKeepsReminders", async ({ signedInPage: page, api }) => {
+test("deleteTag_removesItFromSidebar_andKeepsReminders", { tag: "@essential" }, async ({ signedInPage: page, api }) => {
   const list = await api.createList({ name: "집안일" })
   await api.createReminder({ title: "설거지", listId: list.id, tagNames: ["집"] })
   await page.reload()

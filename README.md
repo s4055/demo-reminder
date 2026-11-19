@@ -23,7 +23,7 @@ Apple Reminders의 핵심 사용 경험(리스트, 리마인더, 완료 처리, 
 ## 사전 준비
 
 - JDK 21
-- Node.js 24 (`frontend/package.json`의 Volta 설정 기준)
+- Node.js 24 (`frontend/package.json`, `e2e/package.json`의 Volta 설정 기준)
 
 ## 실행 방법
 
@@ -102,14 +102,21 @@ cd frontend && npm run lint && npx tsc --noEmit && npm run build
 
 ### E2E 테스트 (Playwright)
 
-브라우저로 실제 화면을 조작해 사용자 흐름을 확인합니다. 시나리오는 `frontend/e2e/*.spec.ts`에 있습니다.
+브라우저로 실제 화면을 조작해 사용자 흐름을 확인합니다. 백엔드·프론트엔드와 분리된 `e2e` 패키지이며, 시나리오는 `e2e/tests/*.spec.ts`에 있습니다.
+E2E가 프론트엔드를 띄우므로 `frontend`에서도 `npm install`이 되어 있어야 합니다.
 
 ```bash
-cd frontend
+cd e2e
+npm install                       # 처음 한 번
 npx playwright install chromium   # 처음 한 번
-npm run e2e                       # 헤드리스 실행
+npm run typecheck                 # 타입 검사
+npm run e2e                       # 전체 실행 (헤드리스)
+npm run e2e:essential             # 필수 테스트만
+npm run e2e:supplementary         # 보조 테스트만
 npm run e2e:ui                    # 디버그용 UI 모드
 ```
+
+- 테스트는 **필수**(`@essential` 태그)와 **보조**(태그 없음)로 나눕니다. 필수는 실패하면 배포를 멈춰야 하는 동작으로, 서비스를 쓸 수 없게 되거나(로그인, 핵심 CRUD), 데이터가 사라지거나 덮어써지거나(삭제 범위, 동시 편집 충돌), 권한이 새는(공유 멤버 권한) 경우입니다. 그 밖의 안내 문구, 표시, 편의 기능은 보조입니다.
 
 - 서버를 미리 띄우지 않아도 `npm run e2e`가 백엔드(`bootRun`)와 프론트엔드(`npm run dev`)를 띄우고, 끝나면 종료합니다. 이미 떠 있는 서버가 있으면 재사용합니다(CI에서는 항상 새로 띄우고 프론트엔드는 `build` 후 `start`).
 - 백엔드는 인메모리 H2(`jdbc:h2:mem:e2e`)로 실행하므로 로컬 개발 DB(`backend/data/`)를 건드리지 않습니다.
@@ -123,7 +130,8 @@ npm run e2e:ui                    # 디버그용 UI 모드
 
 - **Backend test**: JDK 21(Temurin)에서 `./gradlew test`, 성공·실패와 관계없이 테스트 리포트(HTML)와 결과(XML)를 아티팩트(`backend-test-report`)로 업로드해 건너뛴 테스트도 확인할 수 있게 함
 - **Frontend lint & build**: `package.json`의 Volta Node 버전에서 `npm ci` → `npm run lint` → `npm test` → `npm run build`(타입 검사 포함)
-- **E2E test**: JDK 21과 Node에서 `npx playwright install --with-deps chromium` → `npm run e2e`, 실패하면 리포트와 실패 화면·trace를 아티팩트(`e2e-report`)로 업로드
+- **E2E essential**: JDK 21과 Node에서 `frontend`·`e2e`의 `npm ci` → `npm run typecheck` → `npx playwright install --with-deps chromium` → `npm run e2e:essential`, 실패하면 리포트와 실패 화면·trace를 아티팩트(`e2e-essential-report`)로 업로드
+- **E2E supplementary**: 같은 준비 후 `npm run e2e:supplementary`, 실패하면 아티팩트(`e2e-supplementary-report`)로 업로드. 두 E2E job은 병렬로 실행되며, 브랜치별로 실행할 job을 고를 수 있도록 나눠 둡니다
 
 ## API 명세
 

@@ -24,7 +24,7 @@ function sharedIcon(page: Page, memberCount: number) {
   return sidebar(page).getByLabel(`공유된 리스트 (멤버 ${memberCount}명)`)
 }
 
-test("inviteMember_withMixedCaseEmail_addsEditorToMembers", async ({
+test("inviteMember_withMixedCaseEmail_addsEditorToMembers", { tag: "@essential" }, async ({
   signedInPage: page,
   api,
   memberApi,
@@ -112,7 +112,7 @@ test("sharedList_showsInMemberSidebar_withSharedIconAndMemberCount", async ({
   await expect(reminderButton(memberPage, "공유된 할 일")).toBeVisible()
 })
 
-test("editor_managesRemindersInSharedList", async ({ api, memberApi, openSession }) => {
+test("editor_managesRemindersInSharedList", { tag: "@essential" }, async ({ api, memberApi, openSession }) => {
   await api.shareList({ name: "공동 작업" }, memberApi)
   const memberPage = await openSession(memberApi.user)
   await selectList(memberPage, "공동 작업")
@@ -137,7 +137,7 @@ test("editor_managesRemindersInSharedList", async ({ api, memberApi, openSession
   await expect(reminderButton(memberPage, "고친 할 일")).toHaveCount(0)
 })
 
-test("editor_hasNoListEditDeleteOrInvite_andSeesMembersOnly", async ({
+test("editor_hasNoListEditDeleteOrInvite_andSeesMembersOnly", { tag: "@essential" }, async ({
   api,
   memberApi,
   openSession,
@@ -185,7 +185,7 @@ test("editor_leavesList_afterConfirm_removesItFromSidebar", async ({
   await expect(sidebar(memberPage).getByText("나갈 리스트")).toHaveCount(0)
 })
 
-test("owner_removesMember_listDisappearsFromMemberScreen", async ({
+test("owner_removesMember_listDisappearsFromMemberScreen", { tag: "@essential" }, async ({
   signedInPage: page,
   api,
   memberApi,

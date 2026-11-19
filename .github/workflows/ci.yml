@@ -71,12 +71,12 @@ jobs:
       - name: Build
         run: npm run build
 
-  e2e:
-    name: E2E test
+  e2e-essential:
+    name: E2E essential
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: e2e
     steps:
       - uses: actions/checkout@v4
 
@@ -89,9 +89,64 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: frontend/package.json
+          node-version-file: e2e/package.json
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E test
+        run: npm run e2e:essential
+
+      - name: Upload E2E report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-essential-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+
+  e2e-supplementary:
+    name: E2E supplementary
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: e2e/package.json
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
 
       - name: Install
         run: npm ci
@@ -100,13 +155,13 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: E2E test
-        run: npm run e2e
+        run: npm run e2e:supplementary
 
       - name: Upload E2E report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-report
+          name: e2e-supplementary-report
           path: |
-            frontend/playwright-report
-            frontend/test-results
+            e2e/playwright-report
+            e2e/test-results

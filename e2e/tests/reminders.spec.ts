@@ -20,7 +20,7 @@ test.describe("리스트 화면", () => {
     await selectList(page, "할일 목록")
   })
 
-  test("addReminder_withoutDueDateOrRepeat_appearsInList", async ({ signedInPage: page }) => {
+  test("addReminder_withoutDueDateOrRepeat_appearsInList", { tag: "@essential" }, async ({ signedInPage: page }) => {
     await addReminder(page, "우유 사기")
 
     await expect(reminderButton(page, "우유 사기")).toHaveText("우유 사기")
@@ -43,7 +43,7 @@ test.describe("리스트 화면", () => {
     )
   })
 
-  test("completeReminder_thenUncomplete_togglesCompletedState", async ({ signedInPage: page }) => {
+  test("completeReminder_thenUncomplete_togglesCompletedState", { tag: "@essential" }, async ({ signedInPage: page }) => {
     await addReminder(page, "완료 대상")
     const checkbox = completeCheckbox(page, "완료 대상")
 
@@ -58,7 +58,7 @@ test.describe("리스트 화면", () => {
     await expectSidebarCount(page, "할일 목록", 1)
   })
 
-  test("deleteReminder_removesItFromList", async ({ signedInPage: page }) => {
+  test("deleteReminder_removesItFromList", { tag: "@essential" }, async ({ signedInPage: page }) => {
     await addReminder(page, "삭제 대상")
 
     await page.locator("main").getByRole("button", { name: "삭제 대상 삭제" }).click()
@@ -68,7 +68,7 @@ test.describe("리스트 화면", () => {
   })
 })
 
-test("editReminder_changesAllFields_reflectsInList", async ({ signedInPage: page, api }) => {
+test("editReminder_changesAllFields_reflectsInList", { tag: "@essential" }, async ({ signedInPage: page, api }) => {
   const list = await api.createList({ name: "편집 리스트" })
   await api.createReminder({ title: "원래 제목", listId: list.id })
   await page.clock.install({ time: new Date("2027-03-08T10:00:00+09:00") })

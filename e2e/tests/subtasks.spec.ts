@@ -65,7 +65,7 @@ test("subtask_canBeCompletedEditedAndDeletedOnItsOwn", async ({ signedInPage: pa
   await expect(page.locator("main").getByText("0/1")).toBeVisible()
 })
 
-test("completingOrDeletingParent_appliesToSubtasks", async ({ signedInPage: page, api }) => {
+test("completingOrDeletingParent_appliesToSubtasks", { tag: "@essential" }, async ({ signedInPage: page, api }) => {
   const list = await api.createList({ name: "프로젝트" })
   const parent = await api.createReminder({ title: "이사", listId: list.id })
   await api.createReminder({ title: "짐 싸기", parentId: parent.id })

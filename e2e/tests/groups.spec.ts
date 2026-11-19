@@ -59,7 +59,7 @@ test("collapseGroup_hidesLists_andStaysCollapsedAfterReload", async ({
   await expect(groupLists(page, "회사").getByRole("button", { name: "회의 0" })).toBeVisible()
 })
 
-test("renameAndDeleteGroup_keepsListsAndReminders", async ({ signedInPage: page, api }) => {
+test("renameAndDeleteGroup_keepsListsAndReminders", { tag: "@essential" }, async ({ signedInPage: page, api }) => {
   const group = await api.createGroup("임시")
   const list = await api.createList({ name: "보관" })
   await api.assignListToGroup(list.id, group.id)

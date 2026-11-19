@@ -79,7 +79,7 @@ test("repeat_withoutDueDate_isDisabledAndCleared", async ({ signedInPage: page, 
   await expect(reminderButton(page, "매일 산책")).not.toContainText("반복:")
 })
 
-test("completeWeeklyReminder_createsNextOccurrenceSevenDaysLater", async ({
+test("completeWeeklyReminder_createsNextOccurrenceSevenDaysLater", { tag: "@essential" }, async ({
   signedInPage: page,
   api,
 }) => {

@@ -31,7 +31,7 @@ test("hideCompleted_inList_staysHiddenAfterReload_andCanBeShownAgain", async ({
   await expect(reminderButton(page, "끝난 일")).toBeVisible()
 })
 
-test("clearCompleted_showsCountAndDeletesOnlyThatList", async ({ signedInPage: page, api }) => {
+test("clearCompleted_showsCountAndDeletesOnlyThatList", { tag: "@essential" }, async ({ signedInPage: page, api }) => {
   const target = await api.createList({ name: "정리할 리스트" })
   const other = await api.createList({ name: "다른 리스트" })
   await api.createReminder({ title: "진행 중", listId: target.id })
