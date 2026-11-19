@@ -835,4 +835,4 @@
 - [x] `frontend`에서 `npm run lint`, `npm test`, 타입 검사(`tsc --noEmit`) 통과
 - [x] `frontend`에서 `npm run build` 통과
 - [x] `npm run e2e:essential` 25개, `npm run e2e:supplementary` 43개 각각 통과
-- [ ] PR CI에서 `Backend test`, `Frontend lint & build`, `E2E essential`, `E2E supplementary` job 통과
+- [x] PR CI에서 `Backend test`, `Frontend lint & build`, `E2E essential`, `E2E supplementary` job 통과
