@@ -1,0 +1,21 @@
+{
+  "name": "e2e",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:essential": "playwright test --grep @essential",
+    "e2e:supplementary": "playwright test --grep-invert @essential",
+    "e2e:ui": "playwright test --ui",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^24.19.2",
+    "typescript": "^5"
+  },
+  "volta": {
+    "node": "24.21.0",
+    "npm": "12.0.2"
+  }
+}

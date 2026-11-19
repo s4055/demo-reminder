@@ -8,7 +8,7 @@ import {
   selectList,
 } from "./support/ui"
 
-test("moveReminder_toOtherList_takesSubtasksAndUpdatesCounts", async ({
+test("moveReminder_toOtherList_takesSubtasksAndUpdatesCounts", { tag: "@essential" }, async ({
   signedInPage: page,
   api,
 }) => {

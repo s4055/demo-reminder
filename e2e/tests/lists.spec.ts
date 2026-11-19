@@ -10,7 +10,7 @@ import {
   sidebarItem,
 } from "./support/ui"
 
-test("createList_withColorAndIcon_showsInSidebarAndSelectsIt", async ({ signedInPage: page }) => {
+test("createList_withColorAndIcon_showsInSidebarAndSelectsIt", { tag: "@essential" }, async ({ signedInPage: page }) => {
   await sidebar(page).getByRole("button", { name: "리스트 추가" }).click()
   const dialog = page.getByRole("dialog", { name: "새 리스트" })
   await dialog.getByLabel("이름").fill("여행")
@@ -54,7 +54,7 @@ test("editList_changesNameColorAndIcon_reflectsInSidebarAndTitle", async ({
   await expect(pageTitle(page)).toHaveCSS("color", "rgb(0, 122, 255)")
 })
 
-test("deleteList_afterConfirm_removesListAndItsReminders", async ({ signedInPage: page, api }) => {
+test("deleteList_afterConfirm_removesListAndItsReminders", { tag: "@essential" }, async ({ signedInPage: page, api }) => {
   const doomed = await api.createList({ name: "지울 리스트" })
   const kept = await api.createList({ name: "남길 리스트" })
   await api.createReminder({ title: "사라질 할일", listId: doomed.id })

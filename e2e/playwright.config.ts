@@ -10,7 +10,7 @@ const backendArgs = [
 ].join(" ")
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./tests",
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
@@ -42,6 +42,7 @@ export default defineConfig({
     },
     {
       command: isCI ? "npm run build && npm run start" : "npm run dev",
+      cwd: "../frontend",
       url: "http://localhost:3000/login",
       reuseExistingServer: !isCI,
       timeout: 300_000,

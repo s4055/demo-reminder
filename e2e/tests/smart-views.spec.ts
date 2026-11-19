@@ -2,7 +2,7 @@ import { expect, test } from "./support/fixtures"
 import { seoulDate } from "./support/dates"
 import { reminderCheckboxes, reminderItem, reminderTitles, selectSmartView } from "./support/ui"
 
-test("smartViews_showOnlyMatchingReminders_withListName", async ({ signedInPage: page, api }) => {
+test("smartViews_showOnlyMatchingReminders_withListName", { tag: "@essential" }, async ({ signedInPage: page, api }) => {
   const now = new Date()
   await page.clock.install({ time: now })
   const list = await api.createList({ name: "생활" })

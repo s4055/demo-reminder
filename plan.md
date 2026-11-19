@@ -1076,8 +1076,9 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 | 2 | Phase 40 | 리스트·그룹·리마인더 기본 기능, 스마트 뷰, 완료 항목, 좁은 화면 |
 | 3 | Phase 41 | 태그, 하위 작업, 반복, 리스트 이동, 검색, 드래그 정렬, 알림 |
 | 4 | Phase 42 | 공유·협업, 동기화, 동시 편집 충돌 |
+| 5 | Phase 43 | E2E를 `frontend` 하위에서 루트의 `e2e` 패키지로 분리, 테스트를 배포 전 필수·보조로 나누고 CI job 분리 |
 
-### 공통 원칙 (Phase 39~42)
+### 공통 원칙 (Phase 39~43)
 - 사용자에게 보이는 기능과 API는 바꾸지 않는다. 테스트를 쓰다가 실제 버그를 찾으면 같은 Phase에서 고치고 PR 설명에 따로 적는다.
 - 새 시나리오는 처음부터 CI에서 실행한다. 로컬에서만 도는 테스트는 만들지 않는다.
 - 각 테스트는 서로 독립적이다. 테스트마다 고유한 사용자를 만들고, 실행 순서나 다른 테스트가 만든 데이터에 의존하지 않는다.
@@ -1252,6 +1253,74 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 - 위 시나리오가 모두 통과하고, 연속 3번 실행해도 통과한다.
 - PR의 CI에서 `e2e` job이 통과한다.
 - spec.md 16번 "E2E 대상 기능" 표의 모든 항목이 시나리오로 확인된다.
+
+---
+
+## Phase 43 — E2E 패키지 분리 + 필수·보조 분리
+**목표**: E2E를 `frontend` 하위에서 루트의 `e2e` 패키지로 옮겨 저장소를 `backend`·`frontend`·`e2e` 역할별로 나눈다. 테스트를 배포 전 필수와 보조로 나누고, 나중에 브랜치별로 실행 범위를 고를 수 있도록 CI job도 나눈다. 시나리오 내용은 바꾸지 않는다.
+
+### 배경
+- E2E는 백엔드와 프론트엔드를 모두 띄우는 시스템 테스트인데 `frontend` 아래에 있어, 설정이 `../backend`만 따로 실행하는 비대칭 구조였고 프론트엔드 의존성에 Playwright가 섞여 있었다.
+- E2E 코드는 앱 코드를 import하지 않고 `@playwright/test`와 Node 내장 모듈만 쓰므로, 코드 수정 없이 옮길 수 있다.
+
+### 구성
+- `git mv`로 이력을 유지하며 옮긴다
+  - `frontend/e2e/` → `e2e/tests/` (`support/` 포함, 상대 import는 그대로)
+  - `frontend/playwright.config.ts` → `e2e/playwright.config.ts`
+- `e2e/package.json`
+  - devDependencies: `@playwright/test`, `@types/node`, `typescript` (버전은 `frontend`에서 쓰던 것과 같게)
+  - 스크립트: `npm run e2e`, `npm run e2e:ui`, `npm run typecheck`(`tsc --noEmit`)
+  - Volta Node·npm 버전은 `frontend`와 같게 둔다
+- `e2e/tsconfig.json`: `playwright.config.ts`와 `tests/**/*.ts`만 검사한다
+- `e2e/.gitignore`: `node_modules/`, `playwright-report/`, `test-results/`, `blob-report/`, `playwright/.cache/`
+- `playwright.config.ts`
+  - `testDir`를 `./tests`로 바꾼다
+  - 프론트엔드 `webServer`에 `cwd: "../frontend"`를 지정해 백엔드(`cwd: "../backend"`)와 같은 방식으로 띄운다
+- `frontend` 정리
+  - `@playwright/test` devDependency와 `e2e`·`e2e:ui` 스크립트를 빼고 `package-lock.json`을 갱신한다
+  - `.gitignore`와 `eslint.config.mjs`에서 Playwright 결과 폴더 항목을 뺀다
+
+### 필수·보조 분리
+- 기준: "실패하면 배포를 멈춰야 하는가"
+  - **필수**(`@essential`): 서비스를 쓸 수 없게 되거나, 데이터가 사라지거나 덮어써지거나, 권한이 새는 경우
+  - **보조**(태그 없음): 안내 문구, 표시, 편의 기능, 하위 계층 테스트로도 확인할 수 있는 규칙(개수, 페이지네이션, 반복 요약 등)
+- 필수 테스트에 Playwright 태그 `{ tag: "@essential" }`을 붙인다. 테스트 이름과 내용은 바꾸지 않는다
+- 필수 25개 (나머지 43개는 보조)
+
+| 기준 | 테스트 |
+|---|---|
+| 서비스 사용 불가 | `auth`: 가입, 로그아웃 후 대소문자 이메일 로그인, 비로그인 접근 차단, 새로고침 유지, 두 탭 동시 새로고침 유지, 토큰 만료 후 요청 처리 |
+| | `reminders`: 추가, 완료·완료 취소, 전체 필드 수정 / `lists`: 생성 / `smart-views`: 조건에 맞는 항목 표시 |
+| 데이터 손실·덮어쓰기 | `reminders`: 삭제 / `lists`: 삭제 시 리마인더 함께 삭제 / `groups`: 이름 변경·삭제 시 리스트 유지 / `subtasks`: 부모 완료·삭제가 하위에 적용 |
+| | `move`: 이동 시 하위 작업 함께 이동 / `repeat`: 매주 반복 완료 시 다음 회차 생성 / `completed`: 완료 항목 지우기는 해당 리스트만 / `tags`: 태그 삭제 시 리마인더 유지 |
+| | `conflict`: 리마인더·리스트를 차례로 저장하면 충돌 안내와 최신 내용 |
+| 권한 | `sharing`: 초대, 편집자의 리마인더 관리, 편집자에게 편집·삭제·초대 없음, 멤버 제거 후 접근 차단 |
+
+- `e2e/package.json` 스크립트: `npm run e2e:essential`(`--grep @essential`), `npm run e2e:supplementary`(`--grep-invert @essential`). `npm run e2e`는 전체를 실행한다
+
+### CI
+- E2E job을 `E2E essential`과 `E2E supplementary` 두 job으로 나누고 병렬로 실행한다
+  - 작업 디렉터리는 `e2e`로 둔다
+  - E2E가 프론트엔드를 빌드·실행하므로 `frontend`와 `e2e`에서 각각 `npm ci`
+  - npm 캐시 키에 두 `package-lock.json`을 모두 쓴다
+  - `npx playwright install --with-deps chromium` 후 각각 `npm run e2e:essential`, `npm run e2e:supplementary`
+  - 실패하면 `e2e/playwright-report/`와 `e2e/test-results/`를 각각 `e2e-essential-report`, `e2e-supplementary-report` artifact로 올린다
+- E2E 코드는 더 이상 `frontend`의 ESLint와 `next build` 타입 검사 대상이 아니므로, 타입 검사(`npm run typecheck`)는 `E2E essential` job에서 한다
+- 지금은 모든 브랜치에서 두 job을 모두 실행한다. 브랜치별로 범위를 나눌 때는 job에 `if:` 조건만 추가한다
+
+### 문서
+- `README.md`: 사전 준비의 Node 버전 기준, E2E 실행 방법(`cd e2e` → `npm install`, 브라우저 설치, `npm run typecheck`, `npm run e2e`·`e2e:essential`·`e2e:supplementary`), 필수·보조 기준, CI 설명
+- `CLAUDE.md`
+  - 작업 방식의 화면 검증 문구를 "`e2e`의 `npm run e2e`"로 바꾼다
+  - E2E 관례를 프론트엔드 섹션에서 "e2e 하위" 섹션으로 옮긴다 (위치, 앱 코드 import 금지, 테스트 이름 규칙, 필수 태그 기준, 타입 검사)
+  - 프론트엔드 섹션에는 "사용자 흐름이 바뀌는 화면 변경은 E2E 시나리오(`e2e/tests/`)를 함께 갱신"만 남긴다
+
+### 완료 기준
+- 서버를 띄우지 않은 상태에서 `e2e`의 `npm run e2e` 하나로 두 서버가 뜨고 모든 시나리오가 통과한다. 연속 3번 실행해도 통과한다.
+- `e2e`의 `npm run typecheck`가 통과한다.
+- `frontend`에서 `npm run lint`, `npm test`, `npm run build`가 Playwright 없이 통과한다.
+- `npm run e2e:essential`은 필수 25개만, `npm run e2e:supplementary`는 보조 43개만 실행하고 모두 통과한다.
+- PR의 CI에서 `Backend test`, `Frontend lint & build`, `E2E essential`, `E2E supplementary` job이 모두 통과한다.
 
 ---
 

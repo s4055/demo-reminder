@@ -5,7 +5,7 @@ test.describe.configure({ timeout: 90_000 })
 
 const CONFLICT_MESSAGE = "다른 사용자가 먼저 수정했습니다. 최신 내용을 불러왔습니다."
 
-test("saveReminder_afterAnotherMemberSaved_showsConflictAndLoadsLatest", async ({
+test("saveReminder_afterAnotherMemberSaved_showsConflictAndLoadsLatest", { tag: "@essential" }, async ({
   signedInPage: page,
   api,
   memberApi,
@@ -36,7 +36,7 @@ test("saveReminder_afterAnotherMemberSaved_showsConflictAndLoadsLatest", async (
   await expect(page.getByText(CONFLICT_MESSAGE)).toHaveCount(0)
 })
 
-test("saveList_afterAnotherSessionSaved_showsConflictAndLoadsLatest", async ({
+test("saveList_afterAnotherSessionSaved_showsConflictAndLoadsLatest", { tag: "@essential" }, async ({
   signedInPage: page,
   api,
   openSession,

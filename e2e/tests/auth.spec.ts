@@ -30,7 +30,7 @@ function seoulTime(date: Date): string {
 }
 
 test.describe("회원가입", () => {
-  test("signup_movesToMainAndShowsEmail", async ({ page, user }) => {
+  test("signup_movesToMainAndShowsEmail", { tag: "@essential" }, async ({ page, user }) => {
     await signupViaUi(page, user)
 
     await expectSignedIn(page, user.email)
@@ -81,7 +81,7 @@ test.describe("회원가입", () => {
 })
 
 test.describe("로그인", () => {
-  test("logout_thenLoginWithMixedCaseEmail_signsIn", async ({ signedInPage: page, user }) => {
+  test("logout_thenLoginWithMixedCaseEmail_signsIn", { tag: "@essential" }, async ({ signedInPage: page, user }) => {
     await expect(page.getByText(user.email, { exact: true })).toBeVisible()
 
     await page.getByRole("button", { name: "로그아웃" }).click()
@@ -129,7 +129,7 @@ test.describe("로그인", () => {
 })
 
 test.describe("인증 상태", () => {
-  test("rootWithoutLogin_redirectsToLogin", async ({ page }) => {
+  test("rootWithoutLogin_redirectsToLogin", { tag: "@essential" }, async ({ page }) => {
     await page.goto("/")
 
     await expect(page).toHaveURL("/login")
@@ -143,7 +143,7 @@ test.describe("인증 상태", () => {
     await expectSignedIn(page, user.email)
   })
 
-  test("reload_keepsSession", async ({ signedInPage: page, user }) => {
+  test("reload_keepsSession", { tag: "@essential" }, async ({ signedInPage: page, user }) => {
     await expect(page.getByText(user.email, { exact: true })).toBeVisible()
 
     await page.reload()
@@ -151,7 +151,7 @@ test.describe("인증 상태", () => {
     await expectSignedIn(page, user.email)
   })
 
-  test("reloadTwoTabsAtOnce_keepsBothSessions", async ({ signedInPage: page, user }) => {
+  test("reloadTwoTabsAtOnce_keepsBothSessions", { tag: "@essential" }, async ({ signedInPage: page, user }) => {
     const otherPage = await page.context().newPage()
     await otherPage.goto("/")
     await expectSignedIn(page, user.email)
@@ -165,7 +165,7 @@ test.describe("인증 상태", () => {
     await expectSignedIn(otherPage, user.email)
   })
 
-  test("addReminderAfterAccessTokenExpires_continuesRequest", async ({
+  test("addReminderAfterAccessTokenExpires_continuesRequest", { tag: "@essential" }, async ({
     signedInPage: page,
     user,
     request,

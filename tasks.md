@@ -729,7 +729,7 @@
 
 # v8 — E2E 테스트 (spec.md 16번)
 
-`plan.md`의 Phase 39~42를 기준으로 한다. 모든 작업은 CI가 통과한 PR로 머지한다.
+`plan.md`의 Phase 39~43을 기준으로 한다. 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 39 — E2E 기반 + 인증
 ### 구성
@@ -807,3 +807,32 @@
 - [x] 연속 3번 실행 모두 통과
 - [x] PR CI에서 `e2e` job 통과
 - [x] spec.md 16번 "E2E 대상 기능" 표의 모든 항목이 시나리오로 확인되는지 대조
+
+## Phase 43 — E2E 패키지 분리 + 필수·보조 분리
+### 구성
+- [x] `frontend/e2e/` → `e2e/tests/`, `frontend/playwright.config.ts` → `e2e/playwright.config.ts` (`git mv`로 이력 유지)
+- [x] `e2e/package.json`(`@playwright/test`·`@types/node`·`typescript`, `e2e`·`e2e:ui`·`typecheck` 스크립트, Volta 버전), `tsconfig.json`, `.gitignore`
+- [x] `playwright.config.ts`: `testDir`를 `./tests`로, 프론트엔드 `webServer`에 `cwd: "../frontend"`
+- [x] `frontend`에서 `@playwright/test`·E2E 스크립트 제거와 `package-lock.json` 갱신, `.gitignore`·`eslint.config.mjs`의 Playwright 항목 제거
+
+### 필수·보조 분리
+- [x] 배포 전 필수 테스트 25개에 `{ tag: "@essential" }` (서비스 사용 불가, 데이터 손실·덮어쓰기, 권한), 나머지 43개는 보조
+- [x] `e2e:essential`(`--grep @essential`)·`e2e:supplementary`(`--grep-invert @essential`) 스크립트
+
+### CI
+- [x] E2E job 작업 디렉터리를 `e2e`로, `frontend`·`e2e` 각각 `npm ci`, 두 lock 파일로 npm 캐시
+- [x] E2E job을 `E2E essential`·`E2E supplementary`로 나눠 병렬 실행, `typecheck`는 `E2E essential`에서
+- [x] 실패 시 `e2e/playwright-report/`·`e2e/test-results/`를 `e2e-essential-report`·`e2e-supplementary-report` artifact로 업로드
+
+### 문서
+- [x] `README.md`: Node 버전 기준, E2E 실행 방법, 필수·보조 기준, CI 설명
+- [x] `CLAUDE.md`: 화면 검증 문구를 `e2e`의 `npm run e2e`로, E2E 관례를 "e2e 하위" 섹션으로 분리, 필수 태그 기준
+
+### 완료 기준 검증
+- [x] 서버를 띄우지 않은 상태에서 `e2e`의 `npm run e2e` 하나로 모든 시나리오 통과 (68개)
+- [x] 연속 3번 실행 모두 통과
+- [x] `e2e`의 `npm run typecheck` 통과
+- [x] `frontend`에서 `npm run lint`, `npm test`, 타입 검사(`tsc --noEmit`) 통과
+- [x] `frontend`에서 `npm run build` 통과
+- [x] `npm run e2e:essential` 25개, `npm run e2e:supplementary` 43개 각각 통과
+- [ ] PR CI에서 `Backend test`, `Frontend lint & build`, `E2E essential`, `E2E supplementary` job 통과
