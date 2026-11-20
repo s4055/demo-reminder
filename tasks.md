@@ -166,6 +166,7 @@
 ### 백엔드
 - [x] `Tag` 엔티티(id, name 고유, createdAt)와 `TagRepository` 작성
 - [x] `Reminder` ↔ `Tag` 다대다 연관관계 추가 (조인 테이블 `reminder_tag`)
+- [x] 조인 테이블을 연결 엔티티 `ReminderTag`(`(reminder_id, tag_id)` 유니크)로 전환 (PR #34)
 - [x] 리마인더 생성/수정 요청에 `tagNames` 추가 (없는 태그 자동 생성), 응답에 태그 이름 목록 포함
 - [x] `GET /api/tags` — 태그 목록 (미완료 리마인더 개수 포함, 사용되지 않는 태그 제외)
 - [x] `DELETE /api/tags/{id}` — 태그 삭제 (리마인더는 유지)
@@ -359,6 +360,7 @@
 ## Phase 18 — 사용자 지정 반복
 ### 백엔드
 - [x] `Reminder`에 `repeatInterval`(1~99, 기본 1), `repeatDaysOfWeek`(`@ElementCollection`) 추가, 기존 행은 간격 1로 동작
+- [x] `repeatDaysOfWeek`를 엔티티 `ReminderRepeatDay`(`(reminder_id, day_of_week)` 유니크)로 전환 (PR #34)
 - [x] 반복 규칙 값 객체로 다음 마감일 계산 (간격, 주 단위 요일, 월말 규칙 유지)
 - [x] 다음 회차에 간격/요일 복사
 - [x] 생성/수정 요청·응답 반영, 간격 범위 위반·`WEEKLY` 외 요일 지정 시 400
@@ -490,7 +492,11 @@
 ### 완료 기준 검증
 - [x] 로그인 후 API 요청 로그에 `JSESSIONID` 값과 보안 컨텍스트 내용이 나오지 않는지 확인
 
+---
+
 # v6 — JWT 인증 (spec.md 14번)
+
+`plan.md`의 Phase 27~29를 기준으로 한다. 인증 방식 외의 기능과 API 동작은 바꾸지 않으며, 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 27 — 토큰 발급·검증 기반
 - [x] JJWT 의존성 추가
@@ -546,6 +552,8 @@
 ### 완료 기준 검증
 - [x] 교체 전 토큰 재사용 시 최신 토큰도 무효가 되고 다시 로그인해야 하는지 확인
 - [x] 여러 탭 동시 새로고침 시 로그아웃되지 않는지 확인
+
+---
 
 # v7 — 품질·확장성 개선 (spec.md 15번)
 
@@ -676,7 +684,7 @@
 - [x] `app.auth.login-attempt.store`(`memory`/`redis`) 설정으로 구현 선택
 - [x] Redis 장애 시 fail-open과 ERROR 로그
 - [x] 차단 시작 WARN 로그를 서버 여러 대에서도 한 번만 남김
-- [x] 로컬 Redis 실행 방법(`docker-compose.yml` 또는 README)과 이중화 실행 방법을 `README.md`에 추가
+- [x] 로컬 Redis 실행 방법(`docker-compose.yml` 또는 README)과 이중화 실행 방법, Redis 장애 시 fail-open 결정을 `README.md`에 추가
 - [x] `CLAUDE.md`에 Redis TTL 만료는 Redis 서버 시각을 따른다는 예외 추가
 - [x] `openapi.yml` 로그인 시도 제한 설명 갱신
 - [x] 테스트: 두 구현 공통 시나리오 (이메일 5회 차단, 기간 경과 해제, 성공 시 초기화, IP 차단, 이메일 분리)
@@ -726,6 +734,8 @@
 - [x] 로그인, 회원가입, 멤버 초대, 태그 필터가 화면에서 이전과 같게 동작하는지 확인
 - [x] 화면에서 100자 초과 이메일로 로그인·회원가입·멤버 초대 시 길이 안내가 나오고 요청을 보내지 않는지 확인
 - [x] 백엔드 테스트 전체 통과, 프론트엔드 `npm test` 통과
+
+---
 
 # v8 — E2E 테스트 (spec.md 16번)
 
