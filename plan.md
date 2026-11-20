@@ -11,7 +11,8 @@ v1(Phase 1~5)에서 시작한 스택에 이후 Phase에서 추가한 도구를 �
 - 프론트엔드: `C:\project\demo-reminder\frontend` 하위에 신규 Next.js 프로젝트 생성 (모노레포 구조)
 - 로컬 포트: 백엔드 `:8080`, 프론트엔드 `:3000`
 - 인증: v1은 인증 없음. Phase 12에서 세션 로그인, Phase 28에서 JWT(액세스 토큰 + 리프레시 토큰 쿠키)로 전환
-- CI: GitHub Actions (Phase 14, 프론트엔드 테스트는 Phase 31, E2E는 Phase 39에서 추가)
+- CI: GitHub Actions (Phase 14, 프론트엔드 테스트는 Phase 31, E2E는 Phase 39에서 추가, Phase 43에서 E2E job을 필수·보조로 분리)
+- 저장소 구성: `backend`, `frontend`, `e2e`(Phase 43에서 `frontend` 하위에서 루트로 분리)
 
 ### 백엔드
 - Spring Boot 4.1.1, Gradle(Groovy DSL), Java 21
@@ -31,7 +32,11 @@ v1(Phase 1~5)에서 시작한 스택에 이후 Phase에서 추가한 도구를 �
 - 날짜 처리: `date-fns`
 - 폼: React Hook Form (Phase 4 상세 편집부터 도입)
 - 드래그 정렬: `@dnd-kit` (Phase 7), 토스트: `sonner`
-- 테스트: Vitest (Phase 31), Playwright E2E (Phase 39)
+- 테스트: Vitest (Phase 31)
+
+### E2E
+- Playwright (Chromium), TypeScript (Phase 39에서 `frontend`에 도입, Phase 43에서 루트 `e2e` 패키지로 분리)
+- 앱 코드를 import하지 않고 화면 조작과 HTTP API로만 검증, `@essential` 태그로 필수·보조 구분 (Phase 43)
 
 ---
 
@@ -131,6 +136,17 @@ v1(Phase 1~5)에서 시작한 스택에 이후 Phase에서 추가한 도구를 �
 
 ---
 
+## v1 추가 작업
+**목표**: Phase 5 이후 v2에 들어가기 전에 백엔드 운영 기반과 완료 항목 정렬을 보강한다. (`tasks.md`의 "추가 작업")
+
+- 요청/응답 전문 로깅 필터 `HttpLoggingFilter`: 요청 로그 → 비즈니스 로직 → 응답 로그 순서, UUID `request_id`를 MDC에 넣어 요청 처리 중 모든 로그에 출력
+  - `/h2-console` 요청은 로깅 없이 통과시킨다 (본문을 미리 읽으면 H2 로그인 폼 파라미터가 비기 때문)
+- 서비스 계층 예외를 `BusinessException(ResultCode)`로 통일하고 `GlobalExceptionHandler`에서 변환한다 (`ResultCode`에 HTTP 상태 포함)
+- `Reminder`에 완료일시 `completedAt` 추가: 완료 시 기록, 완료 취소 시 null. "완료됨" 뷰와 프론트엔드 완료 항목을 `updatedAt` 대신 완료일시 최신순으로 정렬
+- 서비스가 응답 DTO를 반환하고 `spring.jpa.open-in-view: false`로 설정해, 엔티티→DTO 변환을 트랜잭션 안에서 끝낸다
+
+---
+
 # v2 — 향후 고려 사항 (spec.md 10번)
 
 v1(Phase 1~5) 이후 `spec.md`의 "10. 향후 고려 사항"을 **작업이 단순한 것부터** 순서대로 구현한다.
@@ -204,7 +220,7 @@ v1(Phase 1~5) 이후 `spec.md`의 "10. 향후 고려 사항"을 **작업이 단�
 
 ### 데이터 모델
 - `Tag` 엔티티 추가: id, name(고유), createdAt
-- `Reminder` N --- M `Tag` (조인 테이블 `reminder_tag`) — 이후 연결 엔티티 `ReminderTag`(`reminder_tag`, `(reminder_id, tag_id)` 유니크)로 전환
+- `Reminder` N --- M `Tag` (조인 테이블 `reminder_tag`) — 이후 연결 엔티티 `ReminderTag`(`reminder_tag`, `(reminder_id, tag_id)` 유니크)로 전환 (PR #34)
 
 ### 백엔드
 - 리마인더 생성/수정 요청에 `tagNames: string[]` 추가 — 없는 태그는 자동 생성, 응답에 태그 이름 목록 포함
@@ -305,11 +321,12 @@ v1(Phase 1~5) 이후 `spec.md`의 "10. 향후 고려 사항"을 **작업이 단�
 - `/api/auth/**`를 제외한 모든 API는 로그인 필요 — 미인증 401, 응답은 `ApiResponse` 형식 유지 (`ResultCode`에 `UNAUTHORIZED` 추가)
 - 모든 조회/수정/삭제를 현재 사용자의 데이터로 제한 — 다른 사용자의 리소스는 404로 응답해 존재 여부를 노출하지 않음
 - CORS에 `allowCredentials` 설정 (또는 Next.js rewrites로 같은 출처 프록시)
+- 세션 쿠키에 `SameSite=Lax`, `HttpOnly`를 명시한다 (CSRF 토큰을 쓰지 않는 전제)
 - 영구 저장: H2를 in-memory에서 파일 모드(`jdbc:h2:file:./data/reminderdb`)로 전환
   - 데모 프로젝트라 별도 DB 서버(PostgreSQL + docker-compose)를 둘 근거가 없어 H2를 유지한다.
   - 스키마는 기존대로 `ddl-auto: update`로 관리한다 (호환되지 않는 변경은 DB 파일을 지우고 다시 시작).
   - 테스트는 기존처럼 in-memory DB를 사용한다.
-  - DB 파일(`backend/data/`)은 Git에 올리지 않는다.
+  - DB 파일(`backend/data/`)은 Git에 올리지 않는다. `README.md`에 DB 파일 위치와 초기화 방법을 적는다.
 
 ### 프론트엔드
 - `/login`, `/signup` 페이지 (React Hook Form + 검증 메시지)
@@ -455,7 +472,7 @@ v2까지 끝난 뒤 사용 경험을 보강한다. 이후 작업을 안전하게
 **목표**: 고정 주기(매일/매주/매월/매년)를 넘어 "2주마다", "평일마다" 같은 반복을 지원한다.
 
 ### 데이터 모델
-- `Reminder`에 `repeatInterval`(int, 1~99, 기본 1)과 `repeatDaysOfWeek`(`Set<DayOfWeek>`, `@ElementCollection`) 추가 — 이후 엔티티 `ReminderRepeatDay`(`reminder_repeat_day`, `(reminder_id, day_of_week)` 유니크)로 전환
+- `Reminder`에 `repeatInterval`(int, 1~99, 기본 1)과 `repeatDaysOfWeek`(`Set<DayOfWeek>`, `@ElementCollection`) 추가 — 이후 엔티티 `ReminderRepeatDay`(`reminder_repeat_day`, `(reminder_id, day_of_week)` 유니크)로 전환 (PR #34)
   - `repeatDaysOfWeek`는 `WEEKLY`일 때만 지정 가능, 비어 있으면 마감일의 요일로 반복 (기존 동작)
   - 기존 데이터(컬럼 추가 전 행)는 간격 1로 동작하도록 처리
 - 반복 규칙(주기 + 간격 + 요일)을 값 객체로 묶어 다음 마감일 계산을 도메인 로직에 둔다.
@@ -1003,7 +1020,7 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 **목표**: 백엔드 전체 리뷰(관례·정확성)에서 확인된 문제를 바로잡고, 실제 관례와 다르게 적힌 `CLAUDE.md` 문구를 명확히 한다.
 
 ### 배경
-- 리뷰에서 확정되었거나 가능성이 있다고 판정된 9개 항목을 다룬다. 기각된 항목(운영 기본 JWT 키, 프록시 IP 판별, 재발급 유예, sortOrder 중복, ListGroup 낙관적 락, H2 콘솔)은 의도된 설계이거나 v7 범위 밖이라 다루지 않는다.
+- 리뷰에서 확정되었거나 가능성이 있다고 판정된 항목을 아래 백엔드 8개로 묶어 다루고, 그 과정에서 화면 검증으로 찾은 프론트엔드 이메일 안내 문제를 함께 고친다. 기각된 항목(운영 기본 JWT 키, 프록시 IP 판별, 재발급 유예, sortOrder 중복, ListGroup 낙관적 락, H2 콘솔)은 의도된 설계이거나 v7 범위 밖이라 다루지 않는다.
 - 아래 순서는 영향이 큰 것부터다. 각 항목은 독립적이라 순서를 바꿔도 된다.
 
 ### 백엔드
@@ -1037,7 +1054,7 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
    - `SignupRequest`와 `ListMemberRequest`에 `normalizedEmail()`을 두고, 내부에서 `User.normalizeEmail`에 위임한다
    - `AuthService.signup`은 `request.normalizedEmail()`을 쓰고, `ListMemberController`는 정규화한 값을 서비스에 넘긴다 (필드 하나짜리 요청이라 값을 넘긴다)
    - `LoginUserDetailsService`는 Spring Security가 원문을 넘기는 콜백이라 지금처럼 `User.normalizeEmail`을 쓴다
-   - 테스트: 앞뒤 공백·대문자가 섞인 이메일로 회원가입·멤버 초대가 기존처럼 동작하는지 (기존 테스트 호출부 갱신)
+   - 테스트: 대문자가 섞인 이메일로 회원가입·멤버 초대가 기존처럼 동작하는지 (기존 테스트 호출부 갱신). 앞뒤 공백이 있는 이메일은 `@Email` 검증에서 400이다
 6. **`ReminderApplication.java` 들여쓰기**
    - 탭 3줄을 4칸 공백으로 바꾼다
 7. **JPA Auditing 시각에 `Clock` 적용**
@@ -1061,7 +1078,9 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 - 사이드바 태그 개수와 그 태그로 필터한 미완료 리마인더 수가 일치한다(다른 멤버가 같은 이름의 태그를 붙인 공유 리마인더 포함).
 - 재발급을 반복해도 만료된 리프레시 토큰 행이 남지 않는다.
 - 로그인, 회원가입, 멤버 초대, 태그 필터가 화면에서 이전과 같게 동작한다.
-- 백엔드 테스트가 모두 통과한다.
+- 화면에서 100자 초과 이메일로 로그인·회원가입·멤버 초대하면 길이 안내가 나오고 요청을 보내지 않는다.
+- 고정 `Clock`으로 실행하면 `createdAt`/`updatedAt`도 그 `Clock`의 시각으로 기록된다.
+- 백엔드 테스트와 프론트엔드 `npm test`가 모두 통과한다.
 
 ---
 
