@@ -473,3 +473,70 @@ v8에서는 **현재 제공되는 모든 사용자 기능**을 Playwright E2E �
 - 같은 코드로 E2E를 연속 3번 실행해 모두 통과한다 (시각·대기에 따라 결과가 흔들리지 않는다).
 - E2E 패키지를 분리한 뒤에도 `e2e`에서 `npm run e2e` 하나로 모든 시나리오가 통과하고, `frontend`는 Playwright 없이 린트·테스트·빌드가 통과한다.
 - 필수 테스트와 보조 테스트를 각각 따로 실행할 수 있고, CI에서 별도 job으로 표시된다.
+
+## 17. v9 범위 (모니터링)
+
+v8까지는 서비스가 정상인지 요청 로그와 사람의 확인으로만 알 수 있었다. v9에서는 미들웨어(DB 커넥션 풀, Redis),
+애플리케이션(API, JVM, 인증·보안 이벤트), 프론트엔드(화면 오류, 성능)를 모니터링하고, 문제를 알아차릴 알림 규칙을 정의한다.
+모니터링 스택은 `docker-compose.yml`로 로컬에서 그대로 재현할 수 있게 하고, 알림은 규칙만 정의한다(전송 채널은 연결하지 않는다).
+사용자에게 보이는 기능과 앱 API는 바꾸지 않는다. 세부 계획은 `plan.md` Phase 44~47, 체크리스트는 `tasks.md`를 따른다.
+
+### In-Scope
+- **헬스 체크**: liveness와 readiness를 나눠 제공한다. readiness는 DB 상태를 반영한다. Redis는 장애 시 로그인을 막지 않는(fail-open) 설계이므로 readiness에 넣지 않고, `store=redis`일 때 health 상세에서만 보여 준다
+- **애플리케이션·미들웨어 메트릭**: HTTP 요청 수·오류율·응답 시간, JVM(힙, GC, 스레드), HikariCP 커넥션 풀을 Prometheus 형식으로 노출한다. Actuator는 앱 포트와 분리한 management 포트에서 `health`, `info`, `prometheus`만 노출한다
+- **인증·보안 메트릭**: 로그인 실패, 로그인 차단 시작(이메일·IP 기준), 차단 중 거부(429), 리프레시 토큰 재사용 감지, 로그인 시도 저장소 오류(fail-open) 횟수를 센다
+- **모니터링 스택**: Prometheus와 Grafana를 `docker-compose.yml`에 추가하고, 데이터 소스·대시보드를 프로비저닝 파일로 저장소에서 관리한다
+- **알림 규칙**: Prometheus(백엔드)와 Loki(프론트엔드) 규칙 파일로 정의한다. Prometheus 규칙은 문법 검사와 단위 테스트를 CI에서 실행한다
+- **프론트엔드 모니터링**: Grafana Faro Web SDK로 JS 오류, Web Vitals, 세션을 수집해 Grafana Alloy(`faro.receiver`)를 거쳐 Loki에 저장하고 Grafana에서 본다. 수집 주소를 설정하지 않으면 SDK를 켜지 않는다
+
+### Out-of-Scope (v9)
+- 알림 전송(Alertmanager, Slack, 이메일)과 온콜 체계
+- 백엔드 로그 중앙화(백엔드 로그를 Loki로 수집), 분산 트레이싱(OpenTelemetry, Tempo), Faro 트레이싱 계측
+- 인프라 메트릭(node_exporter, 컨테이너), Redis 서버 자체 메트릭(redis_exporter)
+- SLO·에러 버짓 기반 알림
+- 프론트엔드 소스맵 역매핑, 세션 리플레이
+- 운영 배포 구성(Grafana 인증·권한, 데이터 보존 정책), Grafana Cloud 등 SaaS
+
+### 설정·엔드포인트 추가
+- 앱 API(`:8080`)와 `backend/openapi.yml`은 바뀌지 않는다
+- management 포트 `:8090`(`MANAGEMENT_PORT`로 변경): `/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`, `/actuator/info`, `/actuator/prometheus`. 운영에서는 이 포트를 외부에 열지 않는다는 전제로 인증 없이 응답한다
+- 프론트엔드 `NEXT_PUBLIC_FARO_URL`: Faro 수집 주소. 없으면 수집하지 않는다 (CI와 E2E는 설정하지 않는다)
+
+### 인증·보안 메트릭
+| 메트릭 | 태그 | 설명 |
+|---|---|---|
+| `reminder.auth.login.failures` | - | 이메일·비밀번호가 맞지 않아 실패한 로그인 |
+| `reminder.auth.login.locks` | `scope`(`email`, `ip`) | 로그인 차단이 시작된 횟수 |
+| `reminder.auth.login.rejected` | - | 차단 중이라 429로 거부한 로그인 |
+| `reminder.auth.refresh.reuse` | - | 폐기된 리프레시 토큰의 재사용 감지 |
+| `reminder.auth.login-attempt.store.errors` | - | 로그인 시도 저장소 오류로 차단 확인 없이 통과시킨 횟수 (fail-open) |
+
+모두 카운터이며, Prometheus에서는 `reminder_auth_login_failures_total`처럼 노출된다.
+
+### 수집 데이터 규칙
+- 메트릭 태그에는 이메일, IP, 사용자 ID, 토큰처럼 값이 계속 늘어나거나 민감한 값을 넣지 않는다. HTTP 메트릭의 경로는 `/api/reminders/{id}` 같은 템플릿으로 남긴다
+- Faro에는 사용자 정보를 설정하지 않고 콘솔 로그를 수집하지 않는다. 보내기 전에 URL의 쿼리 문자열과 토큰 형태의 값을 지운다
+- Faro 수집기는 프론트엔드 출처만 CORS로 허용한다
+
+### 알림 규칙
+| 규칙 | 조건 | 심각도 |
+|---|---|---|
+| `BackendDown` | 백엔드 수집 실패가 1분 이상 | critical |
+| `HighServerErrorRate` | 5분간 5xx 응답 비율 5% 초과 | critical |
+| `HighLatencyP95` | 10분간 API 응답 시간 p95 1초 초과 | warning |
+| `DbConnectionPending` | 커넥션을 기다리는 요청이 5분 이상 계속 | warning |
+| `JvmHeapHigh` | 10분간 힙 사용률 90% 초과 | warning |
+| `LoginLockSpike` | 10분간 로그인 차단 시작 10회 이상 | warning |
+| `RefreshTokenReuseDetected` | 5분 안에 리프레시 토큰 재사용 감지 1회 이상 | warning |
+| `LoginAttemptStoreFailOpen` | 5분 안에 로그인 시도 저장소 오류 1회 이상 | critical |
+| `FrontendErrorSpike` | 5분간 프론트엔드 JS 오류 20건 이상 (Loki) | warning |
+
+### 성공 기준
+- 모니터링 스택을 띄우고 백엔드·프론트엔드를 실행하면 Grafana 대시보드에서 요청 수, 오류율, 응답 시간, JVM, 커넥션 풀이 보인다.
+- 앱 포트(`:8080`)로는 Actuator에 접근할 수 없고, management 포트에서는 `health`, `info`, `prometheus`만 응답하며 `env`, `beans` 같은 엔드포인트는 응답하지 않는다.
+- readiness는 `store=memory`에서 Redis 없이 UP이고, `store=redis`에서 Redis를 꺼도 UP이다(로그인 fail-open과 일치). 이때 저장소 오류 메트릭이 늘어난다.
+- Actuator 요청이 요청 로그에 남지 않는다.
+- 로그인을 5번 틀리면 실패·차단 메트릭이 늘어나 대시보드에 보이고, 메트릭 태그에 이메일과 IP가 없다.
+- Prometheus 알림 규칙의 문법 검사와 단위 테스트가 CI에서 실행되고, Prometheus·Grafana 알림 화면에서 규칙이 보인다.
+- 화면에서 JS 오류가 나면 Grafana에서 오류 메시지, 페이지, 브라우저를 확인할 수 있고, 페이지별 Web Vitals가 보인다. 수집한 데이터에 토큰과 이메일이 없다.
+- `NEXT_PUBLIC_FARO_URL`이 없으면 수집 요청을 보내지 않고, 기존 백엔드·프론트엔드·E2E 테스트가 그대로 통과한다.
