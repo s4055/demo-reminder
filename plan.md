@@ -38,6 +38,11 @@ v1(Phase 1~5)에서 시작한 스택에 이후 Phase에서 추가한 도구를 �
 - Playwright (Chromium), TypeScript (Phase 39에서 `frontend`에 도입, Phase 43에서 루트 `e2e` 패키지로 분리)
 - 앱 코드를 import하지 않고 화면 조작과 HTTP API로만 검증, `@essential` 태그로 필수·보조 구분 (Phase 43)
 
+### 모니터링 (Phase 44~47)
+- 백엔드: Spring Boot Actuator, Micrometer(Prometheus 레지스트리)
+- 프론트엔드: Grafana Faro Web SDK
+- 스택(`docker-compose.yml`, `monitoring` 프로필): Prometheus(수집·알림 규칙), Grafana(대시보드), Grafana Alloy(Faro 수집기), Loki(프론트엔드 이벤트 저장·알림 규칙)
+
 ---
 
 ## Phase 1 — 최소 기능: 단일 리마인더 목록 (List 개념 없음)
@@ -1340,6 +1345,176 @@ v4까지 끝난 뒤 백엔드 코드를 정리한다. `CLAUDE.md` 관례 위반�
 - `frontend`에서 `npm run lint`, `npm test`, `npm run build`가 Playwright 없이 통과한다.
 - `npm run e2e:essential`은 필수 25개만, `npm run e2e:supplementary`는 보조 43개만 실행하고 모두 통과한다.
 - PR의 CI에서 `Backend test`, `Frontend lint & build`, `E2E essential`, `E2E supplementary` job이 모두 통과한다.
+
+---
+
+# v9 — 모니터링 (spec.md 17번)
+
+미들웨어·애플리케이션·프론트엔드를 모니터링하고 알림 규칙을 정의한다. 백엔드가 지표를 내보내는 기반을 먼저 만들고,
+이 프로젝트에 맞는 인증·보안 지표를 더한 뒤, 이를 모아 보는 스택과 알림 규칙을 갖추고, 마지막에 수집 경로가 다른 프론트엔드를 붙인다.
+
+| 순서 | Phase | 내용 |
+|---|---|---|
+| 1 | Phase 44 | Actuator·메트릭 기반 (health 프로브, HTTP·JVM·HikariCP 메트릭, management 포트 분리) |
+| 2 | Phase 45 | 인증·보안 커스텀 메트릭 |
+| 3 | Phase 46 | Prometheus·Grafana 스택, 대시보드, 알림 규칙 |
+| 4 | Phase 47 | 프론트엔드 모니터링 (Grafana Faro, Alloy, Loki) |
+
+### 공통 원칙 (Phase 44~47)
+- 사용자에게 보이는 기능과 앱 API(`:8080`)는 바꾸지 않는다. Actuator는 management 포트에 두므로 `openapi.yml`은 바꾸지 않는다.
+- 메트릭 태그와 프론트엔드 수집 데이터에 이메일, IP, 사용자 ID, 토큰을 넣지 않는다 (spec.md 17번 "수집 데이터 규칙").
+- 도메인은 Micrometer에 의존하지 않는다. 메트릭은 서비스·보안 계층에서 기록한다.
+- 모니터링 스택이 없어도 앱, 테스트, E2E는 지금처럼 동작한다. 스택은 `docker compose --profile monitoring`으로 따로 띄운다.
+- 알림은 규칙만 정의하고 전송 채널(Alertmanager 등)은 연결하지 않는다.
+- 이미지와 SDK 버전은 고정한다.
+
+---
+
+## Phase 44 — Actuator·메트릭 기반
+**목표**: 백엔드가 상태와 기본 메트릭을 Prometheus 형식으로 내보내되, 앱 API와 분리된 포트에서만 응답하게 한다.
+
+### 백엔드
+- `spring-boot-starter-actuator`와 `micrometer-registry-prometheus` 의존성을 추가한다
+- `management.server.port`를 `${MANAGEMENT_PORT:8090}`으로 두고, 노출 엔드포인트를 `health`, `info`, `prometheus`로 제한한다
+  - Phase 37의 두 번째 서버(`:8081`)는 `--management.server.port=8091`로 띄운다 (`README.md`의 이중화 실행 방법 갱신)
+- health
+  - `management.endpoint.health.probes.enabled`로 liveness·readiness 그룹을 켜고, readiness에는 DB를 넣는다
+  - Redis health는 `store=redis`일 때만 켠다. 기본값 `memory`에서는 Redis 연결을 시도하지 않는다
+  - Redis는 fail-open 설계라 readiness에 넣지 않는다 (Redis가 내려가도 서비스는 로그인을 받는다)
+  - 구성 요소 상세(`show-components`)는 보여 주고, 연결 정보 같은 세부 값(`show-details`)은 보여 주지 않는다
+- 메트릭
+  - 공통 태그 `application=reminder`를 붙인다
+  - `http.server.requests`에 히스토그램을 켜서 Prometheus에서 p95를 계산할 수 있게 한다
+  - JVM, HikariCP, 프로세스 메트릭은 자동 수집을 그대로 쓴다
+- 보안
+  - management 포트의 `health`, `info`, `prometheus`는 인증 없이 허용한다. 운영에서는 이 포트를 외부에 열지 않는다는 전제를 `README.md`에 적는다
+  - 앱 포트에서는 Actuator 경로가 응답하지 않는지 확인한다
+- 요청 로그: Actuator 요청이 `HttpLoggingFilter`에 남는지 확인하고, 남으면 `app.logging.http.excluded-paths`에 `/actuator`를 더한다
+- `info`에 애플리케이션 이름과 빌드 버전을 넣는다 (`springBoot { buildInfo() }`)
+- 테스트 (`RANDOM_PORT` + `management.server.port=0`)
+  - management 포트에서 `health`, `liveness`, `readiness`가 인증 없이 200이고 readiness에 DB가 포함됨
+  - `prometheus` 응답에 `http_server_requests_seconds`, `jvm_memory_used_bytes`, `hikaricp_connections` 메트릭과 `application` 태그가 있음
+  - `env`, `beans` 같은 노출하지 않은 엔드포인트는 404
+  - 앱 포트에서 `/actuator/health`가 응답하지 않음
+  - `store=memory`에서 Redis 없이 readiness가 UP
+
+### 문서
+- `README.md`: management 포트와 엔드포인트, 이중화 실행 시 management 포트 지정, 외부 비공개 전제
+- `CLAUDE.md`: Actuator는 management 포트에서만 노출하고, 노출 엔드포인트를 늘릴 때는 보안 검토 후 테스트를 함께 바꾼다
+
+### 완료 기준
+- 백엔드를 실행하면 `:8090/actuator/health/readiness`가 UP이고 `:8090/actuator/prometheus`에서 HTTP·JVM·HikariCP 메트릭이 보인다.
+- `:8080/actuator/health`는 응답하지 않는다.
+- Actuator를 여러 번 호출해도 요청 로그가 늘지 않는다.
+- 기존 백엔드 테스트와 E2E가 그대로 통과한다.
+
+---
+
+## Phase 45 — 인증·보안 커스텀 메트릭
+**목표**: 지금은 로그로만 남는 로그인 차단, 토큰 재사용, 저장소 장애를 숫자로 세어 추세와 알림의 근거로 쓴다.
+
+### 백엔드
+- 메트릭 기록을 한 곳에 모은 컴포넌트(`AuthMetrics`)를 만들고, 서비스·보안 계층이 이를 통해 기록한다
+  - 메트릭 이름과 태그는 spec.md 17번 "인증·보안 메트릭" 표를 따른다
+  - 태그에는 `scope`(`email`, `ip`)만 쓰고 이메일과 IP 값은 넣지 않는다
+- 기록 위치
+  - `reminder.auth.login.failures`: `AuthService.login`에서 인증 실패를 기록할 때
+  - `reminder.auth.login.locks`: 차단 시작 WARN 로그를 남기는 곳 (메모리·Redis 구현 모두, 서버 여러 대에서도 한 번)
+  - `reminder.auth.login.rejected`: 차단 중이라 429 예외를 던질 때
+  - `reminder.auth.refresh.reuse`: `RefreshTokenService`가 재사용을 감지해 사용자 토큰을 모두 폐기할 때
+  - `reminder.auth.login-attempt.store.errors`: `RedisLoginAttemptStore`가 Redis 오류로 fail-open할 때
+- 서버를 띄운 직후에도 0으로 보이도록 카운터를 미리 등록한다 (알림 규칙의 `increase`가 처음부터 계산되도록)
+- 테스트 (`MeterRegistry`로 카운터 값 확인)
+  - 로그인 실패 시 `failures` 증가, 성공 시 변화 없음
+  - 이메일 5회 실패 시 `locks{scope="email"}` 1 증가, 이후 시도는 `rejected` 증가
+  - IP 기준 차단 시 `locks{scope="ip"}` 증가
+  - 리프레시 토큰 재사용 시 `reuse` 증가
+  - Redis 연결 실패 시 `store.errors` 증가 (기존 fail-open 테스트에 단언 추가)
+  - `prometheus` 응답의 커스텀 메트릭 태그에 이메일과 IP가 없음
+
+### 완료 기준
+- 화면에서 같은 이메일로 5번 틀리면 `/actuator/prometheus`의 실패·차단·거부 메트릭이 늘어난다.
+- 리프레시 토큰 재사용과 Redis 장애 시 해당 메트릭이 늘어난다.
+- 기존 로그인 시도 제한, 토큰 테스트가 그대로 통과한다.
+
+---
+
+## Phase 46 — Prometheus·Grafana 스택, 대시보드, 알림 규칙
+**목표**: 메트릭을 수집해 대시보드로 보고, 이상 상황을 알아차릴 알림 규칙을 코드로 관리한다.
+
+### 구성
+- 설정 파일은 루트 `monitoring/` 아래에 둔다
+  - `monitoring/prometheus/prometheus.yml`: 백엔드 management 포트 수집(`host.docker.internal:8090`, 15초 간격), 규칙 파일 로드
+  - `monitoring/prometheus/rules/`: 알림 규칙과 단위 테스트 파일
+  - `monitoring/grafana/provisioning/`: Prometheus 데이터 소스, 대시보드 프로비저닝
+  - `monitoring/grafana/dashboards/`: 대시보드 JSON
+- `docker-compose.yml`에 `monitoring` 프로필로 `prometheus`(`:9090`), `grafana`(`:3001`, 프론트엔드 `:3000`과 겹치지 않게)를 추가한다
+  - 백엔드는 호스트에서 실행하므로 Linux에서도 `host.docker.internal`이 동작하도록 `extra_hosts: host-gateway`를 둔다
+  - 기존 `redis` 서비스는 프로필 없이 그대로 둔다
+- 대시보드
+  - **백엔드 개요**: 요청 수, 5xx 비율, p95 응답 시간(경로별), 상태 코드 분포
+  - **JVM·DB**: 힙·GC·스레드, HikariCP 활성·유휴·대기 커넥션과 획득 시간
+  - **인증·보안**: 로그인 실패, 이메일·IP별 차단 시작, 차단 중 거부, 토큰 재사용, 저장소 오류
+
+### 알림 규칙
+- spec.md 17번 "알림 규칙" 표의 백엔드 규칙 8개를 `monitoring/prometheus/rules/alerts.yml`에 정의한다
+  - 각 규칙에 `severity` 라벨과 원인·확인할 대시보드를 적은 `summary`, `description`을 단다
+- `promtool test rules`로 규칙마다 발생·미발생 경계를 검증하는 단위 테스트를 둔다 (`alerts.test.yml`)
+- Alertmanager는 두지 않는다. 발생한 알림은 Prometheus `/alerts`와 Grafana 알림 화면에서 확인한다
+
+### CI
+- `.github/workflows/ci.yml`에 `Monitoring config` job을 추가한다
+  - `prom/prometheus` 이미지의 `promtool`로 `check config`, `check rules`, `test rules`
+  - 대시보드 JSON 문법 검사
+- `master` 브랜치 보호 규칙의 필수 검사에 이 job을 추가한다
+
+### 문서
+- `README.md`: 스택 실행(`docker compose --profile monitoring up -d`), 접속 주소(Prometheus `:9090`, Grafana `:3001`), 대시보드 목록, 알림 규칙 확인 방법
+- `CLAUDE.md`: 메트릭 이름·태그 규칙(민감 값과 고유 값 금지), 알림 규칙을 바꾸면 `alerts.test.yml`도 함께 갱신
+
+### 완료 기준
+- 스택과 백엔드를 띄우면 Prometheus 대상(`/targets`)이 UP이고, 세 대시보드에 값이 나온다.
+- 백엔드를 끄면 1분 뒤 `BackendDown`이 firing 상태가 된다.
+- 로그인을 반복해서 틀리면 인증·보안 대시보드에 반영된다.
+- `promtool` 검사와 규칙 단위 테스트가 로컬과 CI에서 통과한다.
+
+---
+
+## Phase 47 — 프론트엔드 모니터링 (Grafana Faro)
+**목표**: 서버 지표로는 보이지 않는 화면 오류와 사용자 체감 성능을 수집한다.
+
+### 구성
+- `docker-compose.yml`의 `monitoring` 프로필에 `alloy`와 `loki`를 추가한다
+  - `monitoring/alloy/config.alloy`: `faro.receiver`(`:12347`, CORS는 `http://localhost:3000`만, 요청 속도 제한)에서 받은 이벤트를 `loki.write`로 Loki에 보낸다
+  - `monitoring/loki/`: 로컬 단일 노드 설정과 ruler 규칙 디렉터리
+  - Grafana에 Loki 데이터 소스를 추가한다
+
+### 프론트엔드
+- `@grafana/faro-web-sdk`를 추가한다
+- `lib/faro.ts`
+  - 환경 변수(`NEXT_PUBLIC_FARO_URL`, 앱 이름·버전·환경)로 설정을 만들고, 주소가 없으면 `null`을 돌려 SDK를 켜지 않는다
+  - 웹 계측은 오류, Web Vitals, 세션만 쓰고 콘솔 수집은 끈다. 사용자 정보는 설정하지 않는다
+  - `beforeSend`에서 URL의 쿼리 문자열과 `Bearer`·JWT 형태 값을 지운다
+- `src/instrumentation-client.ts`에서 `lib/faro.ts`로 초기화해 앱이 hydrate되기 전부터 오류를 수집한다
+- 렌더링 중 오류도 수집되는지 확인하고, 수집되지 않으면 오류 경계에서 Faro API로 직접 보낸다
+- 테스트(`lib/faro.test.ts`): 주소가 없으면 설정 없음, 앱 정보 설정, URL 쿼리 제거, 토큰 형태 값 마스킹
+
+### 대시보드·알림 규칙
+- **프론트엔드** 대시보드: JS 오류 수와 최근 오류 목록(메시지, 페이지, 브라우저), 페이지별 Web Vitals(LCP, INP, CLS) 분포, 세션 수
+- `FrontendErrorSpike`(spec.md 17번 표)를 Loki ruler 규칙으로 정의하고 Grafana 알림 화면에서 확인한다
+
+### E2E·CI
+- 사용자 흐름이 바뀌지 않으므로 E2E 시나리오는 바꾸지 않는다. CI와 E2E는 `NEXT_PUBLIC_FARO_URL`을 설정하지 않아 수집하지 않는다
+
+### 문서
+- `README.md`: 프론트엔드 수집 설정(`frontend/.env.local`의 `NEXT_PUBLIC_FARO_URL`), 수집 항목과 제외 항목, 대시보드
+- `CLAUDE.md`: 프론트엔드 수집 데이터에 사용자 정보와 토큰을 넣지 않으며, 수집 항목을 바꾸면 `lib/faro.test.ts`를 함께 갱신
+
+### 완료 기준
+- 스택과 앱을 띄우고 화면을 사용하면 Grafana 프론트엔드 대시보드에 세션과 Web Vitals가 보인다.
+- 브라우저에서 일부러 오류를 내면 메시지, 페이지, 브라우저와 함께 대시보드에 나타난다.
+- Loki에 저장된 이벤트에 토큰, 이메일, URL 쿼리가 없다.
+- 주소를 설정하지 않으면 수집 요청이 나가지 않고, `npm run lint`, `npm test`, `npm run build`, E2E가 통과한다.
 
 ---
 

@@ -846,3 +846,103 @@
 - [x] `frontend`에서 `npm run build` 통과
 - [x] `npm run e2e:essential` 25개, `npm run e2e:supplementary` 43개 각각 통과
 - [x] PR CI에서 `Backend test`, `Frontend lint & build`, `E2E essential`, `E2E supplementary` job 통과
+
+---
+
+# v9 — 모니터링 (spec.md 17번)
+
+`plan.md`의 Phase 44~47을 기준으로 한다. 사용자 기능과 앱 API는 바꾸지 않으며, 모든 작업은 CI가 통과한 PR로 머지한다.
+
+## Phase 44 — Actuator·메트릭 기반
+### 백엔드
+- [ ] `spring-boot-starter-actuator`, `micrometer-registry-prometheus` 의존성 추가
+- [ ] management 포트 `${MANAGEMENT_PORT:8090}`, 노출 엔드포인트 `health`·`info`·`prometheus`로 제한
+- [ ] liveness·readiness 프로브, readiness에 DB 포함, Redis health는 `store=redis`일 때만 켜고 readiness에서 제외
+- [ ] health 구성 요소는 보이고 세부 값은 숨김
+- [ ] 공통 태그 `application`, `http.server.requests` 히스토그램
+- [ ] management 포트 Actuator 인증 없이 허용, 앱 포트에서 Actuator 미응답 확인
+- [ ] Actuator 요청이 `HttpLoggingFilter`에 남으면 `excluded-paths`에 추가
+- [ ] `info`에 앱 이름·빌드 버전 (`buildInfo()`)
+- [ ] 테스트: management 포트 `health`·`liveness`·`readiness` 200(인증 없음), readiness에 DB 포함
+- [ ] 테스트: `prometheus`에 HTTP·JVM·HikariCP 메트릭과 `application` 태그, 노출하지 않은 엔드포인트 404, 앱 포트 미응답
+- [ ] 테스트: `store=memory`에서 Redis 없이 readiness UP
+
+### 문서
+- [ ] `README.md`: management 포트·엔드포인트, 이중화 실행 시 두 번째 서버 `--management.server.port=8091`, 외부 비공개 전제
+- [ ] `CLAUDE.md`: Actuator 노출 관례
+
+### 완료 기준 검증
+- [ ] `:8090/actuator/health/readiness` UP, `:8090/actuator/prometheus`에 HTTP·JVM·HikariCP 메트릭 확인
+- [ ] `:8080/actuator/health` 미응답 확인
+- [ ] Actuator 반복 호출 시 요청 로그가 늘지 않는지 확인
+- [ ] 백엔드 테스트 전체 통과, `e2e`의 `npm run e2e` 통과
+
+## Phase 45 — 인증·보안 커스텀 메트릭
+### 백엔드
+- [ ] `AuthMetrics` 컴포넌트 추가, 카운터 미리 등록
+- [ ] `reminder.auth.login.failures` (인증 실패)
+- [ ] `reminder.auth.login.locks` (`scope`=`email`/`ip`, 메모리·Redis 구현의 차단 시작 지점)
+- [ ] `reminder.auth.login.rejected` (차단 중 429)
+- [ ] `reminder.auth.refresh.reuse` (재사용 감지)
+- [ ] `reminder.auth.login-attempt.store.errors` (Redis fail-open)
+- [ ] 테스트: 실패 시 `failures` 증가·성공 시 변화 없음, 이메일 5회 실패 시 `locks{scope="email"}`와 이후 `rejected` 증가, IP 차단 시 `locks{scope="ip"}` 증가
+- [ ] 테스트: 토큰 재사용 시 `reuse` 증가, Redis 연결 실패 시 `store.errors` 증가
+- [ ] 테스트: `prometheus` 응답의 커스텀 메트릭에 이메일·IP 값 없음
+
+### 완료 기준 검증
+- [ ] 화면에서 같은 이메일로 5번 틀린 뒤 실패·차단·거부 메트릭 증가 확인
+- [ ] 리프레시 토큰 재사용, Redis 장애 시 메트릭 증가 확인
+- [ ] 백엔드 테스트 전체 통과
+
+## Phase 46 — Prometheus·Grafana 스택, 대시보드, 알림 규칙
+### 구성
+- [ ] `monitoring/prometheus/prometheus.yml` (백엔드 management 포트 수집, 규칙 로드)
+- [ ] `docker-compose.yml`에 `monitoring` 프로필로 `prometheus`(`:9090`)·`grafana`(`:3001`), `host-gateway` 설정, 이미지 버전 고정
+- [ ] Grafana Prometheus 데이터 소스·대시보드 프로비저닝
+- [ ] 대시보드: 백엔드 개요, JVM·DB, 인증·보안
+
+### 알림 규칙
+- [ ] `monitoring/prometheus/rules/alerts.yml`에 백엔드 규칙 8개 (`severity`, `summary`, `description`)
+- [ ] `alerts.test.yml`: 규칙별 발생·미발생 경계 단위 테스트
+
+### CI
+- [ ] `Monitoring config` job: `promtool check config`·`check rules`·`test rules`, 대시보드 JSON 검사
+- [ ] `master` 브랜치 보호 필수 검사에 `Monitoring config` 추가
+
+### 문서
+- [ ] `README.md`: 스택 실행, 접속 주소, 대시보드, 알림 규칙 확인 방법
+- [ ] `CLAUDE.md`: 메트릭 이름·태그 규칙, 알림 규칙 변경 시 단위 테스트 갱신
+
+### 완료 기준 검증
+- [ ] Prometheus `/targets`에서 백엔드 UP, 세 대시보드에 값 표시 확인
+- [ ] 백엔드를 끄고 1분 뒤 `BackendDown` firing 확인
+- [ ] 로그인 반복 실패가 인증·보안 대시보드에 반영되는지 확인
+- [ ] 로컬과 PR CI에서 `promtool` 검사·규칙 단위 테스트 통과
+
+## Phase 47 — 프론트엔드 모니터링 (Grafana Faro)
+### 구성
+- [ ] `docker-compose.yml`의 `monitoring` 프로필에 `alloy`·`loki` 추가
+- [ ] `monitoring/alloy/config.alloy`: `faro.receiver`(`:12347`, CORS `http://localhost:3000`, 속도 제한) → Loki
+- [ ] `monitoring/loki/` 로컬 설정과 ruler 규칙 디렉터리, Grafana Loki 데이터 소스
+
+### 프론트엔드
+- [ ] `@grafana/faro-web-sdk` 추가
+- [ ] `lib/faro.ts`: 주소 없으면 비활성, 오류·Web Vitals·세션만 수집, 콘솔 수집 끔, 사용자 정보 미설정
+- [ ] `beforeSend`에서 URL 쿼리와 토큰 형태 값 제거
+- [ ] `src/instrumentation-client.ts`에서 초기화
+- [ ] 렌더링 오류 수집 확인 (안 되면 오류 경계에서 직접 전송)
+- [ ] 테스트(`lib/faro.test.ts`): 주소 없음, 앱 정보, URL 쿼리 제거, 토큰 마스킹
+
+### 대시보드·알림 규칙
+- [ ] 프론트엔드 대시보드: JS 오류 수·최근 오류, 페이지별 Web Vitals, 세션 수
+- [ ] `FrontendErrorSpike` Loki ruler 규칙, Grafana 알림 화면에서 확인
+
+### 문서
+- [ ] `README.md`: `NEXT_PUBLIC_FARO_URL` 설정, 수집·제외 항목, 대시보드
+- [ ] `CLAUDE.md`: 프론트엔드 수집 데이터 관례
+
+### 완료 기준 검증
+- [ ] 화면 사용 후 프론트엔드 대시보드에 세션과 Web Vitals 표시 확인
+- [ ] 일부러 낸 오류가 메시지·페이지·브라우저와 함께 표시되는지 확인
+- [ ] Loki 이벤트에 토큰·이메일·URL 쿼리가 없는지 확인
+- [ ] 주소 미설정 시 수집 요청 없음 확인, `npm run lint`·`npm test`·`npm run build`·`npm run e2e` 통과
