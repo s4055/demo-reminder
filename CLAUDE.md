@@ -64,6 +64,12 @@
 - 현재 시각은 주입한 `Clock`으로 `Instant.now(clock)`처럼 구한다. JPA Auditing(`createdAt`/`updatedAt`)도 `JpaAuditingConfig`의 `DateTimeProvider`로 같은 `Clock`을 따른다.
 - 예외: Redis TTL로 관리하는 만료(로그인 시도 기록 등)는 주입한 `Clock`이 아니라 Redis 서버 시각을 따른다. 이런 만료는 실제 Redis에서 짧은 TTL로 테스트한다.
 
+### 모니터링(Actuator)
+
+- Actuator는 management 포트(`${MANAGEMENT_PORT:8090}`)에서만 노출하고, 앱 포트(`:8080`)에서는 응답하지 않게 둔다. 노출 엔드포인트는 `health`, `info`, `prometheus`로 제한한다.
+- 노출 엔드포인트를 늘리거나 health 세부 값(`show-details`)을 보이게 바꿀 때는 보안 검토를 거치고, `ActuatorEndpointsTest`도 같은 작업 안에서 함께 바꾼다.
+- 메트릭 태그에는 이메일, IP, 사용자 ID, 토큰을 넣지 않는다.
+
 ### API 명세
 
 - API를 추가하거나 변경할 때는 `backend/openapi.yml`도 같은 작업 안에서 함께 갱신한다.

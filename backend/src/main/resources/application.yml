@@ -45,6 +45,32 @@ app:
       excluded-paths:
         - ${spring.h2.console.path}
 
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8090}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-components: always
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    redis:
+      enabled: false
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
 logging:
   pattern:
     console: '[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%thread] [%logger{0}:%line] [%X{request_id:-startup}] - %msg%n'
