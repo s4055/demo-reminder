@@ -7,8 +7,10 @@ import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.exception.RefreshTokenReuseException;
 import demo.ai.reminder.repository.user.RefreshTokenRepository;
 import demo.ai.reminder.repository.user.UserRepository;
+import demo.ai.reminder.security.AuthMetrics;
 import demo.ai.reminder.security.JwtProperties;
 import demo.ai.reminder.support.MutableClock;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +66,9 @@ class RefreshTokenServiceTest {
     @Autowired
     private MutableClock clock;
 
+    @Autowired
+    private MeterRegistry meterRegistry;
+
     private User alice;
 
     @BeforeEach
@@ -85,6 +90,10 @@ class RefreshTokenServiceTest {
         assertThatThrownBy(action::run)
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.UNAUTHORIZED);
+    }
+
+    private double reuseCount() {
+        return meterRegistry.get(AuthMetrics.REFRESH_REUSE).counter().count();
     }
 
     @Test
@@ -190,6 +199,22 @@ class RefreshTokenServiceTest {
                 .isInstanceOf(RefreshTokenReuseException.class);
 
         assertThat(stored(otherDevice).isRevoked()).isTrue();
+    }
+
+    @Test
+    @DisplayName("폐기된 토큰의 재사용을 감지하면 재사용 메트릭이 1 늘고, 정상 회전과 만료 토큰은 세지 않는다")
+    void rotate_countsReuseOnlyForRevokedToken() {
+        double before = reuseCount();
+        String original = refreshTokenService.issue(alice.getId()).token();
+        refreshTokenService.rotate(original);
+        String expired = refreshTokenService.issue(alice.getId()).token();
+        clock.advance(jwtProperties.refreshTokenTtl().plusSeconds(1));
+        assertUnauthorized(() -> refreshTokenService.rotate(expired));
+        assertThat(reuseCount()).isEqualTo(before);
+
+        assertThatThrownBy(() -> refreshTokenService.rotate(original)).isInstanceOf(RefreshTokenReuseException.class);
+
+        assertThat(reuseCount()).isEqualTo(before + 1);
     }
 
     @Test

@@ -77,6 +77,18 @@ Actuator는 앱 포트(`:8080`)와 분리된 management 포트(`MANAGEMENT_PORT`
 - 이 세 엔드포인트 외에는 노출하지 않으며(`env`, `beans` 등은 404), 인증 없이 응답합니다. **운영에서는 management 포트를 외부에 열지 않고** 내부 네트워크의 수집기·프로브만 접근하게 한다는 전제입니다.
 - Actuator 요청은 요청 로그(`HttpLoggingFilter`)에 남지 않습니다.
 
+인증·보안 메트릭 (모두 카운터이며, 서버를 띄운 직후부터 0으로 노출됩니다):
+
+| 메트릭 (Prometheus 이름) | 태그 | 늘어나는 때 |
+|---|---|---|
+| `reminder_auth_login_failures_total` | - | 이메일·비밀번호가 맞지 않아 로그인에 실패했을 때 |
+| `reminder_auth_login_locks_total` | `scope`(`email`, `ip`) | 로그인 차단이 시작될 때 (서버 여러 대여도 한 번) |
+| `reminder_auth_login_rejected_total` | - | 차단 중이라 429로 거부했을 때 |
+| `reminder_auth_refresh_reuse_total` | - | 폐기된 리프레시 토큰의 재사용을 감지했을 때 |
+| `reminder_auth_login_attempt_store_errors_total` | - | Redis 오류로 차단 확인 없이 로그인을 통과시켰을 때 (fail-open) |
+
+태그에는 이메일, IP 같은 값을 넣지 않습니다.
+
 ### 서버 이중화 실행 (로그인 시도 기록 공유)
 
 로컬 Redis는 저장소 루트의 `docker-compose.yml`로 띄웁니다(Docker 필요). 이미 `localhost:6379`에서 Redis가 실행 중이면 그대로 사용해도 됩니다.

@@ -24,6 +24,7 @@ public class InMemoryLoginAttemptStore implements LoginAttemptStore {
     private final Map<String, Attempts> ipAttempts = new ConcurrentHashMap<>();
     private final LoginAttemptProperties properties;
     private final Clock clock;
+    private final AuthMetrics authMetrics;
 
     @Override
     public Optional<Duration> remainingLock(String email, String ip) {
@@ -41,9 +42,11 @@ public class InMemoryLoginAttemptStore implements LoginAttemptStore {
         String normalizedEmail = User.normalizeEmail(email);
         if (recordFailure(emailAttempts, normalizedEmail, properties.maxFailuresPerEmail(), now)) {
             log.warn("Login locked for email={} ip={} until={}", normalizedEmail, ip, now.plus(properties.lockDuration()));
+            authMetrics.emailLocked();
         }
         if (recordFailure(ipAttempts, ip, properties.maxFailuresPerIp(), now)) {
             log.warn("Login locked for ip={} email={} until={}", ip, normalizedEmail, now.plus(properties.lockDuration()));
+            authMetrics.ipLocked();
         }
     }
 

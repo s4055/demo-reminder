@@ -43,6 +43,7 @@ public class RedisLoginAttemptStore implements LoginAttemptStore {
 
     private final StringRedisTemplate redisTemplate;
     private final LoginAttemptProperties properties;
+    private final AuthMetrics authMetrics;
 
     @Override
     public Optional<Duration> remainingLock(String email, String ip) {
@@ -55,6 +56,7 @@ public class RedisLoginAttemptStore implements LoginAttemptStore {
                     .max(Duration::compareTo);
         } catch (DataAccessException e) {
             log.error("Failed to read login lock from Redis; allowing login attempt", e);
+            authMetrics.loginAttemptStoreFailedOpen();
             return Optional.empty();
         }
     }
@@ -65,9 +67,11 @@ public class RedisLoginAttemptStore implements LoginAttemptStore {
         try {
             if (recordFailure(Target.EMAIL, normalizedEmail, properties.maxFailuresPerEmail())) {
                 log.warn("Login locked for email={} ip={} for={}", normalizedEmail, ip, properties.lockDuration());
+                authMetrics.emailLocked();
             }
             if (recordFailure(Target.IP, ip, properties.maxFailuresPerIp())) {
                 log.warn("Login locked for ip={} email={} for={}", ip, normalizedEmail, properties.lockDuration());
+                authMetrics.ipLocked();
             }
         } catch (DataAccessException e) {
             log.error("Failed to record login failure in Redis: email={} ip={}", normalizedEmail, ip, e);
