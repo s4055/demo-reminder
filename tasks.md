@@ -879,20 +879,20 @@
 
 ## Phase 45 — 인증·보안 커스텀 메트릭
 ### 백엔드
-- [ ] `AuthMetrics` 컴포넌트 추가, 카운터 미리 등록
-- [ ] `reminder.auth.login.failures` (인증 실패)
-- [ ] `reminder.auth.login.locks` (`scope`=`email`/`ip`, 메모리·Redis 구현의 차단 시작 지점)
-- [ ] `reminder.auth.login.rejected` (차단 중 429)
-- [ ] `reminder.auth.refresh.reuse` (재사용 감지)
-- [ ] `reminder.auth.login-attempt.store.errors` (Redis fail-open)
-- [ ] 테스트: 실패 시 `failures` 증가·성공 시 변화 없음, 이메일 5회 실패 시 `locks{scope="email"}`와 이후 `rejected` 증가, IP 차단 시 `locks{scope="ip"}` 증가
-- [ ] 테스트: 토큰 재사용 시 `reuse` 증가, Redis 연결 실패 시 `store.errors` 증가
-- [ ] 테스트: `prometheus` 응답의 커스텀 메트릭에 이메일·IP 값 없음
+- [x] `AuthMetrics` 컴포넌트 추가, 카운터 미리 등록
+- [x] `reminder.auth.login.failures` (인증 실패)
+- [x] `reminder.auth.login.locks` (`scope`=`email`/`ip`, 메모리·Redis 구현의 차단 시작 지점)
+- [x] `reminder.auth.login.rejected` (차단 중 429)
+- [x] `reminder.auth.refresh.reuse` (재사용 감지)
+- [x] `reminder.auth.login-attempt.store.errors` (Redis fail-open) — 차단 확인(`remainingLock`)을 건너뛰고 통과시킨 때만 셈
+- [x] 테스트: 실패 시 `failures` 증가·성공 시 변화 없음, 이메일 5회 실패 시 `locks{scope="email"}`와 이후 `rejected` 증가, IP 차단 시 `locks{scope="ip"}` 증가
+- [x] 테스트: 토큰 재사용 시 `reuse` 증가, Redis 연결 실패 시 `store.errors` 증가
+- [x] 테스트: `prometheus` 응답의 커스텀 메트릭에 이메일·IP 값 없음
 
 ### 완료 기준 검증
-- [ ] 화면에서 같은 이메일로 5번 틀린 뒤 실패·차단·거부 메트릭 증가 확인
-- [ ] 리프레시 토큰 재사용, Redis 장애 시 메트릭 증가 확인
-- [ ] 백엔드 테스트 전체 통과
+- [x] 화면에서 같은 이메일로 5번 틀린 뒤 실패·차단·거부 메트릭 증가 확인
+- [x] 리프레시 토큰 재사용, Redis 장애 시 메트릭 증가 확인
+- [x] 백엔드 테스트 전체 통과
 
 ## Phase 46 — Prometheus·Grafana 스택, 대시보드, 알림 규칙
 ### 구성

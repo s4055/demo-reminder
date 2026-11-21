@@ -10,8 +10,10 @@ import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.exception.TooManyLoginAttemptsException;
 import demo.ai.reminder.repository.user.RefreshTokenRepository;
 import demo.ai.reminder.repository.user.UserRepository;
+import demo.ai.reminder.security.AuthMetrics;
 import demo.ai.reminder.security.JwtProvider;
 import demo.ai.reminder.support.TestAuth;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +51,9 @@ class AuthServiceTest {
     @Autowired
     private JwtProvider jwtProvider;
 
+    @Autowired
+    private MeterRegistry meterRegistry;
+
     private AuthResult signupAlice() {
         return authService.signup(new SignupRequest("alice@example.com", "password1", "앨리스"));
     }
@@ -57,6 +62,14 @@ class AuthServiceTest {
         assertThatThrownBy(action::run)
                 .isInstanceOf(BusinessException.class)
                 .extracting("resultCode").isEqualTo(ResultCode.UNAUTHORIZED);
+    }
+
+    private double count(String name) {
+        return meterRegistry.get(name).counter().count();
+    }
+
+    private double emailLockCount() {
+        return meterRegistry.get(AuthMetrics.LOGIN_LOCKS).tag(AuthMetrics.SCOPE, "email").counter().count();
     }
 
     @Test
@@ -183,6 +196,43 @@ class AuthServiceTest {
 
         assertThat(authService.login(new LoginRequest("carol@example.com", "password1"), "10.1.1.1").user().email())
                 .isEqualTo("carol@example.com");
+    }
+
+    @Test
+    @DisplayName("로그인에 실패하면 실패 메트릭이 늘고, 성공하면 늘지 않는다")
+    void login_countsFailuresOnly() {
+        authService.signup(new SignupRequest("metric@example.com", "password1", "메트릭"));
+        double before = count(AuthMetrics.LOGIN_FAILURES);
+
+        assertUnauthorized(() -> authService.login(new LoginRequest("metric@example.com", "wrong"), "10.2.0.1"));
+        assertUnauthorized(() -> authService.login(new LoginRequest("nobody@example.com", "password1"), "10.2.0.1"));
+        authService.login(new LoginRequest("metric@example.com", "password1"), "10.2.0.1");
+
+        assertThat(count(AuthMetrics.LOGIN_FAILURES)).isEqualTo(before + 2);
+    }
+
+    @Test
+    @DisplayName("같은 이메일로 5번 틀리면 이메일 차단 메트릭이 1 늘고, 차단 중 시도는 거부 메트릭만 는다")
+    void login_afterFiveFailures_countsLockThenRejections() {
+        authService.signup(new SignupRequest("metric-lock@example.com", "password1", "차단"));
+        double emailLocks = emailLockCount();
+        double failures = count(AuthMetrics.LOGIN_FAILURES);
+        double rejected = count(AuthMetrics.LOGIN_REJECTED);
+
+        for (int i = 0; i < 5; i++) {
+            assertUnauthorized(() -> authService.login(new LoginRequest("metric-lock@example.com", "wrong"), "10.2.1.1"));
+        }
+        assertThat(emailLockCount()).isEqualTo(emailLocks + 1);
+        assertThat(count(AuthMetrics.LOGIN_REJECTED)).isEqualTo(rejected);
+
+        for (int i = 0; i < 2; i++) {
+            assertThatThrownBy(() -> authService.login(new LoginRequest("metric-lock@example.com", "password1"), "10.2.1.2"))
+                    .isInstanceOf(TooManyLoginAttemptsException.class);
+        }
+
+        assertThat(count(AuthMetrics.LOGIN_REJECTED)).isEqualTo(rejected + 2);
+        assertThat(count(AuthMetrics.LOGIN_FAILURES)).isEqualTo(failures + 5);
+        assertThat(emailLockCount()).isEqualTo(emailLocks + 1);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package demo.ai.reminder.security;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,9 @@ abstract class LoginAttemptStoreContractTest {
 
     static final String EMAIL = "alice@example.com";
     static final String IP = "10.0.0.1";
+
+    final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    final AuthMetrics authMetrics = new AuthMetrics(meterRegistry);
 
     abstract LoginAttemptStore store();
 
@@ -93,6 +97,33 @@ abstract class LoginAttemptStoreContractTest {
 
         assertThat(store().remainingLock(EMAIL, IP)).isEmpty();
         assertThat(store().remainingLock("bob@example.com", IP)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("이메일 기준 차단이 시작되면 scope=email 차단 메트릭이 1 늘고, 한도 전에는 늘지 않는다")
+    void recordFailure_countsEmailLock() {
+        failTimes(EMAIL, IP, properties().maxFailuresPerEmail() - 1);
+        assertThat(lockCount("email")).isZero();
+
+        store().recordFailure(EMAIL, IP);
+
+        assertThat(lockCount("email")).isEqualTo(1);
+        assertThat(lockCount("ip")).isZero();
+    }
+
+    @Test
+    @DisplayName("IP 기준 차단이 시작되면 scope=ip 차단 메트릭이 1 는다")
+    void recordFailure_countsIpLock() {
+        for (int i = 0; i < properties().maxFailuresPerIp(); i++) {
+            store().recordFailure("user" + i + "@example.com", IP);
+        }
+
+        assertThat(lockCount("ip")).isEqualTo(1);
+        assertThat(lockCount("email")).isZero();
+    }
+
+    double lockCount(String scope) {
+        return meterRegistry.get(AuthMetrics.LOGIN_LOCKS).tag(AuthMetrics.SCOPE, scope).counter().count();
     }
 
     void failTimes(String email, String ip, int times) {

@@ -59,7 +59,7 @@ class RedisLoginAttemptStoreTest extends LoginAttemptStoreContractTest {
             connection.serverCommands().flushAll();
             return null;
         });
-        store = new RedisLoginAttemptStore(templateA, PROPERTIES);
+        store = new RedisLoginAttemptStore(templateA, PROPERTIES, authMetrics);
     }
 
     @Override
@@ -85,7 +85,7 @@ class RedisLoginAttemptStoreTest extends LoginAttemptStoreContractTest {
     @Test
     @DisplayName("같은 Redis를 쓰는 두 서버에 실패를 나눠 기록하면 합산되어, 두 서버 모두에서 차단된다")
     void recordFailure_isSharedBetweenServers() {
-        RedisLoginAttemptStore otherServer = new RedisLoginAttemptStore(templateB, PROPERTIES);
+        RedisLoginAttemptStore otherServer = new RedisLoginAttemptStore(templateB, PROPERTIES, authMetrics);
         for (int i = 0; i < 4; i++) {
             (i % 2 == 0 ? store : otherServer).recordFailure(EMAIL, IP);
         }
@@ -99,9 +99,23 @@ class RedisLoginAttemptStoreTest extends LoginAttemptStoreContractTest {
     }
 
     @Test
+    @DisplayName("두 서버에 실패를 나눠 기록해도 차단 시작은 한 번만 세고, 차단 중 추가 실패는 세지 않는다")
+    void recordFailure_countsSharedLockOnce() {
+        RedisLoginAttemptStore otherServer = new RedisLoginAttemptStore(templateB, PROPERTIES, authMetrics);
+        for (int i = 0; i < PROPERTIES.maxFailuresPerEmail(); i++) {
+            (i % 2 == 0 ? store : otherServer).recordFailure(EMAIL, IP);
+        }
+
+        store.recordFailure(EMAIL, IP);
+        otherServer.recordFailure(EMAIL, IP);
+
+        assertThat(lockCount("email")).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("한 서버에서 로그인에 성공해 초기화하면 다른 서버에서도 그 이메일의 실패 횟수가 사라진다")
     void reset_isSharedBetweenServers() {
-        RedisLoginAttemptStore otherServer = new RedisLoginAttemptStore(templateB, PROPERTIES);
+        RedisLoginAttemptStore otherServer = new RedisLoginAttemptStore(templateB, PROPERTIES, authMetrics);
         failTimes(EMAIL, IP, 4);
 
         otherServer.reset(EMAIL);
@@ -116,7 +130,8 @@ class RedisLoginAttemptStoreTest extends LoginAttemptStoreContractTest {
         LoginAttemptProperties highLimit = new LoginAttemptProperties(
                 1000, 1000, Duration.ofMinutes(1), Duration.ofMinutes(1), LoginAttemptProperties.Store.REDIS);
         List<RedisLoginAttemptStore> servers = List.of(
-                new RedisLoginAttemptStore(templateA, highLimit), new RedisLoginAttemptStore(templateB, highLimit));
+                new RedisLoginAttemptStore(templateA, highLimit, authMetrics),
+                new RedisLoginAttemptStore(templateB, highLimit, authMetrics));
 
         try (ExecutorService executor = Executors.newFixedThreadPool(16)) {
             List<Future<?>> futures = IntStream.range(0, 200)

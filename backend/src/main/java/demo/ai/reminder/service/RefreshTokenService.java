@@ -7,6 +7,7 @@ import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.exception.RefreshTokenReuseException;
 import demo.ai.reminder.repository.user.RefreshTokenRepository;
 import demo.ai.reminder.repository.user.UserRepository;
+import demo.ai.reminder.security.AuthMetrics;
 import demo.ai.reminder.security.JwtProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -34,6 +35,7 @@ public class RefreshTokenService {
     private final UserRepository userRepository;
     private final JwtProperties jwtProperties;
     private final Clock clock;
+    private final AuthMetrics authMetrics;
 
     public IssuedRefreshToken issue(Long userId) {
         User user = userRepository.getReferenceById(userId);
@@ -49,6 +51,7 @@ public class RefreshTokenService {
         if (current.isRevoked()) {
             Long userId = current.getUser().getId();
             revokeAll(userId, now);
+            authMetrics.refreshTokenReused();
             throw new RefreshTokenReuseException(userId);
         }
         if (current.isExpired(now)) {

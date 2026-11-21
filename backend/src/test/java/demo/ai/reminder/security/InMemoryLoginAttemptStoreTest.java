@@ -16,7 +16,7 @@ class InMemoryLoginAttemptStoreTest extends LoginAttemptStoreContractTest {
             5, 20, Duration.ofMinutes(15), Duration.ofMinutes(10), LoginAttemptProperties.Store.MEMORY);
 
     private final MutableClock clock = new MutableClock(Instant.parse("2026-11-12T00:00:00Z"), ZoneOffset.UTC);
-    private final InMemoryLoginAttemptStore store = new InMemoryLoginAttemptStore(PROPERTIES, clock);
+    private final InMemoryLoginAttemptStore store = new InMemoryLoginAttemptStore(PROPERTIES, clock, authMetrics);
 
     @Override
     LoginAttemptStore store() {

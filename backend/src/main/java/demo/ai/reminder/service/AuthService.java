@@ -9,6 +9,7 @@ import demo.ai.reminder.exception.BusinessException;
 import demo.ai.reminder.exception.RefreshTokenReuseException;
 import demo.ai.reminder.exception.TooManyLoginAttemptsException;
 import demo.ai.reminder.repository.user.UserRepository;
+import demo.ai.reminder.security.AuthMetrics;
 import demo.ai.reminder.security.CurrentUser;
 import demo.ai.reminder.security.JwtProvider;
 import demo.ai.reminder.security.LoginAttemptStore;
@@ -33,6 +34,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptStore loginAttemptStore;
+    private final AuthMetrics authMetrics;
 
     @Transactional
     public AuthResult signup(SignupRequest request) {
@@ -49,6 +51,7 @@ public class AuthService {
     @Transactional
     public AuthResult login(LoginRequest request, String clientIp) {
         loginAttemptStore.remainingLock(request.email(), clientIp).ifPresent(retryAfter -> {
+            authMetrics.loginRejected();
             throw new TooManyLoginAttemptsException(retryAfter);
         });
         Long userId = authenticate(request.email(), request.password(), clientIp);
@@ -78,6 +81,7 @@ public class AuthService {
                     UsernamePasswordAuthenticationToken.unauthenticated(email, password)).getPrincipal();
             return loginUser.getId();
         } catch (AuthenticationException e) {
+            authMetrics.loginFailed();
             loginAttemptStore.recordFailure(email, clientIp);
             throw new BusinessException(ResultCode.UNAUTHORIZED, "Invalid email or password");
         }

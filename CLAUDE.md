@@ -69,6 +69,7 @@
 - Actuator는 management 포트(`${MANAGEMENT_PORT:8090}`)에서만 노출하고, 앱 포트(`:8080`)에서는 응답하지 않게 둔다. 노출 엔드포인트는 `health`, `info`, `prometheus`로 제한한다.
 - 노출 엔드포인트를 늘리거나 health 세부 값(`show-details`)을 보이게 바꿀 때는 보안 검토를 거치고, `ActuatorEndpointsTest`도 같은 작업 안에서 함께 바꾼다.
 - 메트릭 태그에는 이메일, IP, 사용자 ID, 토큰을 넣지 않는다.
+- 인증·보안 메트릭은 `security.AuthMetrics`를 통해 서비스·보안 계층에서만 기록한다. 도메인은 Micrometer에 의존하지 않는다. 카운터는 `AuthMetrics` 생성 시점에 미리 등록해 기동 직후부터 0으로 노출한다.
 
 ### API 명세
 

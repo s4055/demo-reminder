@@ -1,5 +1,6 @@
 package demo.ai.reminder.security;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,7 @@ class RedisLoginAttemptStoreUnavailableTest {
     private static final LoginAttemptProperties PROPERTIES = new LoginAttemptProperties(
             5, 20, Duration.ofMinutes(15), Duration.ofMinutes(15), LoginAttemptProperties.Store.REDIS);
 
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     private LettuceConnectionFactory connectionFactory;
     private RedisLoginAttemptStore store;
 
@@ -36,7 +38,8 @@ class RedisLoginAttemptStoreUnavailableTest {
         connectionFactory = new LettuceConnectionFactory(new RedisStandaloneConfiguration("localhost", unusedPort()), client);
         connectionFactory.afterPropertiesSet();
         connectionFactory.start();
-        store = new RedisLoginAttemptStore(new StringRedisTemplate(connectionFactory), PROPERTIES);
+        store = new RedisLoginAttemptStore(new StringRedisTemplate(connectionFactory), PROPERTIES,
+                new AuthMetrics(meterRegistry));
     }
 
     @AfterEach
@@ -55,6 +58,16 @@ class RedisLoginAttemptStoreUnavailableTest {
                 .contains("Failed to read login lock from Redis")
                 .contains("Failed to record login failure in Redis")
                 .contains("Failed to reset login failures in Redis");
+    }
+
+    @Test
+    @DisplayName("Redis 오류로 차단 확인 없이 로그인을 통과시킬 때마다 저장소 오류 메트릭이 는다")
+    void redisUnavailable_countsFailOpenLockChecks() {
+        store.remainingLock("alice@example.com", "10.0.0.1");
+        store.recordFailure("alice@example.com", "10.0.0.1");
+        store.remainingLock("bob@example.com", "10.0.0.2");
+
+        assertThat(meterRegistry.get(AuthMetrics.LOGIN_ATTEMPT_STORE_ERRORS).counter().count()).isEqualTo(2);
     }
 
     private static int unusedPort() throws IOException {
