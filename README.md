@@ -17,7 +17,7 @@ Apple Reminders의 핵심 사용 경험(리스트, 리마인더, 완료 처리, 
 
 | 구분 | 스택 |
 |---|---|
-| 백엔드 | Java 21, Spring Boot 4, Spring Data JPA, Spring Security, H2(파일 모드), Lombok |
+| 백엔드 | Java 21, Spring Boot 4, Spring Data JPA, Spring Security, H2(파일 모드), Lombok, Actuator·Micrometer(Prometheus) |
 | 프론트엔드 | Next.js(App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, React Hook Form, date-fns |
 
 ## 사전 준비
@@ -62,6 +62,21 @@ cd backend
   - Redis에 연결할 수 없으면 로그인 가용성을 우선해 차단하지 않고(fail-open) ERROR 로그를 남깁니다.
 - CORS는 `http://localhost:3000`만 허용하며, 리프레시 토큰 쿠키를 보낼 수 있도록 `allowCredentials`를 켭니다.
 
+### 상태 확인과 메트릭 (management 포트 `:8090`)
+
+Actuator는 앱 포트(`:8080`)와 분리된 management 포트(`MANAGEMENT_PORT`, 기본 `8090`)에서만 응답합니다. 앱 포트의 `/actuator/**`는 404입니다.
+
+| 엔드포인트 | 내용 |
+|---|---|
+| `GET :8090/actuator/health` | 전체 상태와 구성 요소(`db`, `diskSpace` 등, `store=redis`이면 `redis`)별 상태. 연결 정보 같은 세부 값은 보여 주지 않음 |
+| `GET :8090/actuator/health/liveness` | liveness 프로브 |
+| `GET :8090/actuator/health/readiness` | readiness 프로브 (DB 포함, Redis는 fail-open이라 제외) |
+| `GET :8090/actuator/info` | 애플리케이션 이름과 빌드 버전 |
+| `GET :8090/actuator/prometheus` | Prometheus 형식 메트릭 (HTTP 요청 히스토그램, JVM, HikariCP, 프로세스). 모든 메트릭에 `application="reminder"` 태그 |
+
+- 이 세 엔드포인트 외에는 노출하지 않으며(`env`, `beans` 등은 404), 인증 없이 응답합니다. **운영에서는 management 포트를 외부에 열지 않고** 내부 네트워크의 수집기·프로브만 접근하게 한다는 전제입니다.
+- Actuator 요청은 요청 로그(`HttpLoggingFilter`)에 남지 않습니다.
+
 ### 서버 이중화 실행 (로그인 시도 기록 공유)
 
 로컬 Redis는 저장소 루트의 `docker-compose.yml`로 띄웁니다(Docker 필요). 이미 `localhost:6379`에서 Redis가 실행 중이면 그대로 사용해도 됩니다.
@@ -72,9 +87,11 @@ docker compose up -d redis
 cd backend && ./gradlew bootJar
 LOGIN_ATTEMPT_STORE=redis java -jar build/libs/reminder-0.0.1-SNAPSHOT.jar --server.port=8080 \
   "--spring.datasource.url=jdbc:h2:file:./data/reminderdb;AUTO_SERVER=TRUE"
-LOGIN_ATTEMPT_STORE=redis java -jar build/libs/reminder-0.0.1-SNAPSHOT.jar --server.port=8081 \
+LOGIN_ATTEMPT_STORE=redis java -jar build/libs/reminder-0.0.1-SNAPSHOT.jar --server.port=8081 --management.server.port=8091 \
   "--spring.datasource.url=jdbc:h2:file:./data/reminderdb;AUTO_SERVER=TRUE"
 ```
+
+두 번째 서버는 management 포트가 첫 번째 서버(`:8090`)와 겹치지 않도록 `--management.server.port=8091`로 띄웁니다.
 
 두 서버는 같은 Redis에 실패 횟수와 차단을 기록하므로, 어느 서버로 요청해도 같은 한도가 적용됩니다.
 Redis 저장소 테스트(`RedisLoginAttemptStoreTest`)는 Testcontainers로 Redis를 띄우므로 Docker가 없는 환경에서는 건너뜁니다(CI에서는 실행됩니다).

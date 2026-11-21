@@ -855,27 +855,27 @@
 
 ## Phase 44 — Actuator·메트릭 기반
 ### 백엔드
-- [ ] `spring-boot-starter-actuator`, `micrometer-registry-prometheus` 의존성 추가
-- [ ] management 포트 `${MANAGEMENT_PORT:8090}`, 노출 엔드포인트 `health`·`info`·`prometheus`로 제한
-- [ ] liveness·readiness 프로브, readiness에 DB 포함, Redis health는 `store=redis`일 때만 켜고 readiness에서 제외
-- [ ] health 구성 요소는 보이고 세부 값은 숨김
-- [ ] 공통 태그 `application`, `http.server.requests` 히스토그램
-- [ ] management 포트 Actuator 인증 없이 허용, 앱 포트에서 Actuator 미응답 확인
-- [ ] Actuator 요청이 `HttpLoggingFilter`에 남으면 `excluded-paths`에 추가
-- [ ] `info`에 앱 이름·빌드 버전 (`buildInfo()`)
-- [ ] 테스트: management 포트 `health`·`liveness`·`readiness` 200(인증 없음), readiness에 DB 포함
-- [ ] 테스트: `prometheus`에 HTTP·JVM·HikariCP 메트릭과 `application` 태그, 노출하지 않은 엔드포인트 404, 앱 포트 미응답
-- [ ] 테스트: `store=memory`에서 Redis 없이 readiness UP
+- [x] `spring-boot-starter-actuator`, `micrometer-registry-prometheus` 의존성 추가
+- [x] management 포트 `${MANAGEMENT_PORT:8090}`, 노출 엔드포인트 `health`·`info`·`prometheus`로 제한
+- [x] liveness·readiness 프로브, readiness에 DB 포함, Redis health는 `store=redis`일 때만 켜고 readiness에서 제외
+- [x] health 구성 요소는 보이고 세부 값은 숨김
+- [x] 공통 태그 `application`, `http.server.requests` 히스토그램
+- [x] management 포트 Actuator 인증 없이 허용, 앱 포트에서 Actuator 미응답 확인
+- [x] Actuator 요청이 `HttpLoggingFilter`에 남으면 `excluded-paths`에 추가 — management 포트 요청은 필터를 거치지 않아 추가 불필요 (`ActuatorEndpointsTest`로 확인)
+- [x] `info`에 앱 이름·빌드 버전 (`buildInfo()`)
+- [x] 테스트: management 포트 `health`·`liveness`·`readiness` 200(인증 없음), readiness에 DB 포함
+- [x] 테스트: `prometheus`에 HTTP·JVM·HikariCP 메트릭과 `application` 태그, 노출하지 않은 엔드포인트 404, 앱 포트 미응답
+- [x] 테스트: `store=memory`에서 Redis 없이 readiness UP
 
 ### 문서
-- [ ] `README.md`: management 포트·엔드포인트, 이중화 실행 시 두 번째 서버 `--management.server.port=8091`, 외부 비공개 전제
-- [ ] `CLAUDE.md`: Actuator 노출 관례
+- [x] `README.md`: management 포트·엔드포인트, 이중화 실행 시 두 번째 서버 `--management.server.port=8091`, 외부 비공개 전제
+- [x] `CLAUDE.md`: Actuator 노출 관례
 
 ### 완료 기준 검증
-- [ ] `:8090/actuator/health/readiness` UP, `:8090/actuator/prometheus`에 HTTP·JVM·HikariCP 메트릭 확인
-- [ ] `:8080/actuator/health` 미응답 확인
-- [ ] Actuator 반복 호출 시 요청 로그가 늘지 않는지 확인
-- [ ] 백엔드 테스트 전체 통과, `e2e`의 `npm run e2e` 통과
+- [x] `:8090/actuator/health/readiness` UP, `:8090/actuator/prometheus`에 HTTP·JVM·HikariCP 메트릭 확인
+- [x] `:8080/actuator/health` 미응답 확인
+- [x] Actuator 반복 호출 시 요청 로그가 늘지 않는지 확인
+- [x] 백엔드 테스트 전체 통과, `e2e`의 `npm run e2e` 통과
 
 ## Phase 45 — 인증·보안 커스텀 메트릭
 ### 백엔드
