@@ -1068,7 +1068,7 @@
 ### CI
 
 - [x] `Monitoring config` job: `promtool check config`·`check rules`·`test rules`, 대시보드 JSON 검사
-- [ ] `master` 브랜치 보호 필수 검사에 `Monitoring config` 추가
+- [x] `master` 브랜치 보호 필수 검사에 `Monitoring config` 추가
 
 ### 문서
 
@@ -1080,7 +1080,7 @@
 - [x] Prometheus `/targets`에서 백엔드 UP, 세 대시보드에 값 표시 확인
 - [x] 백엔드를 끄고 1분 뒤 `BackendDown` firing 확인
 - [x] 로그인 반복 실패가 인증·보안 대시보드에 반영되는지 확인
-- [ ] 로컬과 PR CI에서 `promtool` 검사·규칙 단위 테스트 통과
+- [x] 로컬과 PR CI에서 `promtool` 검사·규칙 단위 테스트 통과
 
 ## Phase 47 — 프론트엔드 모니터링 (Grafana Faro)
 
