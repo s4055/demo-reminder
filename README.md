@@ -89,6 +89,59 @@ Actuator는 앱 포트(`:8080`)와 분리된 management 포트(`MANAGEMENT_PORT`
 
 태그에는 이메일, IP 같은 값을 넣지 않습니다.
 
+### 모니터링 스택 (Prometheus `:9090`, Grafana `:3001`)
+
+Prometheus와 Grafana는 `docker-compose.yml`의 `monitoring` 프로필로 따로 띄웁니다(Docker 필요). 스택이 없어도 앱, 테스트, E2E는 그대로 동작합니다.
+
+```bash
+docker compose --profile monitoring up -d
+docker compose --profile monitoring down
+```
+
+| 주소 | 내용 |
+|---|---|
+| http://localhost:9090/targets | 수집 대상. 호스트에서 실행한 백엔드(`host.docker.internal:8090`)를 15초마다 수집하며 `reminder-backend`가 UP이어야 합니다 |
+| http://localhost:9090/alerts | 알림 규칙과 상태(inactive, pending, firing) |
+| http://localhost:3001 | Grafana. 로그인 없이 보기 권한으로 열리며, `Reminder` 폴더에 대시보드가 있습니다 |
+
+- 설정은 저장소의 `monitoring/`에서 관리합니다. Prometheus 설정(`prometheus/prometheus.yml`), 알림 규칙(`prometheus/rules/`),
+  Grafana 데이터 소스·대시보드 프로비저닝(`grafana/provisioning/`), 대시보드 JSON(`grafana/dashboards/`)이 있습니다.
+- 프로비저닝한 대시보드는 Grafana 화면에서 저장할 수 없습니다. 바꾸려면 `grafana/dashboards/`의 JSON을 고친 뒤 Grafana를 다시 띄웁니다.
+- 백엔드는 호스트에서 실행하므로 Linux에서도 `host.docker.internal`이 동작하도록 `extra_hosts: host-gateway`를 둡니다.
+- Grafana는 로컬 확인용 설정(익명 보기 허용)이며, 운영 배포 구성은 범위 밖입니다.
+
+| 대시보드 | 내용 |
+|---|---|
+| 백엔드 개요 | 수집 상태, 요청 수, 5xx 비율, 경로별 p95 응답 시간, 상태 코드 분포 |
+| JVM·DB | 힙·GC·스레드, HikariCP 활성·유휴·대기 커넥션과 획득 시간 |
+| 인증·보안 | 로그인 실패, 이메일·IP별 차단 시작, 차단 중 거부, 토큰 재사용, 저장소 오류 |
+
+대시보드 위쪽의 `서버` 선택으로 이중화 실행 시 서버별로 볼 수 있습니다(두 번째 서버를 수집하려면 `prometheus.yml`의 대상에 `host.docker.internal:8091`을 더합니다).
+
+#### 알림 규칙
+
+`monitoring/prometheus/rules/alerts.yml`에 정의하며, 전송 채널(Alertmanager 등)은 연결하지 않습니다. 발생한 알림은 Prometheus `/alerts`와 Grafana의 알림 화면(Alerting → Alert rules)에서 확인합니다.
+
+| 규칙 | 조건 | 심각도 |
+|---|---|---|
+| `BackendDown` | 백엔드 수집 실패가 1분 이상 | critical |
+| `HighServerErrorRate` | 5분간 5xx 응답 비율 5% 초과 | critical |
+| `HighLatencyP95` | 10분간 API 응답 시간 p95 1초 초과 | warning |
+| `DbConnectionPending` | 커넥션을 기다리는 요청이 5분 이상 계속 | warning |
+| `JvmHeapHigh` | 10분간 힙 사용률 90% 초과 | warning |
+| `LoginLockSpike` | 10분간 로그인 차단 시작 10회 이상 | warning |
+| `RefreshTokenReuseDetected` | 5분 안에 리프레시 토큰 재사용 감지 1회 이상 | warning |
+| `LoginAttemptStoreFailOpen` | 5분 안에 로그인 시도 저장소 오류 1회 이상 | critical |
+
+규칙마다 `summary`, `description`에 원인과 확인할 대시보드를 적어 둡니다. 규칙 문법 검사와 단위 테스트(`alerts.test.yml`)는 `promtool`로 실행합니다(CI의 `Monitoring config` job과 같음).
+
+```bash
+docker run --rm -v "$PWD/monitoring/prometheus:/etc/prometheus" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.16.0 check config prometheus.yml
+docker run --rm -v "$PWD/monitoring/prometheus:/etc/prometheus" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.16.0 test rules rules/alerts.test.yml
+```
+
+Docker 없이 확인하려면 [Prometheus 릴리스](https://github.com/prometheus/prometheus/releases)의 `promtool`을 받아 `monitoring/prometheus`에서 같은 명령(`promtool check config prometheus.yml` 등)을 실행합니다.
+
 ### 서버 이중화 실행 (로그인 시도 기록 공유)
 
 로컬 Redis는 저장소 루트의 `docker-compose.yml`로 띄웁니다(Docker 필요). 이미 `localhost:6379`에서 Redis가 실행 중이면 그대로 사용해도 됩니다.

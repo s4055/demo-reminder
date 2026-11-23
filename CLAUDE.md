@@ -68,7 +68,8 @@
 
 - Actuator는 management 포트(`${MANAGEMENT_PORT:8090}`)에서만 노출하고, 앱 포트(`:8080`)에서는 응답하지 않게 둔다. 노출 엔드포인트는 `health`, `info`, `prometheus`로 제한한다.
 - 노출 엔드포인트를 늘리거나 health 세부 값(`show-details`)을 보이게 바꿀 때는 보안 검토를 거치고, `ActuatorEndpointsTest`도 같은 작업 안에서 함께 바꾼다.
-- 메트릭 태그에는 이메일, IP, 사용자 ID, 토큰을 넣지 않는다.
+- 메트릭 이름은 `reminder.<영역>.<대상>` 형태의 점 구분 소문자로 짓는다(Prometheus에서는 `reminder_auth_login_failures_total`처럼 노출된다).
+- 메트릭 태그에는 이메일, IP, 사용자 ID, 토큰 같은 민감한 값과, 요청마다 달라져 값이 계속 늘어나는 고유 값을 넣지 않는다. 태그 값은 `scope`(`email`, `ip`)처럼 정해진 몇 개로 제한하고, 경로는 `/api/reminders/{id}` 같은 템플릿으로 남긴다.
 - 인증·보안 메트릭은 `security.AuthMetrics`를 통해 서비스·보안 계층에서만 기록한다. 도메인은 Micrometer에 의존하지 않는다. 카운터는 `AuthMetrics` 생성 시점에 미리 등록해 기동 직후부터 0으로 노출한다.
 
 ### API 명세
@@ -80,3 +81,11 @@
 - 기능을 새로 추가하거나 기존 동작을 수정할 때는 이를 검증하는 테스트도 같은 작업 안에서 함께 작성한다.
 - 테스트 메서드명은 영어(camelCase)로 작성하고, 사람이 읽을 설명은 `@DisplayName`(한글)으로 표현한다. camelCase 구간을 밑줄로 이어 `대상_조건_결과` 형태(예: `login_withValidCredentials_issuesTokens`)로 써도 된다.
 - Service 테스트는 `@SpringBootTest` + `@Transactional`을 이용한 통합 테스트로 작성한다. 예외: 커밋 시점 동작(`noRollbackFor`로 남는 커밋, 커밋 시점 낙관적 락 충돌 등)을 검증하는 테스트는 테스트 트랜잭션 안에서 재현할 수 없으므로 `@Transactional` 없이 작성하고, 만든 데이터는 `@AfterEach`에서 직접 정리한다.
+
+## monitoring 하위 - 모니터링 스택(Prometheus·Grafana) 관례
+
+- 설정은 `monitoring/`에서 관리하고, 스택은 `docker compose --profile monitoring`으로 따로 띄운다. 스택이 없어도 앱, 테스트, E2E는 그대로 동작해야 한다.
+- 이미지 버전은 고정한다(`latest` 금지). Prometheus 이미지를 바꾸면 CI의 `Monitoring config` job과 `README.md`의 `promtool` 명령도 함께 바꾼다.
+- 알림 규칙(`prometheus/rules/alerts.yml`)을 추가하거나 바꿀 때는 `alerts.test.yml`의 발생·미발생 경계 테스트도 같은 작업 안에서 함께 갱신하고, `promtool check rules`·`test rules`로 확인한다.
+- 알림 규칙에는 `severity`(`critical`, `warning`) 라벨과, 원인과 확인할 대시보드를 적은 `summary`, `description`을 단다.
+- 대시보드는 `grafana/dashboards/`의 JSON으로 관리한다. 데이터 소스는 uid `prometheus`로 참조하고, 메트릭 이름이 바뀌면 대시보드 쿼리와 알림 규칙을 함께 바꾼다.
