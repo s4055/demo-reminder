@@ -1,0 +1,240 @@
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 15s
+
+tests:
+  - name: BackendDown fires after one minute of failed scrapes
+    interval: 15s
+    input_series:
+      - series: 'up{job="reminder-backend", instance="host.docker.internal:8090"}'
+        values: '1 0x8'
+      - series: 'up{job="reminder-backend", instance="host.docker.internal:8091"}'
+        values: '1x8'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: BackendDown
+        exp_alerts: []
+      - eval_time: 1m15s
+        alertname: BackendDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: reminder-backend
+              instance: host.docker.internal:8090
+            exp_annotations:
+              summary: "백엔드 메트릭 수집 실패 (host.docker.internal:8090)"
+              description: "1분 넘게 management 포트(/actuator/prometheus)를 수집하지 못했습니다. 백엔드 프로세스와 :8090 응답, Prometheus /targets의 오류를 확인하세요."
+
+  - name: HighServerErrorRate fires above five percent
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/api/reminders", status="200"}'
+        values: '0+94x10'
+      - series: 'http_server_requests_seconds_count{uri="/api/reminders", status="500"}'
+        values: '0+6x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighServerErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "5xx 응답 비율 5% 초과"
+              description: "최근 5분간 5xx 응답 비율이 5%를 넘었습니다. '백엔드 개요' 대시보드에서 상태 코드와 경로를 확인하고 백엔드 ERROR 로그를 보세요."
+
+  - name: HighServerErrorRate stays quiet below five percent
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/api/reminders", status="200"}'
+        values: '0+96x10'
+      - series: 'http_server_requests_seconds_count{uri="/api/reminders", status="500"}'
+        values: '0+4x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighServerErrorRate
+        exp_alerts: []
+
+  - name: HighLatencyP95 fires when p95 exceeds one second
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_bucket{uri="/api/reminders", le="0.5"}'
+        values: '0+90x15'
+      - series: 'http_server_requests_seconds_bucket{uri="/api/reminders", le="1.0"}'
+        values: '0+90x15'
+      - series: 'http_server_requests_seconds_bucket{uri="/api/reminders", le="2.0"}'
+        values: '0+100x15'
+      - series: 'http_server_requests_seconds_bucket{uri="/api/reminders", le="+Inf"}'
+        values: '0+100x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HighLatencyP95
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "API 응답 시간 p95 1초 초과"
+              description: "최근 10분간 API 응답 시간 p95가 1초를 넘었습니다. '백엔드 개요'의 경로별 p95와 'JVM·DB' 대시보드의 커넥션 대기·GC를 확인하세요."
+
+  - name: HighLatencyP95 stays quiet when p95 is within one second
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_bucket{uri="/api/reminders", le="0.5"}'
+        values: '0+90x15'
+      - series: 'http_server_requests_seconds_bucket{uri="/api/reminders", le="1.0"}'
+        values: '0+96x15'
+      - series: 'http_server_requests_seconds_bucket{uri="/api/reminders", le="2.0"}'
+        values: '0+100x15'
+      - series: 'http_server_requests_seconds_bucket{uri="/api/reminders", le="+Inf"}'
+        values: '0+100x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HighLatencyP95
+        exp_alerts: []
+
+  - name: DbConnectionPending fires after five minutes of waiting
+    interval: 1m
+    input_series:
+      - series: 'hikaricp_connections_pending{instance="host.docker.internal:8090", pool="HikariPool-1"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: DbConnectionPending
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: DbConnectionPending
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: host.docker.internal:8090
+              pool: HikariPool-1
+            exp_annotations:
+              summary: "DB 커넥션 대기 계속 (HikariPool-1)"
+              description: "5분 넘게 커넥션을 기다리는 요청이 있습니다. 'JVM·DB' 대시보드에서 활성·대기 커넥션과 획득 시간을 확인하고, 오래 걸리는 쿼리나 풀 크기를 점검하세요."
+
+  - name: DbConnectionPending resets when waiting stops
+    interval: 1m
+    input_series:
+      - series: 'hikaricp_connections_pending{instance="host.docker.internal:8090", pool="HikariPool-1"}'
+        values: '1 1 1 1 0 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: DbConnectionPending
+        exp_alerts: []
+
+  - name: JvmHeapHigh fires after ten minutes above ninety percent
+    interval: 1m
+    input_series:
+      - series: 'jvm_memory_used_bytes{instance="host.docker.internal:8090", area="heap", id="G1 Old Gen"}'
+        values: '900x12'
+      - series: 'jvm_memory_used_bytes{instance="host.docker.internal:8090", area="heap", id="G1 Eden Space"}'
+        values: '50x12'
+      - series: 'jvm_memory_used_bytes{instance="host.docker.internal:8090", area="nonheap", id="Metaspace"}'
+        values: '5000x12'
+      - series: 'jvm_memory_max_bytes{instance="host.docker.internal:8090", area="heap", id="G1 Old Gen"}'
+        values: '1000x12'
+      - series: 'jvm_memory_max_bytes{instance="host.docker.internal:8090", area="heap", id="G1 Eden Space"}'
+        values: '-1x12'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: JvmHeapHigh
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: JvmHeapHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: host.docker.internal:8090
+            exp_annotations:
+              summary: "힙 사용률 90% 초과 (host.docker.internal:8090)"
+              description: "10분 넘게 힙 사용률이 90%를 넘었습니다. 'JVM·DB' 대시보드에서 힙과 GC 추세를 확인하고 메모리 누수나 힙 크기를 점검하세요."
+
+  - name: JvmHeapHigh stays quiet below ninety percent
+    interval: 1m
+    input_series:
+      - series: 'jvm_memory_used_bytes{instance="host.docker.internal:8090", area="heap", id="G1 Old Gen"}'
+        values: '850x12'
+      - series: 'jvm_memory_used_bytes{instance="host.docker.internal:8090", area="heap", id="G1 Eden Space"}'
+        values: '40x12'
+      - series: 'jvm_memory_max_bytes{instance="host.docker.internal:8090", area="heap", id="G1 Old Gen"}'
+        values: '1000x12'
+      - series: 'jvm_memory_max_bytes{instance="host.docker.internal:8090", area="heap", id="G1 Eden Space"}'
+        values: '-1x12'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: JvmHeapHigh
+        exp_alerts: []
+
+  - name: LoginLockSpike fires at ten locks in ten minutes
+    interval: 1m
+    input_series:
+      - series: 'reminder_auth_login_locks_total{scope="email"}'
+        values: '0x5 6x10'
+      - series: 'reminder_auth_login_locks_total{scope="ip"}'
+        values: '0x5 4x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: LoginLockSpike
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "로그인 차단 급증 (10분간 10회 이상)"
+              description: "최근 10분간 로그인 차단이 10회 이상 시작되었습니다. 무차별 대입 시도일 수 있습니다. '인증·보안' 대시보드에서 이메일·IP별 차단과 로그인 실패 추세를 확인하세요."
+      - eval_time: 16m
+        alertname: LoginLockSpike
+        exp_alerts: []
+
+  - name: LoginLockSpike stays quiet below ten locks
+    interval: 1m
+    input_series:
+      - series: 'reminder_auth_login_locks_total{scope="email"}'
+        values: '0x5 8x10'
+      - series: 'reminder_auth_login_locks_total{scope="ip"}'
+        values: '0x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: LoginLockSpike
+        exp_alerts: []
+
+  - name: RefreshTokenReuseDetected fires within five minutes of a reuse
+    interval: 1m
+    input_series:
+      - series: 'reminder_auth_refresh_reuse_total'
+        values: '0 0 1x10'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: RefreshTokenReuseDetected
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: RefreshTokenReuseDetected
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "리프레시 토큰 재사용 감지"
+              description: "최근 5분 안에 폐기된 리프레시 토큰의 재사용이 감지되었습니다. 토큰 탈취 가능성이 있습니다. '인증·보안' 대시보드와 백엔드 WARN 로그를 확인하세요."
+      - eval_time: 9m
+        alertname: RefreshTokenReuseDetected
+        exp_alerts: []
+
+  - name: LoginAttemptStoreFailOpen fires within five minutes of a store error
+    interval: 1m
+    input_series:
+      - series: 'reminder_auth_login_attempt_store_errors_total'
+        values: '0 0 1x10'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: LoginAttemptStoreFailOpen
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: LoginAttemptStoreFailOpen
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "로그인 시도 저장소 오류로 차단 없이 통과"
+              description: "최근 5분 안에 로그인 시도 저장소(Redis) 오류로 차단 확인 없이 로그인을 통과시켰습니다(fail-open). Redis 상태와 백엔드 ERROR 로그를 확인하세요. '인증·보안' 대시보드의 저장소 오류 패널을 보세요."
+      - eval_time: 9m
+        alertname: LoginAttemptStoreFailOpen
+        exp_alerts: []

@@ -3,6 +3,7 @@
 `plan.md`를 기준으로 Phase별 세부 작업을 체크리스트로 정리한다.
 
 ## Phase 0 — 공통 준비
+
 - [x] `frontend/` 하위에 Next.js 프로젝트 생성 (`create-next-app`, TypeScript, App Router, Tailwind)
 - [x] shadcn/ui 초기 설정 (`npx shadcn@latest init`)
 - [x] TanStack Query Provider 설정 (`QueryClientProvider`)
@@ -10,7 +11,9 @@
 - [x] `spring-boot-starter-validation` 의존성 추가
 
 ## Phase 1 — 최소 기능: 단일 리마인더 목록
+
 ### 백엔드
+
 - [x] `Reminder` 엔티티 작성 (id, title, memo, completed, createdAt)
 - [x] `ReminderRepository` (JpaRepository) 작성
 - [x] `ReminderService` 작성
@@ -22,6 +25,7 @@
 - [x] 요청/응답 DTO 정의 및 유효성 검증 (`title` 필수)
 
 ### 프론트엔드
+
 - [x] 리마인더 API 클라이언트 함수 작성 (`fetch` 기반)
 - [x] 리마인더 입력 폼 컴포넌트 (제목 입력 + 추가 버튼)
 - [x] 리마인더 목록 컴포넌트 (체크박스 + 삭제 버튼)
@@ -30,12 +34,15 @@
 - [x] 단일 페이지(`/`)에 폼 + 목록 배치
 
 ### 완료 기준 검증
+
 - [x] 리마인더 추가 → 목록 즉시 표시 확인
 - [x] 체크 시 취소선/완료 표시 확인
 - [x] 삭제 시 목록에서 제거 확인
 
 ## Phase 2 — 리스트(List) 기능 추가
+
 ### 백엔드
+
 - [x] `List` 엔티티 작성 (id, name, color, createdAt)
 - [x] `Reminder`에 `listId` FK(연관관계) 추가 + 마이그레이션 확인(H2 `ddl-auto: update`)
 - [x] `ListRepository` 작성
@@ -48,6 +55,7 @@
 - [x] `GET /api/reminders?listId=` 쿼리 파라미터 지원
 
 ### 프론트엔드
+
 - [x] 좌측 사이드바 레이아웃 컴포넌트 추가
 - [x] 리스트 생성 UI (다이얼로그/인풋)
 - [x] 리스트 삭제 UI (확인 포함)
@@ -55,11 +63,14 @@
 - [x] 사이드바에 리스트별 리마인더 개수 뱃지 표시
 
 ### 완료 기준 검증
+
 - [x] 리스트 생성 후 리마인더를 해당 리스트에 추가
 - [x] 사이드바에서 리스트 선택 시 해당 리마인더만 노출되는지 확인
 
 ## Phase 3 — 마감일/플래그 + 스마트 리스트
+
 ### 백엔드
+
 - [x] `Reminder`에 `dueAt`(LocalDateTime, nullable), `flagged`(boolean) 필드 추가
 - [x] `ReminderService`에 스마트 뷰 조회/플래그 토글 로직 추가
 - [x] `GET /api/reminders/smart/{view}` 구현
@@ -72,6 +83,7 @@
 - [x] 생성/수정 API에 `dueAt` 필드 반영
 
 ### 프론트엔드
+
 - [x] 사이드바 상단 스마트 리스트 메뉴 추가 (오늘/예정됨/전체/플래그 지정됨/완료됨)
 - [x] 리마인더 항목에 마감일 표시 (date-fns 포맷)
 - [x] 리마인더 항목에 플래그 아이콘 + 토글 인터랙션
@@ -79,27 +91,33 @@
 - [x] 스마트 뷰 선택 상태 관리 및 API 연동
 
 ### 완료 기준 검증
+
 - [x] 오늘 날짜로 마감일 설정 시 "오늘" 뷰에 노출 확인
 - [x] 플래그 토글 시 "플래그 지정됨" 뷰에 즉시 반영 확인
 
 ## Phase 4 — 리마인더 상세 편집 + 리스트 관리 고도화
+
 ### 백엔드
+
 - [x] `ReminderService`에 전체 수정 로직 추가
 - [x] `PUT /api/reminders/{id}` 전체 수정(제목/메모/마감일/플래그) 완성
 - [x] `ListService`에 이름/색상 수정 로직 추가
 - [x] `PUT /api/lists/{id}` 이름/색상 수정 완성
 
 ### 프론트엔드
+
 - [x] React Hook Form 도입
 - [x] 리마인더 상세/편집 모달(또는 우측 패널) 컴포넌트 작성
 - [x] 리마인더 클릭 시 상세 편집 열기 인터랙션
 - [x] 리스트 이름/색상 편집 UI (색상 피커 포함)
 
 ### 완료 기준 검증
+
 - [x] 리마인더 메모/마감일/플래그 수정 후 목록 즉시 반영 확인
 - [x] 리스트 이름/색상 변경이 사이드바에 즉시 반영되는지 확인
 
 ## Phase 5 — UI/UX 폴리싱 & 안정화
+
 - [x] 전체 UI를 shadcn/ui 컴포넌트로 통일 (버튼, 체크박스, 모달, 토스트)
 - [x] 로딩 상태 UI 처리 (skeleton 등)
 - [x] 에러 상태 UI 처리 (toast/알림)
@@ -110,9 +128,11 @@
 - [x] README 작성 (실행 방법: 백엔드 `:8080`, 프론트엔드 `:3000`)
 
 ### 완료 기준 검증
+
 - [x] `spec.md` "9. 성공 기준(Acceptance Criteria)" 항목 전체 수동 테스트 통과
 
 ## 추가 작업
+
 - [x] 필터로 요청/응답 전문 로깅 (`HttpLoggingFilter`: [Request]/[Header]/[Session]/[Response] 로그, 요청 로그 → 비즈니스 로직 → 응답 로그 순서, UUID request_id를 MDC에 넣어 요청 처리 중 모든 로그에 출력)
 - [x] 서비스 계층 예외를 `BusinessException(ResultCode)`로 통일 (`ResponseStatusException` 직접 사용 제거, `ResultCode`에 HTTP 상태 추가, `GlobalExceptionHandler`에서 변환)
 - [x] `HttpLoggingFilter` 적용 후 `/h2-console` 로그인 불가 수정: `/h2-console` 요청은 로깅 없이 `doFilter` 후 바로 반환 (본문을 미리 읽으면 H2 로그인 폼 파라미터가 비기 때문)
@@ -126,7 +146,9 @@
 `plan.md`의 Phase 6~13을 기준으로 한다. 각 Phase에서 API를 바꾸면 `backend/openapi.yml`을 함께 갱신하고, 기능마다 테스트를 함께 작성한다.
 
 ## Phase 6 — 우선순위
+
 ### 백엔드
+
 - [x] `Priority` enum 추가 (`NONE`, `LOW`, `MEDIUM`, `HIGH`)
 - [x] `Reminder`에 `priority` 필드 추가 (기본값 `NONE`), `update(...)`에 우선순위 변경 포함
 - [x] 생성/수정 요청 DTO와 응답 DTO에 `priority` 반영 (생략 시 `NONE`)
@@ -134,15 +156,19 @@
 - [x] 테스트: 도메인(기본값, 수정), 서비스(생성/수정 시 저장), 컨트롤러(응답 필드)
 
 ### 프론트엔드
+
 - [x] `Reminder` 타입과 API 클라이언트에 `priority` 추가
 - [x] 상세 편집 모달에 우선순위 선택 UI (`Select`)
 - [x] 리마인더 항목 제목 앞에 `!` / `!!` / `!!!` 표시
 
 ### 완료 기준 검증
+
 - [x] 우선순위 지정/변경 시 목록 표시가 즉시 바뀌고 새로고침 후에도 유지되는지 확인
 
 ## Phase 7 — 드래그앤드롭 순서 변경
+
 ### 백엔드
+
 - [x] `ReminderList`, `Reminder`에 `sortOrder` 필드 추가
 - [x] 새 리스트/리마인더 생성 시 같은 범위의 마지막 순서로 지정
 - [x] `PATCH /api/lists/order` — `ids` 순서대로 리스트 순서 일괄 갱신
@@ -153,6 +179,7 @@
 - [x] 테스트: 생성 시 순서 부여, 순서 변경 반영, 잘못된 `ids` 400, 스마트 뷰 정렬 유지
 
 ### 프론트엔드
+
 - [x] `@dnd-kit/core`, `@dnd-kit/sortable` 도입
 - [x] 사이드바 리스트 드래그 정렬
 - [x] 사용자 리스트 화면의 미완료 리마인더 드래그 정렬
@@ -160,10 +187,13 @@
 - [x] 스마트 뷰에서 드래그 비활성화
 
 ### 완료 기준 검증
+
 - [x] 리스트/리마인더 순서 변경 후 새로고침해도 순서가 유지되는지 확인
 
 ## Phase 8 — 태그
+
 ### 백엔드
+
 - [x] `Tag` 엔티티(id, name 고유, createdAt)와 `TagRepository` 작성
 - [x] `Reminder` ↔ `Tag` 다대다 연관관계 추가 (조인 테이블 `reminder_tag`)
 - [x] 조인 테이블을 연결 엔티티 `ReminderTag`(`(reminder_id, tag_id)` 유니크)로 전환 (PR #34)
@@ -175,16 +205,20 @@
 - [x] 테스트: 태그 자동 생성/재사용, 태그 교체, 태그별 조회, 태그 삭제 시 리마인더 유지
 
 ### 프론트엔드
+
 - [x] 태그 API 클라이언트와 TanStack Query 훅 작성
 - [x] 상세 편집 모달에 태그 칩 입력 UI (Enter로 추가, X로 제거)
 - [x] 리마인더 항목에 `#태그` 표시
 - [x] 사이드바 "태그" 섹션 추가, 태그 선택 시 해당 리마인더 표시 (선택 상태에 태그 추가)
 
 ### 완료 기준 검증
+
 - [x] 태그를 붙이면 사이드바 태그 목록에 나타나고, 태그 선택 시 해당 리마인더만 보이는지 확인
 
 ## Phase 9 — 하위 작업(subtask)
+
 ### 백엔드
+
 - [x] `Reminder`에 `parent` 자기 참조 연관관계 추가 (1단계 깊이, 부모와 같은 리스트)
 - [x] 생성 요청에 `parentId` 추가 — 부모 없음 404, 부모가 하위 작업이면 400
 - [x] 리스트별 조회는 최상위 리마인더만 반환하고 응답에 `subtasks` 포함
@@ -195,15 +229,19 @@
 - [x] 테스트: 깊이 제한, 완료/삭제 전파, 조회 구조, 개수 집계
 
 ### 프론트엔드
+
 - [x] 리마인더 항목 아래 하위 작업 들여쓰기 표시 + 펼치기/접기
 - [x] 상세 편집 모달에서 하위 작업 추가
 - [x] 하위 작업 완료 체크/삭제/편집 연동
 
 ### 완료 기준 검증
+
 - [x] 하위 작업이 부모 아래에 표시되고, 부모 완료 시 하위 작업도 완료되는지 확인
 
 ## Phase 10 — 반복 리마인더
+
 ### 백엔드
+
 - [x] `RepeatRule` enum 추가 (`NONE`, `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`)
 - [x] `Reminder`에 `repeatRule` 필드 추가 (기본값 `NONE`), 마감일시 없이 반복 설정 시 400
 - [x] 다음 마감일시 계산 도메인 로직 (월말 처리 포함)
@@ -213,30 +251,38 @@
 - [x] 테스트: 주기별 다음 날짜 계산(월말/윤년 포함), 완료 시 다음 회차 생성, 마감일 없는 반복 400
 
 ### 프론트엔드
+
 - [x] 생성 폼과 상세 편집 모달에 반복 선택 UI
 - [x] 리마인더 항목에 반복 아이콘과 주기 표시
 - [x] 완료 시 다음 회차가 목록에 나타나도록 캐시 무효화
 
 ### 완료 기준 검증
+
 - [x] 매주 반복 리마인더 완료 시 "완료됨"에 현재 항목, "예정됨"에 7일 뒤 새 항목이 나타나는지 확인
 
 ## Phase 11 — 알림(브라우저 알림)
+
 ### 백엔드
+
 - [x] `GET /api/reminders/upcoming?from=&to=` — 기간 내 마감 미완료 리마인더 조회
 - [x] `openapi.yml` 갱신
 - [x] 테스트: 기간 경계, 완료 항목 제외
 
 ### 프론트엔드
+
 - [x] 알림 권한 요청 UI (알림 켜기 버튼, 거부 상태 안내)
 - [x] 주기적으로 다가오는 리마인더를 조회해 마감 시각에 브라우저 알림 표시
 - [x] 알린 리마인더(id + dueAt)를 `localStorage`에 기록해 중복 알림 방지
 - [x] 알림 클릭 시 해당 리마인더 상세 편집 열기
 
 ### 완료 기준 검증
+
 - [x] 1~2분 뒤로 마감일시를 설정하면 그 시각에 알림이 한 번만 뜨는지 확인
 
 ## Phase 12 — 사용자 인증/멀티 유저 + 영구 저장(H2 파일 모드)
+
 ### 백엔드 — 인증
+
 - [x] `spring-boot-starter-security` 의존성 추가
 - [x] `User` 엔티티(id, email 고유, password BCrypt, name, createdAt)와 `UserRepository` 작성
 - [x] 세션(쿠키) 기반 로그인 `SecurityConfig` 작성
@@ -246,6 +292,7 @@
 - [x] 세션 쿠키 `SameSite=Lax`, `HttpOnly` 명시 (CSRF 토큰 미사용 전제) + 쿠키 속성 테스트
 
 ### 백엔드 — 멀티 유저
+
 - [x] `ReminderList`, `Reminder`, `Tag`에 소유자 `user` FK 추가
 - [x] 태그 이름 고유 조건을 사용자별 고유로 변경
 - [x] 모든 조회/수정/삭제를 현재 사용자 데이터로 제한 (다른 사용자 리소스는 404)
@@ -253,23 +300,28 @@
 - [x] 테스트: 회원가입/로그인/로그아웃, 미인증 401, 사용자 간 데이터 격리
 
 ### 백엔드 — 영구 저장
+
 - [x] H2를 파일 모드(`jdbc:h2:file:./data/reminderdb`)로 전환, 스키마는 `ddl-auto: update` 유지
 - [x] 테스트는 in-memory DB 사용
 - [x] DB 파일(`backend/data/`)을 `.gitignore`에 추가
 
 ### 프론트엔드
+
 - [x] `/login`, `/signup` 페이지 (React Hook Form + 검증)
 - [x] 비로그인 상태 접근 시 `/login`으로 이동
 - [x] API 클라이언트 `credentials: "include"` 적용, 401 시 로그인 페이지로 이동
 - [x] 사용자 이름 표시 + 로그아웃 버튼
 
 ### 완료 기준 검증
+
 - [x] 두 계정이 서로의 리스트/리마인더를 볼 수 없는지 확인
 - [x] 서버 재시작 후 데이터(계정 포함)가 유지되는지 확인
 - [x] README에 DB 파일 위치와 초기화 방법 추가
 
 ## Phase 13 — 리스트 공유/협업
+
 ### 백엔드
+
 - [x] `ListMember` 엔티티(id, list, user, role `OWNER`/`EDITOR`, createdAt) 작성, 리스트 생성 시 소유자를 `OWNER`로 저장
 - [x] `GET /api/lists/{id}/members`
 - [x] `POST /api/lists/{id}/members` — 이메일로 초대 (소유자만, 없는 사용자 404, 이미 멤버 400)
@@ -280,12 +332,14 @@
 - [x] 테스트: 초대/제거/나가기, 권한별 허용·거부, 비멤버 접근 차단, 스마트 뷰 포함
 
 ### 프론트엔드
+
 - [x] 리스트 공유 다이얼로그 (이메일 초대, 멤버 목록, 제거)
 - [x] 사이드바의 공유 리스트에 공유 아이콘 표시
 - [x] 소유자가 아닌 경우 리스트 편집/삭제 메뉴 숨김
 - [x] TanStack Query `refetchInterval`/창 포커스 재조회로 다른 사용자 변경 반영
 
 ### 완료 기준 검증
+
 - [x] A가 B를 초대하면 B 사이드바에 리스트가 나타나고, B가 추가한 리마인더가 A 화면에 반영되는지 확인
 - [x] 멤버가 아닌 사용자가 리스트에 접근할 수 없는지 확인
 
@@ -296,6 +350,7 @@
 `plan.md`의 Phase 14~19를 기준으로 한다. Phase 14(CI) 이후 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 14 — CI (GitHub Actions)
+
 - [x] `backend/gradlew` 실행 권한 부여 (`git update-index --chmod=+x`)
 - [x] `.github/workflows/ci.yml` 작성 (`pull_request`→`master`, `push`→`master` 트리거)
 - [x] backend 잡: Temurin 21 + Gradle 캐시, `./gradlew test`, 실패 시 테스트 리포트 아티팩트 업로드 (PR #79부터 성공한 실행에서도 HTML 리포트와 XML 결과를 항상 업로드)
@@ -305,10 +360,13 @@
 - [x] `master` 브랜치 보호 규칙에 필수 상태 검사 지정 (`gh api`, 관리자 우회 허용, 강제 푸시·삭제 금지)
 
 ### 완료 기준 검증
+
 - [x] PR에서 두 잡이 실행되고, 일부러 실패시킨 테스트가 PR에 실패로 표시되는지 확인 (머지 차단·리포트 아티팩트 업로드 확인)
 
 ## Phase 15 — 완료 항목 숨기기/일괄 삭제
+
 ### 백엔드
+
 - [x] `DELETE /api/reminders/completed?listId=` — 완료 항목 일괄 삭제, `deletedCount` 반환
 - [x] 완료된 최상위 리마인더(하위 작업 포함)와 미완료 부모 아래의 완료된 하위 작업 삭제
 - [x] 접근 불가 리스트 404, `listId` 누락 400, 리스트 멤버(EDITOR)도 실행 가능
@@ -316,15 +374,19 @@
 - [x] 테스트: 완료 항목만 삭제, 다른 리스트 영향 없음, 하위 작업 처리, 멤버 허용/비멤버 404
 
 ### 프론트엔드
+
 - [x] 리스트 화면에 "완료된 항목 보기/숨기기" 토글 (리스트별 `localStorage` 저장, 기본 보기)
 - [x] "완료 항목 지우기" 버튼 + `AlertDialog` 확인 (개수 표시)
 - [x] 삭제 후 리마인더/리스트/태그 쿼리 무효화
 
 ### 완료 기준 검증
+
 - [x] 숨김 설정이 새로고침 후에도 유지되고, 일괄 삭제 시 해당 리스트의 완료 항목만 사라지는지 확인
 
 ## Phase 16 — 검색
+
 ### 백엔드
+
 - [x] `GET /api/reminders/search?q=` — 제목/메모 부분 일치(대소문자 무시) 또는 태그 이름 부분 일치
 - [x] 내 리스트 + 공유받은 리스트 범위, 하위 작업도 개별 항목으로 포함
 - [x] 정렬: 미완료(마감일 → 생성일) 먼저, 완료(완료일시 최신순) 나중
@@ -333,16 +395,20 @@
 - [x] 테스트: 제목/메모/태그 일치, 대소문자 무시, 특수문자, 다른 사용자 데이터 제외, 공유 리스트 포함, 빈 검색어 400
 
 ### 프론트엔드
+
 - [x] 검색 API 클라이언트와 TanStack Query 훅
 - [x] 사이드바 상단 검색 입력창 (300ms 디바운스)
 - [x] 선택 상태에 `search` 타입 추가, 검색어를 지우면 이전 선택으로 복귀
 - [x] 결과 항목에 소속 리스트 이름/색상 표시, 빈 결과 UI, 드래그 비활성화
 
 ### 완료 기준 검증
+
 - [x] 제목·메모·태그로 검색 시 일치 항목만 보이고 공유받은 리스트 항목도 검색되는지 확인
 
 ## Phase 17 — 리스트 간 이동
+
 ### 백엔드
+
 - [x] `Reminder.moveTo(list, sortOrder)` 도메인 메서드 (하위 작업도 함께 이동)
 - [x] `PATCH /api/reminders/{id}/list` — 대상 리스트 마지막 순서로 이동
 - [x] 접근 불가 대상 리스트 404, 하위 작업 단독 이동 400, 같은 리스트 이동은 변경 없음
@@ -350,15 +416,19 @@
 - [x] 테스트: 도메인(하위 작업 함께 이동), 서비스(순서, 개수 변화, 권한, 하위 작업 400), 컨트롤러
 
 ### 프론트엔드
+
 - [x] 리마인더 이동 API 클라이언트와 mutation
 - [x] 상세 편집 모달에 리스트 선택 UI (하위 작업 편집 시 숨김)
 - [x] 이동 후 원래/대상 리스트와 개수 쿼리 무효화 + 토스트
 
 ### 완료 기준 검증
+
 - [x] 이동 시 하위 작업도 함께 옮겨지고 사이드바 양쪽 개수가 즉시 바뀌는지 확인
 
 ## Phase 18 — 사용자 지정 반복
+
 ### 백엔드
+
 - [x] `Reminder`에 `repeatInterval`(1~99, 기본 1), `repeatDaysOfWeek`(`@ElementCollection`) 추가, 기존 행은 간격 1로 동작
 - [x] `repeatDaysOfWeek`를 엔티티 `ReminderRepeatDay`(`(reminder_id, day_of_week)` 유니크)로 전환 (PR #34)
 - [x] 반복 규칙 값 객체로 다음 마감일 계산 (간격, 주 단위 요일, 월말 규칙 유지)
@@ -368,16 +438,20 @@
 - [x] 테스트: 간격별 다음 날짜, 요일 반복(같은 주/다음 간격 주), 월말·윤년, 검증 400, 완료 시 다음 회차 규칙 복사
 
 ### 프론트엔드
+
 - [x] `Reminder` 타입과 API 클라이언트에 간격/요일 추가
 - [x] 반복 선택에 "평일마다" 프리셋과 "사용자 지정..." 항목
 - [x] 사용자 지정 다이얼로그 (간격 + 단위 + 요일 토글)
 - [x] 리마인더 항목 반복 요약 표시 ("2주마다 월·수", "평일마다")
 
 ### 완료 기준 검증
+
 - [x] "2주마다 월·수" 리마인더 완료 시 규칙에 맞는 다음 회차가 "예정됨"에 나타나는지 확인
 
 ## Phase 19 — 리스트 아이콘 + 그룹
+
 ### 백엔드
+
 - [x] `ReminderList`에 `icon` 추가, 생성/수정 요청·응답 반영 (허용 목록 밖이면 400)
 - [x] `ListGroup` 엔티티(id, user, name, sortOrder, createdAt)와 `ListGroupRepository`
 - [x] `ReminderList`에 `group` FK 추가, 리스트 응답에 `groupId` 포함
@@ -388,6 +462,7 @@
 - [x] 테스트: 아이콘 검증, 그룹 CRUD/순서, 그룹 삭제 시 리스트 유지, 소유자 외 거부, 사용자 간 격리
 
 ### 프론트엔드
+
 - [x] 리스트 생성/편집 다이얼로그에 아이콘 선택 그리드
 - [x] 사이드바 리스트 항목에 아이콘 표시
 - [x] 그룹 API 클라이언트와 TanStack Query 훅
@@ -396,6 +471,7 @@
 - [x] 그룹 순서 및 그룹 안 리스트 드래그 정렬
 
 ### 완료 기준 검증
+
 - [x] 아이콘 변경이 사이드바에 즉시 반영되는지 확인
 - [x] 리스트를 그룹으로 묶고 접을 수 있으며, 그룹 삭제 후에도 리스트와 리마인더가 남는지 확인
 
@@ -406,23 +482,29 @@
 `plan.md`의 Phase 20~22를 기준으로 한다. 리팩터링 Phase(20, 21)는 동작을 바꾸지 않으며, 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 20 — 문서·의존성 정리
+
 - [x] `frontend/ANALYSIS.md`를 현재 구조(인증, 선택 상태, 공유/그룹/알림 훅, 폴더 구조)로 갱신
 - [x] `shadcn`을 `devDependencies`로 이동하고 `package-lock.json` 갱신 (`globals.css`의 `shadcn/tailwind.css`는 빌드 시 번들, 런타임 JS import 없음 확인)
 
 ### 완료 기준 검증
+
 - [x] `npm ci` → `npm run lint` → `npm run build` 통과, 앱 기동 후 화면 정상 확인
 
 ## Phase 21 — 사이드바 컴포넌트 분리
+
 - [x] `components/sidebar/` 폴더 생성, `index.tsx`에서 `Sidebar` export (import 경로 갱신)
 - [x] 스마트 뷰, 리스트 영역, 그룹/리스트 항목, 그룹 이동 메뉴, 태그 섹션, 공통 항목을 파일별로 분리
 - [x] 드래그 처리(ID 파싱, 순서 계산, optimistic update/복구)를 `use-sidebar-dnd.ts` 훅으로 분리
 - [x] 각 파일 300줄 이하, `npm run lint`/`npm run build` 통과
 
 ### 완료 기준 검증
+
 - [x] 스마트 뷰 선택, 리스트/그룹 드래그 정렬, 그룹 접기, 그룹으로 이동, 리스트 편집/공유/삭제, 태그 선택이 분리 전과 같은지 확인
 
 ## Phase 22 — 동시 수정 충돌 감지
+
 ### 백엔드
+
 - [x] `Reminder`, `ReminderList`에 `@Version version` 추가, 기존 행 버전 0으로 보정
 - [x] 리마인더/리스트 응답에 `version` 포함
 - [x] `PUT /api/reminders/{id}`, `PUT /api/lists/{id}` 요청에 `version` 필수, 불일치 시 409
@@ -431,11 +513,13 @@
 - [x] 테스트: 버전 일치 시 수정·버전 증가, 불일치 409, 토글/이동 후 버전 증가, 기존 행 보정, 컨트롤러 `version` 필수 400
 
 ### 프론트엔드
+
 - [x] `Reminder`, `ReminderList` 타입과 수정 API에 `version` 추가
 - [x] 리마인더 편집/리스트 편집 저장 시 `version` 전송
 - [x] 409 `VERSION_CONFLICT` 시 토스트 + 쿼리 무효화로 최신 내용 다시 표시
 
 ### 완료 기준 검증
+
 - [x] 두 계정이 같은 공유 리스트의 리마인더를 동시에 편집할 때 나중 저장이 409로 거부되고 최신 내용이 반영되는지 확인
 
 ---
@@ -445,6 +529,7 @@
 `plan.md`의 Phase 23~26을 기준으로 한다. 동작을 유지하는 리팩터링이며(바뀌는 동작은 spec.md 13번 "동작 변경"만), 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 23 — 관례 정합성
+
 - [x] 비밀번호 바이트 길이 커스텀 제약(`@MaxBytes`) 추가, `SignupRequest.password`에 적용
 - [x] `AuthService`의 72바이트 검사와 `BCRYPT_MAX_BYTES` 제거, 숫자 72를 상수 하나로 통합
 - [x] `Reminder.isIn(ReminderList)` 추가, 이동 시 하위 작업 검사와 같은 리스트 판단을 도메인으로 이동
@@ -454,9 +539,11 @@
 - [x] 테스트: 72바이트 초과 비밀번호 400(컨트롤러), 하위 작업 단독 이동 400·같은 리스트 이동 무변경(도메인/서비스), 이름·제목 공백 정리
 
 ### 완료 기준 검증
+
 - [x] 회원가입, 리마인더 이동, 리스트/리마인더 생성·수정이 프론트엔드에서 이전과 같게 동작하는지 확인
 
 ## Phase 24 — 중복 제거
+
 - [x] `AuthService.getUser(Authentication)` 제거, 로그인 응답을 `authService.me()`로 생성
 - [x] 리스트 그룹 조회·404 처리를 한 곳으로 통합 (`ListGroupService`, `ReminderListService.changeGroup`)
 - [x] `GlobalExceptionHandler` 응답 생성 메서드 추출, `handleUnexpected`도 `resultCode.getStatus()` 사용
@@ -468,9 +555,11 @@
 - [x] 테스트: 기존 테스트 통과 확인, 로그인 응답 사용자 정보 검증
 
 ### 완료 기준 검증
+
 - [x] 로그인/회원가입, 리스트 그룹 지정, 리마인더·하위 작업 생성이 프론트엔드에서 이전과 같게 동작하는지 확인
 
 ## Phase 25 — 책임 위치·가독성
+
 - [x] 완료 항목 일괄 삭제의 판단을 `Reminder` 도메인 메서드로 이동
 - [x] `Clock` 빈 등록, `ReminderQueryService`·`ReminderService`의 `now()`를 `Clock` 사용으로 변경
 - [x] `ReminderListResponse.from`의 `summary.list()` 지역 변수화, `groupId` 노출 규칙을 메서드로 추출
@@ -482,14 +571,17 @@
 - [x] 테스트: 고정 `Clock`으로 오늘 뷰 자정 경계·완료 시각, 일괄 삭제 개수(도메인), 알 수 없는 스마트 뷰 400
 
 ### 완료 기준 검증
+
 - [x] 스마트 뷰(오늘/예정/전체/플래그/완료), 완료 토글, 완료 항목 일괄 삭제, 그룹 삭제가 프론트엔드에서 이전과 같게 동작하는지 확인
 
 ## Phase 26 — 로그 민감 정보 마스킹
+
 - [x] `HttpLoggingFilter`에서 `Cookie`(필요하면 `Authorization`) 헤더 값 마스킹
 - [x] 세션 로그에 세션 ID와 속성 이름만 남기고 값은 제외
 - [x] 테스트: 헤더·세션 로그 마스킹 검증 (`HttpLoggingFilterTest`)
 
 ### 완료 기준 검증
+
 - [x] 로그인 후 API 요청 로그에 `JSESSIONID` 값과 보안 컨텍스트 내용이 나오지 않는지 확인
 
 ---
@@ -499,6 +591,7 @@
 `plan.md`의 Phase 27~29를 기준으로 한다. 인증 방식 외의 기능과 API 동작은 바꾸지 않으며, 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 27 — 토큰 발급·검증 기반
+
 - [x] JJWT 의존성 추가
 - [x] `app.jwt` 설정 추가, 서명 키 길이 시작 시 검증
 - [x] `application.yml`에 로컬 전용 서명 키 기본값 추가, 운영은 `JWT_SECRET`으로 주입
@@ -510,10 +603,13 @@
 - [x] 테스트: 리프레시 토큰 해시 저장, 회전, 폐기, 만료 판단
 
 ### 완료 기준 검증
+
 - [x] 기존 세션 로그인과 전체 테스트가 그대로 동작하는지 확인
 
 ## Phase 28 — 세션에서 JWT로 전환
+
 ### 백엔드
+
 - [x] `JwtAuthenticationFilter` 추가
 - [x] `SecurityConfig`를 STATELESS로 변경, `/api/auth/refresh` 허용
 - [x] `LoginSession`과 세션 관련 빈 제거
@@ -526,6 +622,7 @@
 - [x] 테스트: 리프레시 쿠키 속성, `JSESSIONID` 미발급, 로그의 토큰 마스킹
 
 ### 프론트엔드
+
 - [x] `api.ts`의 `Authorization` 헤더 전송, 액세스 토큰 메모리 보관
 - [x] `api.ts`의 `credentials` 주석을 리프레시 쿠키 기준으로 수정
 - [x] 앱 시작 시 `/api/auth/refresh`로 로그인 상태 복원
@@ -534,6 +631,7 @@
 - [x] `auth-api.ts` 응답 타입과 로그인/로그아웃 처리 갱신
 
 ### 완료 기준 검증
+
 - [x] 로그인 후 `JSESSIONID`가 없고 리프레시 쿠키가 `HttpOnly`인지 확인
 - [x] 액세스 토큰 수명을 짧게 두고 작업 중 자동 재발급과 요청 재시도 확인
 - [x] 새로고침과 여러 탭에서 로그인 유지 확인
@@ -543,6 +641,7 @@
 - [x] 리스트, 리마인더, 스마트 뷰, 공유 리스트가 프론트엔드에서 이전과 같게 동작하는지 확인
 
 ## Phase 29 — 재사용 감지·정리
+
 - [x] 폐기된 토큰 재사용 시 해당 사용자 토큰 전체 폐기, 동시 회전 충돌 401 처리
 - [x] 로그인 시 해당 사용자의 만료 토큰 삭제
 - [x] `CLAUDE.md` 인증 관례 갱신
@@ -550,6 +649,7 @@
 - [x] 테스트: 재사용 감지 시 전체 폐기, 동시 회전 충돌, 만료 토큰 삭제
 
 ### 완료 기준 검증
+
 - [x] 교체 전 토큰 재사용 시 최신 토큰도 무효가 되고 다시 로그인해야 하는지 확인
 - [x] 여러 탭 동시 새로고침 시 로그아웃되지 않는지 확인
 
@@ -560,15 +660,18 @@
 `plan.md`의 Phase 30~38을 기준으로 한다. 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 30 — 코드 정리
+
 - [x] 백엔드 import 순서를 IntelliJ 기본 배치로 통일 (main, test)
 - [x] 루트 `.editorconfig` 추가 (들여쓰기, 줄 끝, `ij_java_imports_layout`)
 - [x] `ReminderService.reorderReminders` 등 형식 오류 수정
 - [x] `CLAUDE.md`에 import 배치·`.editorconfig` 관례 추가
 
 ### 완료 기준 검증
+
 - [x] 백엔드 전체 테스트 통과, 형식 외 변경이 없는지 diff 확인
 
 ## Phase 31 — 프론트엔드 테스트 기반
+
 - [x] Vitest 추가, `npm test` 스크립트, `@/` 경로 별칭과 테스트 환경(node/jsdom) 설정
 - [x] 테스트: `lib/api.ts` (성공, `ApiError`, 401 재발급 후 재시도, 재발급 실패, 동시 401 공유, 인증 경로 재시도 제외)
 - [x] 테스트: `lib/repeat.ts`, `lib/due-date.ts`
@@ -577,9 +680,11 @@
 - [x] `CLAUDE.md`에 프론트엔드 테스트 관례 추가
 
 ### 완료 기준 검증
+
 - [x] 로컬과 CI에서 `npm test` 통과 확인
 
 ## Phase 32 — 프론트엔드 컴포넌트 분리
+
 - [x] `components/reminder-list/` 생성: `index.tsx`, `use-reminder-list-items.ts`, `use-reminder-dnd.ts`
 - [x] 항목 컴포넌트 분리: `sortable-reminder-item.tsx`, `reminder-item.tsx`, `reminder-row.tsx`
 - [x] `components/reminder-edit-dialog/` 생성: `index.tsx`, `reminder-edit-form.tsx`, `form-values.ts`
@@ -588,24 +693,31 @@
 - [x] 테스트: `form-values.ts` (리마인더 → 폼 값, 폼 값 → 요청)
 
 ### 완료 기준 검증
+
 - [x] `npm run lint`, `npm run build`, `npm test` 통과
 - [x] 리스트·스마트 뷰·태그·검색 목록, 드래그 정렬, 하위 작업 접기/추가, 편집·충돌 처리가 이전과 같게 동작하는지 확인
 
 ## Phase 33 — 리마인더 단건 조회
+
 ### 백엔드
+
 - [x] `GET /api/reminders/{id}` 추가
 - [x] `openapi.yml` 갱신
 - [x] 테스트: 본인·공유 리스트·하위 작업 조회 성공, 다른 사용자 리마인더 404
 
 ### 프론트엔드
+
 - [x] `getReminder(id)` 추가, `useFetchLatestReminder`가 사용하도록 변경
 - [x] 테스트: `getReminder` 요청 경로
 
 ### 완료 기준 검증
+
 - [x] 두 탭에서 같은 리마인더를 수정해 충돌을 만들고, 단건 조회 요청 하나로 최신 내용이 반영되는지 확인
 
 ## Phase 34 — 시간대 처리
+
 ### 백엔드
+
 - [x] 시각 필드를 `Instant`로 변경 (`Reminder`, `BaseTimeEntity`, `RefreshToken`)
 - [x] `Reminder.timeZone` 추가, 마감 시각이 있는데 시간대가 없으면 `DomainException`
 - [x] 시각 계산을 `Instant.now(clock)`으로 변경
@@ -623,6 +735,7 @@
 - [x] 기존 `LocalDateTime` 기반 테스트를 `Instant` 기준으로 갱신
 
 ### 프론트엔드
+
 - [x] `lib/timezone.ts` 추가 (브라우저 시간대)
 - [x] 생성·수정 요청에 `timeZone` 추가, `dueAt`을 `toISOString()`으로 전송
 - [x] 오늘 뷰 `zone`, upcoming `from`/`to` 전송 방식 변경
@@ -630,13 +743,16 @@
 - [x] 테스트: 요청 시각 변환, 다른 시간대 문자열 표시, 지남 판단
 
 ### 완료 기준 검증
+
 - [x] 로컬 DB를 초기화하고 백엔드를 `-Duser.timezone=UTC`로 실행해 한국 시간 오전 마감 리마인더가 "오늘"에 나오는지 확인
 - [x] 브라우저 시간대를 바꿔 같은 리마인더가 각 시간대로 표시되는지 확인
 - [x] 매일 반복 리마인더 완료 시 다음 날 같은 현지 시각으로 생성되는지 확인
 - [x] 마감 알림이 정해진 시각에 뜨는지 확인
 
 ## Phase 35 — 목록 페이지네이션
+
 ### 백엔드
+
 - [x] `SliceResponse<T>(items, nextCursor)` 추가
 - [x] `GET /api/reminders/completed` 추가 (키셋: `completedAt desc, id desc`), `SmartView.COMPLETED` 제거
 - [x] `GET /api/reminders/search` 응답을 `SliceResponse`로 변경 (오프셋 커서)
@@ -646,18 +762,22 @@
 - [x] 테스트: `size` 범위 밖 400, 잘못된 커서 400, `smart/COMPLETED` 400
 
 ### 프론트엔드
+
 - [x] 완료됨·검색 API 함수를 페이지 응답 타입으로 변경
 - [x] 완료됨·검색 화면을 `useInfiniteQuery`와 목록 끝 감지(`IntersectionObserver`)로 변경
 - [x] 리마인더 변경 후 무한 조회 캐시 무효화 확인
 - [x] 테스트: 페이지 응답 파싱, 커서 전달
 
 ### 완료 기준 검증
+
 - [x] 완료 항목 120개에서 첫 요청 50개, 스크롤 시 120개 모두 순서대로 중복 없이 보이는지 확인
 - [x] 검색 결과 이어 불러오기 확인
 - [x] 완료 해제·삭제 후 목록 갱신 확인
 
 ## Phase 36 — 로그인 시도 제한
+
 ### 백엔드
+
 - [x] `app.auth.login-attempt` 설정 추가 (`@ConfigurationProperties`)
 - [x] `LoginAttemptLimiter` 구현 (이메일·IP별 실패 기록, `Clock` 기준, 만료 기록 정리)
 - [x] `AuthService.login`에 차단 확인·실패 기록·성공 시 초기화 적용, 컨트롤러가 IP 전달
@@ -668,17 +788,21 @@
 - [x] 테스트: 차단 중 올바른 비밀번호도 429, `Retry-After` 헤더, 다른 이메일 실패와 분리
 
 ### 프론트엔드
+
 - [x] `ApiError`에 재시도 시간 전달
 - [x] 로그인 폼에 429 안내 문구 표시
 - [x] 테스트: 429 응답의 `ApiError` 재시도 시간
 
 ### 완료 기준 검증
+
 - [x] 같은 이메일로 5번 틀린 뒤 올바른 비밀번호로도 로그인되지 않고 안내 문구가 보이는지 확인
 - [x] `lock-duration`을 짧게 두고 시간이 지난 뒤 다시 로그인되는지 확인
 - [x] 다른 계정 로그인은 영향받지 않는지 확인
 
 ## Phase 37 — 로그인 시도 기록 공유 (서버 이중화 대응)
+
 ### 백엔드
+
 - [x] `LoginAttemptStore` 인터페이스 분리, 메모리 구현을 `InMemoryLoginAttemptStore`로 이동
 - [x] `RedisLoginAttemptStore` 구현 (실패·차단 키, Lua 스크립트로 원자적 처리, `PTTL`로 남은 차단 시간)
 - [x] `app.auth.login-attempt.store`(`memory`/`redis`) 설정으로 구현 선택
@@ -693,6 +817,7 @@
 - [x] 기존 로그인 시도 제한 테스트가 `memory` 구현으로 통과
 
 ### 완료 기준 검증
+
 - [x] 같은 Redis를 쓰는 백엔드 2대(`:8080`, `:8081`)에 실패를 번갈아 보내 합산 5회째 차단, 두 서버 모두 429 확인
 - [x] 한 서버에서 로그인 성공 후 다른 서버에서도 실패 횟수가 초기화되었는지 확인
 - [x] `lock-duration`을 짧게 두고 두 서버 모두에서 다시 로그인되는지 확인
@@ -700,7 +825,9 @@
 - [x] `store=memory`(기본값)로 Redis 없이 실행되는지 확인
 
 ## Phase 38 — 코드 리뷰 지적 사항 정리
+
 ### 백엔드
+
 - [x] `flagged` 없는 PUT의 현재 동작 확인 후 `ReminderUpdateRequest.flagged`를 `@NotNull Boolean`으로 변경 (기존에도 Jackson 역직렬화 실패로 400이었으나 메시지가 "잘못된 요청입니다."였고, 이제 `flagged: ...`로 필드를 알려준다)
 - [x] 테스트: `flagged` 누락 시 400이고 플래그가 바뀌지 않음
 - [x] `LoginRequest`·`ListMemberRequest`의 `email`에 `@Size(max = User.EMAIL_MAX_LENGTH)` 추가, `openapi.yml`에 `maxLength: 100` 반영
@@ -722,11 +849,13 @@
 - [x] `CLAUDE.md`: JPA Auditing도 주입한 `Clock`을 따른다는 점 반영
 
 ### 프론트엔드
+
 - [x] `lib/email.ts`에 이메일 100자 기준과 판정 함수 추가
 - [x] 로그인·회원가입·멤버 초대 폼에서 100자 초과 이메일을 "이메일은 100자 이하로 입력해 주세요."로 막음 (서버 400을 "이미 멤버"·일반 오류로 잘못 안내하던 문제)
 - [x] 테스트: 100자 허용, 101자 거부, 앞뒤 공백 무시
 
 ### 완료 기준 검증
+
 - [x] `flagged` 없이 리마인더 수정 시 400이고 플래그 상태가 유지되는지 확인
 - [x] 공유 리스트에서 멤버 제거 후 그 멤버의 태그 개수에서 리스트 리마인더가 빠지는지 확인
 - [x] 사이드바 태그 개수와 그 태그로 필터한 미완료 리마인더 수가 일치하는지 확인 (다른 멤버가 같은 이름 태그를 붙인 공유 리마인더 포함)
@@ -742,7 +871,9 @@
 `plan.md`의 Phase 39~43을 기준으로 한다. 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 39 — E2E 기반 + 인증
+
 ### 구성
+
 - [x] `@playwright/test` devDependency 추가, `frontend/e2e/` 디렉터리와 `npm run e2e`·`npm run e2e:ui` 스크립트
 - [x] `playwright.config.ts`: Chromium, `ko-KR`·`Asia/Seoul` 고정, 실패 시 스크린샷·trace, CI 재시도 1회
 - [x] `webServer`: 백엔드(인메모리 H2, IP 로그인 시도 한도 상향, 액세스 토큰 30초)·프론트엔드(CI는 build+start, 로컬은 dev 재사용)
@@ -750,6 +881,7 @@
 - [x] `e2e/support/`: 고유 사용자 생성, API 헬퍼(리스트·리마인더·그룹 생성), 화면 로그인 헬퍼, 사용자별 컨텍스트 fixture
 
 ### 시나리오 — `auth.spec.ts`
+
 - [x] 회원가입 후 메인 이동과 내 이메일 표시
 - [x] 회원가입 입력 검증 안내 (빈 값, 이메일 형식, 100자 초과, 비밀번호 8자 미만·72바이트 초과, 확인 불일치)
 - [x] 중복 이메일 가입 안내
@@ -761,14 +893,17 @@
 - [x] 같은 이메일 5회 실패 후 차단과 재시도 시각 안내
 
 ### CI
+
 - [x] `ci.yml`에 `e2e` job 추가 (Java 21, Node, `playwright install --with-deps chromium`, 캐시), 기존 job과 병렬
 - [x] 실패 시 `playwright-report/`·`test-results/` artifact 업로드
 
 ### 문서
+
 - [x] `README.md`에 E2E 실행 방법 추가
 - [x] `CLAUDE.md`: 사용자 흐름이 바뀌는 화면 변경은 E2E 시나리오도 함께 갱신, E2E 테스트 이름 규칙, 화면 검증에 `npm run e2e` 사용 가능
 
 ### 완료 기준 검증
+
 - [x] 서버를 띄우지 않은 상태에서 `npm run e2e` 하나로 인증 시나리오 통과
 - [x] 실행 후 로컬 개발 DB(`backend/data/`)가 바뀌지 않았는지 확인
 - [x] PR CI에서 `e2e` job 통과
@@ -776,7 +911,9 @@
 - [x] 연속 3번 실행 모두 통과
 
 ## Phase 40 — 리스트·그룹·리마인더 기본 기능
+
 ### 시나리오
+
 - [x] `lists.spec.ts`: 생성(이름·색상·아이콘), 편집 반영, 삭제(확인 창, 리마인더도 사라짐), 사이드바 개수 변화
 - [x] `groups.spec.ts`: 그룹 생성과 리스트 이동, 접기 상태 유지(새로고침), 이름 변경, 삭제 시 리스트 유지, 그룹에서 빼기
 - [x] `reminders.spec.ts`: 추가, 편집(제목·메모·마감일시·우선순위·플래그), 플래그 토글, 완료·완료 취소, 삭제
@@ -787,11 +924,14 @@
 - [x] `layout.spec.ts`: 좁은 화면에서 메뉴 열기·리스트 선택 후 닫힘
 
 ### 완료 기준 검증
+
 - [x] 연속 3번 실행 모두 통과
 - [x] PR CI에서 `e2e` job 통과
 
 ## Phase 41 — 리마인더 확장 기능
+
 ### 시나리오
+
 - [x] `tags.spec.ts`: 태그 칩 추가·제거, 사이드바 태그와 개수, 태그별 보기(개수와 목록 수 일치), 태그 삭제 후 리마인더 유지
 - [x] `subtasks.spec.ts`: 추가와 펼치기/접기, 하위 작업 완료·편집·삭제, 부모 완료·삭제 전파, 개수에 최상위만 포함
 - [x] `repeat.spec.ts`: 프리셋 반복 요약, 사용자 지정(간격·단위·요일) 요약, 마감일 없는 반복 처리, 매주 반복 완료 시 7일 뒤 다음 회차 생성
@@ -801,11 +941,14 @@
 - [x] `notifications.spec.ts`: 권한 거부 안내, 마감 시각 알림 한 번, 마감일시 변경 후 재알림, 알림 클릭 시 편집 창
 
 ### 완료 기준 검증
+
 - [x] 연속 3번 실행 모두 통과
 - [x] PR CI에서 `e2e` job 통과
 
 ## Phase 42 — 공유·협업
+
 ### 시나리오
+
 - [x] `sharing.spec.ts`: 대소문자 섞인 이메일 초대와 멤버 목록, 없는 사용자·이미 멤버·100자 초과 안내
 - [x] `sharing.spec.ts`: 공유받은 리스트와 공유 아이콘·멤버 수, 편집자의 리마인더 관리, 편집자 화면에 편집·삭제·초대 없음
 - [x] `sharing.spec.ts`: 편집자 나가기, 소유자의 멤버 제거 후 상대 화면에서 사라짐
@@ -814,31 +957,38 @@
 - [x] `conflict.spec.ts`: 리마인더·리스트를 차례로 저장하면 나중 쪽에 충돌 안내와 최신 내용
 
 ### 완료 기준 검증
+
 - [x] 연속 3번 실행 모두 통과
 - [x] PR CI에서 `e2e` job 통과
 - [x] spec.md 16번 "E2E 대상 기능" 표의 모든 항목이 시나리오로 확인되는지 대조
 
 ## Phase 43 — E2E 패키지 분리 + 필수·보조 분리
+
 ### 구성
+
 - [x] `frontend/e2e/` → `e2e/tests/`, `frontend/playwright.config.ts` → `e2e/playwright.config.ts` (`git mv`로 이력 유지)
 - [x] `e2e/package.json`(`@playwright/test`·`@types/node`·`typescript`, `e2e`·`e2e:ui`·`typecheck` 스크립트, Volta 버전), `tsconfig.json`, `.gitignore`
 - [x] `playwright.config.ts`: `testDir`를 `./tests`로, 프론트엔드 `webServer`에 `cwd: "../frontend"`
 - [x] `frontend`에서 `@playwright/test`·E2E 스크립트 제거와 `package-lock.json` 갱신, `.gitignore`·`eslint.config.mjs`의 Playwright 항목 제거
 
 ### 필수·보조 분리
+
 - [x] 배포 전 필수 테스트 25개에 `{ tag: "@essential" }` (서비스 사용 불가, 데이터 손실·덮어쓰기, 권한), 나머지 43개는 보조
 - [x] `e2e:essential`(`--grep @essential`)·`e2e:supplementary`(`--grep-invert @essential`) 스크립트
 
 ### CI
+
 - [x] E2E job 작업 디렉터리를 `e2e`로, `frontend`·`e2e` 각각 `npm ci`, 두 lock 파일로 npm 캐시
 - [x] E2E job을 `E2E essential`·`E2E supplementary`로 나눠 병렬 실행, `typecheck`는 `E2E essential`에서
 - [x] 실패 시 `e2e/playwright-report/`·`e2e/test-results/`를 `e2e-essential-report`·`e2e-supplementary-report` artifact로 업로드
 
 ### 문서
+
 - [x] `README.md`: Node 버전 기준, E2E 실행 방법, 필수·보조 기준, CI 설명
 - [x] `CLAUDE.md`: 화면 검증 문구를 `e2e`의 `npm run e2e`로, E2E 관례를 "e2e 하위" 섹션으로 분리, 필수 태그 기준
 
 ### 완료 기준 검증
+
 - [x] 서버를 띄우지 않은 상태에서 `e2e`의 `npm run e2e` 하나로 모든 시나리오 통과 (68개)
 - [x] 연속 3번 실행 모두 통과
 - [x] `e2e`의 `npm run typecheck` 통과
@@ -854,7 +1004,9 @@
 `plan.md`의 Phase 44~47을 기준으로 한다. 사용자 기능과 앱 API는 바꾸지 않으며, 모든 작업은 CI가 통과한 PR로 머지한다.
 
 ## Phase 44 — Actuator·메트릭 기반
+
 ### 백엔드
+
 - [x] `spring-boot-starter-actuator`, `micrometer-registry-prometheus` 의존성 추가
 - [x] management 포트 `${MANAGEMENT_PORT:8090}`, 노출 엔드포인트 `health`·`info`·`prometheus`로 제한
 - [x] liveness·readiness 프로브, readiness에 DB 포함, Redis health는 `store=redis`일 때만 켜고 readiness에서 제외
@@ -868,17 +1020,21 @@
 - [x] 테스트: `store=memory`에서 Redis 없이 readiness UP
 
 ### 문서
+
 - [x] `README.md`: management 포트·엔드포인트, 이중화 실행 시 두 번째 서버 `--management.server.port=8091`, 외부 비공개 전제
 - [x] `CLAUDE.md`: Actuator 노출 관례
 
 ### 완료 기준 검증
+
 - [x] `:8090/actuator/health/readiness` UP, `:8090/actuator/prometheus`에 HTTP·JVM·HikariCP 메트릭 확인
 - [x] `:8080/actuator/health` 미응답 확인
 - [x] Actuator 반복 호출 시 요청 로그가 늘지 않는지 확인
 - [x] 백엔드 테스트 전체 통과, `e2e`의 `npm run e2e` 통과
 
 ## Phase 45 — 인증·보안 커스텀 메트릭
+
 ### 백엔드
+
 - [x] `AuthMetrics` 컴포넌트 추가, 카운터 미리 등록
 - [x] `reminder.auth.login.failures` (인증 실패)
 - [x] `reminder.auth.login.locks` (`scope`=`email`/`ip`, 메모리·Redis 구현의 차단 시작 지점)
@@ -890,42 +1046,52 @@
 - [x] 테스트: `prometheus` 응답의 커스텀 메트릭에 이메일·IP 값 없음
 
 ### 완료 기준 검증
+
 - [x] 화면에서 같은 이메일로 5번 틀린 뒤 실패·차단·거부 메트릭 증가 확인
 - [x] 리프레시 토큰 재사용, Redis 장애 시 메트릭 증가 확인
 - [x] 백엔드 테스트 전체 통과
 
 ## Phase 46 — Prometheus·Grafana 스택, 대시보드, 알림 규칙
+
 ### 구성
-- [ ] `monitoring/prometheus/prometheus.yml` (백엔드 management 포트 수집, 규칙 로드)
-- [ ] `docker-compose.yml`에 `monitoring` 프로필로 `prometheus`(`:9090`)·`grafana`(`:3001`), `host-gateway` 설정, 이미지 버전 고정
-- [ ] Grafana Prometheus 데이터 소스·대시보드 프로비저닝
-- [ ] 대시보드: 백엔드 개요, JVM·DB, 인증·보안
+
+- [x] `monitoring/prometheus/prometheus.yml` (백엔드 management 포트 수집, 규칙 로드)
+- [x] `docker-compose.yml`에 `monitoring` 프로필로 `prometheus`(`:9090`)·`grafana`(`:3001`), `host-gateway` 설정, 이미지 버전 고정
+- [x] Grafana Prometheus 데이터 소스·대시보드 프로비저닝
+- [x] 대시보드: 백엔드 개요, JVM·DB, 인증·보안
 
 ### 알림 규칙
-- [ ] `monitoring/prometheus/rules/alerts.yml`에 백엔드 규칙 8개 (`severity`, `summary`, `description`)
-- [ ] `alerts.test.yml`: 규칙별 발생·미발생 경계 단위 테스트
+
+- [x] `monitoring/prometheus/rules/alerts.yml`에 백엔드 규칙 8개 (`severity`, `summary`, `description`)
+- [x] `alerts.test.yml`: 규칙별 발생·미발생 경계 단위 테스트
 
 ### CI
-- [ ] `Monitoring config` job: `promtool check config`·`check rules`·`test rules`, 대시보드 JSON 검사
-- [ ] `master` 브랜치 보호 필수 검사에 `Monitoring config` 추가
+
+- [x] `Monitoring config` job: `promtool check config`·`check rules`·`test rules`, 대시보드 JSON 검사
+- [x] `master` 브랜치 보호 필수 검사에 `Monitoring config` 추가
 
 ### 문서
-- [ ] `README.md`: 스택 실행, 접속 주소, 대시보드, 알림 규칙 확인 방법
-- [ ] `CLAUDE.md`: 메트릭 이름·태그 규칙, 알림 규칙 변경 시 단위 테스트 갱신
+
+- [x] `README.md`: 스택 실행, 접속 주소, 대시보드, 알림 규칙 확인 방법
+- [x] `CLAUDE.md`: 메트릭 이름·태그 규칙, 알림 규칙 변경 시 단위 테스트 갱신
 
 ### 완료 기준 검증
-- [ ] Prometheus `/targets`에서 백엔드 UP, 세 대시보드에 값 표시 확인
-- [ ] 백엔드를 끄고 1분 뒤 `BackendDown` firing 확인
-- [ ] 로그인 반복 실패가 인증·보안 대시보드에 반영되는지 확인
-- [ ] 로컬과 PR CI에서 `promtool` 검사·규칙 단위 테스트 통과
+
+- [x] Prometheus `/targets`에서 백엔드 UP, 세 대시보드에 값 표시 확인
+- [x] 백엔드를 끄고 1분 뒤 `BackendDown` firing 확인
+- [x] 로그인 반복 실패가 인증·보안 대시보드에 반영되는지 확인
+- [x] 로컬과 PR CI에서 `promtool` 검사·규칙 단위 테스트 통과
 
 ## Phase 47 — 프론트엔드 모니터링 (Grafana Faro)
+
 ### 구성
+
 - [ ] `docker-compose.yml`의 `monitoring` 프로필에 `alloy`·`loki` 추가
 - [ ] `monitoring/alloy/config.alloy`: `faro.receiver`(`:12347`, CORS `http://localhost:3000`, 속도 제한) → Loki
 - [ ] `monitoring/loki/` 로컬 설정과 ruler 규칙 디렉터리, Grafana Loki 데이터 소스
 
 ### 프론트엔드
+
 - [ ] `@grafana/faro-web-sdk` 추가
 - [ ] `lib/faro.ts`: 주소 없으면 비활성, 오류·Web Vitals·세션만 수집, 콘솔 수집 끔, 사용자 정보 미설정
 - [ ] `beforeSend`에서 URL 쿼리와 토큰 형태 값 제거
@@ -934,14 +1100,17 @@
 - [ ] 테스트(`lib/faro.test.ts`): 주소 없음, 앱 정보, URL 쿼리 제거, 토큰 마스킹
 
 ### 대시보드·알림 규칙
+
 - [ ] 프론트엔드 대시보드: JS 오류 수·최근 오류, 페이지별 Web Vitals, 세션 수
 - [ ] `FrontendErrorSpike` Loki ruler 규칙, Grafana 알림 화면에서 확인
 
 ### 문서
+
 - [ ] `README.md`: `NEXT_PUBLIC_FARO_URL` 설정, 수집·제외 항목, 대시보드
 - [ ] `CLAUDE.md`: 프론트엔드 수집 데이터 관례
 
 ### 완료 기준 검증
+
 - [ ] 화면 사용 후 프론트엔드 대시보드에 세션과 Web Vitals 표시 확인
 - [ ] 일부러 낸 오류가 메시지·페이지·브라우저와 함께 표시되는지 확인
 - [ ] Loki 이벤트에 토큰·이메일·URL 쿼리가 없는지 확인

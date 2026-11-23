@@ -71,6 +71,29 @@ jobs:
       - name: Build
         run: npm run build
 
+  monitoring:
+    name: Monitoring config
+    runs-on: ubuntu-latest
+    env:
+      PROMTOOL: docker run --rm -v ${{ github.workspace }}/monitoring/prometheus:/etc/prometheus -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.16.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Prometheus config
+        run: $PROMTOOL check config prometheus.yml
+
+      - name: Check alert rules
+        run: $PROMTOOL check rules rules/alerts.yml
+
+      - name: Test alert rules
+        run: $PROMTOOL test rules rules/alerts.test.yml
+
+      - name: Check dashboard JSON
+        run: |
+          for file in monitoring/grafana/dashboards/*.json; do
+            jq -e '.uid and .title and (.panels | length > 0)' "$file" > /dev/null || { echo "Invalid dashboard: $file"; exit 1; }
+          done
+
   e2e-essential:
     name: E2E essential
     runs-on: ubuntu-latest
