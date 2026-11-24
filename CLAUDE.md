@@ -26,6 +26,12 @@
 - 테스트 이름은 영어(camelCase)로 작성한다.
 - 사용자 흐름이 바뀌는 화면 변경은 해당 E2E 시나리오(`e2e/tests/`)를 같은 작업 안에서 함께 갱신한다.
 
+### 프론트엔드 수집 데이터(Faro)
+
+- Faro 설정은 `lib/faro.ts`에만 두고 `src/instrumentation-client.ts`에서 초기화한다. `NEXT_PUBLIC_FARO_URL`이 없으면 SDK를 켜지 않는다(CI·E2E는 설정하지 않는다).
+- 수집 데이터에 사용자 정보(ID, 이메일, 이름)와 토큰을 넣지 않는다. `user`를 설정하지 않고 콘솔 수집을 켜지 않으며, `beforeSend`에서 URL 쿼리 문자열과 `Bearer`·JWT·이메일 형태 값을 지운다.
+- 계측(오류, Web Vitals, 세션)이나 지우는 값을 바꾸면 `lib/faro.test.ts`를 같은 작업 안에서 함께 갱신하고, 수집·제외 항목이 바뀌면 `README.md`의 표도 고친다.
+
 ## e2e 하위 - E2E 테스트(Playwright) 관례
 
 - 백엔드·프론트엔드와 분리된 별도 패키지다. 시나리오는 `e2e/tests/*.spec.ts`, 공통 헬퍼는 `e2e/tests/support/`에 두고, `e2e`에서 `npm run e2e`로 실행한다.
@@ -85,7 +91,8 @@
 ## monitoring 하위 - 모니터링 스택(Prometheus·Grafana) 관례
 
 - 설정은 `monitoring/`에서 관리하고, 스택은 `docker compose --profile monitoring`으로 따로 띄운다. 스택이 없어도 앱, 테스트, E2E는 그대로 동작해야 한다.
-- 이미지 버전은 고정한다(`latest` 금지). Prometheus 이미지를 바꾸면 CI의 `Monitoring config` job과 `README.md`의 `promtool` 명령도 함께 바꾼다.
+- 이미지 버전은 고정한다(`latest` 금지). Prometheus·Alloy·Loki 이미지를 바꾸면 CI의 `Monitoring config` job(과 Prometheus는 `README.md`의 `promtool` 명령)도 함께 바꾼다.
+- 프론트엔드 알림 규칙은 Loki ruler 규칙(`loki/rules/fake/alerts.yml`)으로 두고, 바꾸면 Loki에 오류 이벤트를 넣어 발생·미발생을 직접 확인한다. Faro 이벤트 필드(`page_id`, `value_lcp` 등)를 쓰는 대시보드 쿼리는 Alloy 출력 형식이 바뀌면 함께 고친다.
 - 알림 규칙(`prometheus/rules/alerts.yml`)을 추가하거나 바꿀 때는 `alerts.test.yml`의 발생·미발생 경계 테스트도 같은 작업 안에서 함께 갱신하고, `promtool check rules`·`test rules`로 확인한다.
 - 알림 규칙에는 `severity`(`critical`, `warning`) 라벨과, 원인과 확인할 대시보드를 적은 `summary`, `description`을 단다.
-- 대시보드는 `grafana/dashboards/`의 JSON으로 관리한다. 데이터 소스는 uid `prometheus`로 참조하고, 메트릭 이름이 바뀌면 대시보드 쿼리와 알림 규칙을 함께 바꾼다.
+- 대시보드는 `grafana/dashboards/`의 JSON으로 관리한다. 데이터 소스는 uid `prometheus`(프론트엔드는 `loki`)로 참조하고, 메트릭 이름이 바뀌면 대시보드 쿼리와 알림 규칙을 함께 바꾼다.

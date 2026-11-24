@@ -1,0 +1,10 @@
+groups:
+  - name: reminder-frontend
+    rules:
+      - alert: FrontendErrorSpike
+        expr: sum(count_over_time({app_name="reminder-frontend", kind="exception"}[5m])) >= 20
+        labels:
+          severity: warning
+        annotations:
+          summary: "프론트엔드 JS 오류 급증"
+          description: "최근 5분간 화면에서 JS 오류가 20건 이상 발생했습니다. '프론트엔드' 대시보드의 최근 오류 목록에서 메시지·페이지·브라우저를 확인하고, 직전 배포나 API 응답 변경을 점검하세요."

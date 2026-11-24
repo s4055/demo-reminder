@@ -89,9 +89,9 @@ Actuator는 앱 포트(`:8080`)와 분리된 management 포트(`MANAGEMENT_PORT`
 
 태그에는 이메일, IP 같은 값을 넣지 않습니다.
 
-### 모니터링 스택 (Prometheus `:9090`, Grafana `:3001`)
+### 모니터링 스택 (Prometheus `:9090`, Grafana `:3001`, Loki `:3100`, Alloy `:12347`)
 
-Prometheus와 Grafana는 `docker-compose.yml`의 `monitoring` 프로필로 따로 띄웁니다(Docker 필요). 스택이 없어도 앱, 테스트, E2E는 그대로 동작합니다.
+Prometheus, Grafana, Loki, Alloy는 `docker-compose.yml`의 `monitoring` 프로필로 따로 띄웁니다(Docker 필요). 스택이 없어도 앱, 테스트, E2E는 그대로 동작합니다.
 
 ```bash
 docker compose --profile monitoring up -d
@@ -103,9 +103,12 @@ docker compose --profile monitoring down
 | http://localhost:9090/targets | 수집 대상. 호스트에서 실행한 백엔드(`host.docker.internal:8090`)를 15초마다 수집하며 `reminder-backend`가 UP이어야 합니다 |
 | http://localhost:9090/alerts | 알림 규칙과 상태(inactive, pending, firing) |
 | http://localhost:3001 | Grafana. 로그인 없이 보기 권한으로 열리며, `Reminder` 폴더에 대시보드가 있습니다 |
+| http://localhost:12347/collect | Alloy `faro.receiver`. 브라우저가 보낸 프론트엔드 이벤트를 받아 Loki에 저장합니다 |
+| http://localhost:3100/ready | Loki 준비 상태 |
 
 - 설정은 저장소의 `monitoring/`에서 관리합니다. Prometheus 설정(`prometheus/prometheus.yml`), 알림 규칙(`prometheus/rules/`),
-  Grafana 데이터 소스·대시보드 프로비저닝(`grafana/provisioning/`), 대시보드 JSON(`grafana/dashboards/`)이 있습니다.
+  Grafana 데이터 소스·대시보드 프로비저닝(`grafana/provisioning/`), 대시보드 JSON(`grafana/dashboards/`),
+  Alloy 설정(`alloy/config.alloy`), Loki 설정(`loki/loki.yml`)과 Loki 알림 규칙(`loki/rules/fake/`)이 있습니다.
 - 프로비저닝한 대시보드는 Grafana 화면에서 저장할 수 없습니다. 바꾸려면 `grafana/dashboards/`의 JSON을 고친 뒤 Grafana를 다시 띄웁니다.
 - 백엔드는 호스트에서 실행하므로 Linux에서도 `host.docker.internal`이 동작하도록 `extra_hosts: host-gateway`를 둡니다.
 - Grafana는 로컬 확인용 설정(익명 보기 허용)이며, 운영 배포 구성은 범위 밖입니다.
@@ -115,12 +118,13 @@ docker compose --profile monitoring down
 | 백엔드 개요 | 수집 상태, 요청 수, 5xx 비율, 경로별 p95 응답 시간, 상태 코드 분포 |
 | JVM·DB | 힙·GC·스레드, HikariCP 활성·유휴·대기 커넥션과 획득 시간 |
 | 인증·보안 | 로그인 실패, 이메일·IP별 차단 시작, 차단 중 거부, 토큰 재사용, 저장소 오류 |
+| 프론트엔드 | JS 오류 수·페이지별 추이·최근 오류 목록(메시지, 페이지, 브라우저), 세션 수, Web Vitals 등급 분포와 페이지별 LCP·INP·CLS p75 |
 
 대시보드 위쪽의 `서버` 선택으로 이중화 실행 시 서버별로 볼 수 있습니다(두 번째 서버를 수집하려면 `prometheus.yml`의 대상에 `host.docker.internal:8091`을 더합니다).
 
 #### 알림 규칙
 
-`monitoring/prometheus/rules/alerts.yml`에 정의하며, 전송 채널(Alertmanager 등)은 연결하지 않습니다. 발생한 알림은 Prometheus `/alerts`와 Grafana의 알림 화면(Alerting → Alert rules)에서 확인합니다.
+백엔드 규칙은 `monitoring/prometheus/rules/alerts.yml`에 정의하며, 전송 채널(Alertmanager 등)은 연결하지 않습니다. 발생한 알림은 Prometheus `/alerts`와 Grafana의 알림 화면(Alerting → Alert rules)에서 확인합니다.
 
 | 규칙 | 조건 | 심각도 |
 |---|---|---|
@@ -141,6 +145,36 @@ docker run --rm -v "$PWD/monitoring/prometheus:/etc/prometheus" -w /etc/promethe
 ```
 
 Docker 없이 확인하려면 [Prometheus 릴리스](https://github.com/prometheus/prometheus/releases)의 `promtool`을 받아 `monitoring/prometheus`에서 같은 명령(`promtool check config prometheus.yml` 등)을 실행합니다.
+
+프론트엔드 규칙은 Loki ruler가 평가합니다(`monitoring/loki/rules/fake/alerts.yml`, 인증을 끈 단일 테넌트라 디렉터리 이름이 `fake`입니다).
+Grafana 알림 화면에서 데이터 소스 관리 규칙(`Loki`)으로 보이며, Loki의 `http://localhost:3100/prometheus/api/v1/rules`에서도 상태를 확인할 수 있습니다.
+
+| 규칙 | 조건 | 심각도 |
+|---|---|---|
+| `FrontendErrorSpike` | 5분간 프론트엔드 JS 오류 20건 이상 | warning |
+
+#### 프론트엔드 수집 (Grafana Faro)
+
+프론트엔드는 [Grafana Faro Web SDK](https://grafana.com/oss/faro/)로 화면 오류와 사용자 체감 성능을 Alloy(`:12347`)에 보냅니다.
+수집 주소를 설정하지 않으면 SDK를 켜지 않으며 수집 요청도 나가지 않습니다(CI와 E2E는 설정하지 않습니다).
+
+```bash
+# frontend/.env.local
+NEXT_PUBLIC_FARO_URL=http://localhost:12347/collect
+```
+
+`NEXT_PUBLIC_*` 값은 빌드 시점에 들어가므로, 설정을 바꾼 뒤에는 `npm run dev`를 다시 띄우거나 다시 빌드합니다.
+앱 이름(`reminder-frontend`)은 `NEXT_PUBLIC_FARO_APP_NAME`, 환경(기본값 `NODE_ENV`)은 `NEXT_PUBLIC_FARO_ENVIRONMENT`로 바꿀 수 있고, 버전은 `package.json`의 `version`을 씁니다.
+
+| 수집 | 제외 |
+|---|---|
+| JS 오류(처리하지 않은 오류·Promise 거부, 렌더링 중 오류)의 메시지·스택 | 콘솔 로그, 사용자 정보(ID·이메일·이름) |
+| Web Vitals(LCP, INP, CLS, FCP, TTFB)와 등급 | 리소스·요청 타이밍, 사용자 행동(클릭 추적), 트레이싱 |
+| 세션 ID(브라우저 탭 단위 임의 값), 페이지 경로, 브라우저·OS 이름과 버전 | URL 쿼리 문자열·`#` 뒤 값, `Bearer`·JWT 형태 토큰, 이메일 형태 값 |
+
+- 제외 항목은 `frontend/src/lib/faro.ts`의 `beforeSend`에서 보내기 전에 지우거나 `[REDACTED]`로 바꿉니다.
+- 수집기는 `http://localhost:3000` 출처만 CORS로 허용하고 요청 속도를 제한합니다(초당 50건, 순간 100건).
+- 이벤트는 Loki에 `app_name`, `kind`(`exception`, `measurement`, `event`) 라벨과 logfmt 본문으로 저장됩니다. Grafana Explore에서 `{app_name="reminder-frontend", kind="exception"} | logfmt`처럼 조회합니다.
 
 ### 서버 이중화 실행 (로그인 시도 기록 공유)
 

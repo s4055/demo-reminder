@@ -88,6 +88,12 @@ jobs:
       - name: Test alert rules
         run: $PROMTOOL test rules rules/alerts.test.yml
 
+      - name: Check Alloy config
+        run: docker run --rm -v ${{ github.workspace }}/monitoring/alloy:/etc/alloy:ro grafana/alloy:v1.22.0 validate /etc/alloy/config.alloy
+
+      - name: Check Loki config
+        run: docker run --rm -v ${{ github.workspace }}/monitoring/loki:/etc/loki:ro grafana/loki:3.7.10 -config.file=/etc/loki/loki.yml -verify-config
+
       - name: Check dashboard JSON
         run: |
           for file in monitoring/grafana/dashboards/*.json; do
