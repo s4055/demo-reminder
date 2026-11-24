@@ -86,6 +86,22 @@ describe("sanitizeText", () => {
     )
   })
 
+  it("removesRelativeUrlQueryAndFragment", () => {
+    expect(sanitizeText("failed at /?token=abc and /lists/3?tab=done#top now")).toBe(
+      "failed at / and /lists/3 now"
+    )
+  })
+
+  it("removesRelativeUrlQueryInsideQuotesAndParentheses", () => {
+    expect(sanitizeText(`fetch("/api/reminders?q=secret") (./page?x=1) url=../a?b=2`)).toBe(
+      `fetch("/api/reminders") (./page) url=../a`
+    )
+  })
+
+  it("keepsQuestionMarkInPlainText", () => {
+    expect(sanitizeText("why did it fail? see /help")).toBe("why did it fail? see /help")
+  })
+
   it("keepsUrlWithoutQuery", () => {
     expect(sanitizeText("http://localhost:3000/signup")).toBe("http://localhost:3000/signup")
   })

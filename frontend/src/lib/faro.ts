@@ -17,6 +17,7 @@ const DEFAULT_APP_NAME = "reminder-frontend"
 const REDACTED = "[REDACTED]"
 
 const URL_QUERY_PATTERN = /\b(https?:\/\/[^\s?#"'<>]+)[?#][^\s"'<>]*/g
+const RELATIVE_URL_QUERY_PATTERN = /(^|[\s"'(=])(\.{0,2}\/[^\s?#"'<>()]*)[?#][^\s"'<>()]*/g
 const BEARER_PATTERN = /\bBearer\s+[A-Za-z0-9\-._~+/]+=*/gi
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*/g
 const EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
@@ -47,6 +48,7 @@ export function createFaroConfig(env: FaroEnv): BrowserConfig | null {
 export function sanitizeText(text: string): string {
   return text
     .replace(URL_QUERY_PATTERN, "$1")
+    .replace(RELATIVE_URL_QUERY_PATTERN, "$1$2")
     .replace(BEARER_PATTERN, `Bearer ${REDACTED}`)
     .replace(JWT_PATTERN, REDACTED)
     .replace(EMAIL_PATTERN, REDACTED)
