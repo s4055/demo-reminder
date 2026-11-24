@@ -1086,32 +1086,32 @@
 
 ### 구성
 
-- [ ] `docker-compose.yml`의 `monitoring` 프로필에 `alloy`·`loki` 추가
-- [ ] `monitoring/alloy/config.alloy`: `faro.receiver`(`:12347`, CORS `http://localhost:3000`, 속도 제한) → Loki
-- [ ] `monitoring/loki/` 로컬 설정과 ruler 규칙 디렉터리, Grafana Loki 데이터 소스
+- [x] `docker-compose.yml`의 `monitoring` 프로필에 `alloy`·`loki` 추가
+- [x] `monitoring/alloy/config.alloy`: `faro.receiver`(`:12347`, CORS `http://localhost:3000`, 속도 제한) → Loki
+- [x] `monitoring/loki/` 로컬 설정과 ruler 규칙 디렉터리, Grafana Loki 데이터 소스
 
 ### 프론트엔드
 
-- [ ] `@grafana/faro-web-sdk` 추가
-- [ ] `lib/faro.ts`: 주소 없으면 비활성, 오류·Web Vitals·세션만 수집, 콘솔 수집 끔, 사용자 정보 미설정
-- [ ] `beforeSend`에서 URL 쿼리와 토큰 형태 값 제거
-- [ ] `src/instrumentation-client.ts`에서 초기화
-- [ ] 렌더링 오류 수집 확인 (안 되면 오류 경계에서 직접 전송)
-- [ ] 테스트(`lib/faro.test.ts`): 주소 없음, 앱 정보, URL 쿼리 제거, 토큰 마스킹
+- [x] `@grafana/faro-web-sdk` 추가
+- [x] `lib/faro.ts`: 주소 없으면 비활성, 오류·Web Vitals·세션만 수집, 콘솔 수집 끔, 사용자 정보 미설정
+- [x] `beforeSend`에서 URL 쿼리와 토큰 형태 값 제거
+- [x] `src/instrumentation-client.ts`에서 초기화
+- [x] 렌더링 오류 수집 확인 (안 되면 오류 경계에서 직접 전송)
+- [x] 테스트(`lib/faro.test.ts`): 주소 없음, 앱 정보, URL 쿼리 제거, 토큰 마스킹
 
 ### 대시보드·알림 규칙
 
-- [ ] 프론트엔드 대시보드: JS 오류 수·최근 오류, 페이지별 Web Vitals, 세션 수
-- [ ] `FrontendErrorSpike` Loki ruler 규칙, Grafana 알림 화면에서 확인
+- [x] 프론트엔드 대시보드: JS 오류 수·최근 오류, 페이지별 Web Vitals, 세션 수
+- [x] `FrontendErrorSpike` Loki ruler 규칙, Grafana 알림 화면에서 확인
 
 ### 문서
 
-- [ ] `README.md`: `NEXT_PUBLIC_FARO_URL` 설정, 수집·제외 항목, 대시보드
-- [ ] `CLAUDE.md`: 프론트엔드 수집 데이터 관례
+- [x] `README.md`: `NEXT_PUBLIC_FARO_URL` 설정, 수집·제외 항목, 대시보드
+- [x] `CLAUDE.md`: 프론트엔드 수집 데이터 관례
 
 ### 완료 기준 검증
 
-- [ ] 화면 사용 후 프론트엔드 대시보드에 세션과 Web Vitals 표시 확인
-- [ ] 일부러 낸 오류가 메시지·페이지·브라우저와 함께 표시되는지 확인
-- [ ] Loki 이벤트에 토큰·이메일·URL 쿼리가 없는지 확인
-- [ ] 주소 미설정 시 수집 요청 없음 확인, `npm run lint`·`npm test`·`npm run build`·`npm run e2e` 통과
+- [x] 화면 사용 후 프론트엔드 대시보드에 세션과 Web Vitals 표시 확인
+- [x] 일부러 낸 오류가 메시지·페이지·브라우저와 함께 표시되는지 확인
+- [x] Loki 이벤트에 토큰·이메일·URL 쿼리가 없는지 확인
+- [x] 주소 미설정 시 수집 요청 없음 확인, `npm run lint`·`npm test`·`npm run build`·`npm run e2e` 통과

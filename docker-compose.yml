@@ -23,6 +23,7 @@ services:
     profiles: [monitoring]
     depends_on:
       - prometheus
+      - loki
     ports:
       - "3001:3000"
     environment:
@@ -34,6 +35,34 @@ services:
       - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
 
+  loki:
+    image: grafana/loki:3.7.10
+    profiles: [monitoring]
+    command:
+      - -config.file=/etc/loki/loki.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - ./monitoring/loki/rules:/etc/loki/rules:ro
+      - loki-data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.22.0
+    profiles: [monitoring]
+    depends_on:
+      - loki
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    ports:
+      - "12347:12347"
+    volumes:
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+
 volumes:
   prometheus-data:
   grafana-data:
+  loki-data:

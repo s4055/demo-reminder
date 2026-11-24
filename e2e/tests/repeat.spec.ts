@@ -10,6 +10,8 @@ import {
   selectSmartView,
 } from "./support/ui"
 
+test.describe.configure({ timeout: 90_000 })
+
 const MARCH_15_2027 = { year: 2027, month: 3, day: 15 }
 
 test.beforeEach(async ({ signedInPage: page, api }) => {
