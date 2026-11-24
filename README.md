@@ -170,7 +170,7 @@ NEXT_PUBLIC_FARO_URL=http://localhost:12347/collect
 |---|---|
 | JS 오류(처리하지 않은 오류·Promise 거부, 렌더링 중 오류)의 메시지·스택 | 콘솔 로그, 사용자 정보(ID·이메일·이름) |
 | Web Vitals(LCP, INP, CLS, FCP, TTFB)와 등급 | 리소스·요청 타이밍, 사용자 행동(클릭 추적), 트레이싱 |
-| 세션 ID(브라우저 탭 단위 임의 값), 페이지 경로, 브라우저·OS 이름과 버전 | URL 쿼리 문자열·`#` 뒤 값, `Bearer`·JWT 형태 토큰, 이메일 형태 값 |
+| 세션 ID(브라우저 탭 단위 임의 값), 페이지 경로, 브라우저·OS 이름과 버전 | URL(상대 경로 포함) 쿼리 문자열·`#` 뒤 값, `Bearer`·JWT 형태 토큰, 이메일 형태 값 |
 
 - 제외 항목은 `frontend/src/lib/faro.ts`의 `beforeSend`에서 보내기 전에 지우거나 `[REDACTED]`로 바꿉니다.
 - 수집기는 `http://localhost:3000` 출처만 CORS로 허용하고 요청 속도를 제한합니다(초당 50건, 순간 100건).
